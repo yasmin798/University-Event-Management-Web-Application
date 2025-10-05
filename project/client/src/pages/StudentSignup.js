@@ -11,6 +11,7 @@ export default function StudentSignup() {
     password: "",
   });
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
   const [emailError, setEmailError] = useState("");
 
   const handleChange = (e) => {
@@ -31,7 +32,7 @@ export default function StudentSignup() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (
@@ -42,16 +43,67 @@ export default function StudentSignup() {
       !formData.password
     ) {
       setMessage("Please fill in all fields correctly.");
+      setIsError(true);
       return;
     }
 
     if (emailError) {
       setMessage("Please fix your email format before submitting.");
+      setIsError(true);
       return;
     }
 
-    console.log("Student Signup Data:", formData);
-    setMessage("Signup successful!");
+    try {
+      const response = await fetch("http://localhost:3000/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          roleSpecificId: formData.studentId,
+          email: formData.email,
+          password: formData.password,
+          role: "student",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === 'Email already registered') {
+          setMessage(
+            <span>
+              Email already registered. <a href="/login" style={{ color: "#10B981", textDecoration: "underline", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Go to Login page</a>
+            </span>
+          );
+          setIsError(true);
+        } else {
+          throw new Error(data.error || "Signup failed");
+        }
+        return;
+      }
+
+      setMessage("Signup successful! Redirecting to Login Page.");
+      setIsError(false);
+      // Clear form
+      setFormData({
+        firstName: "",
+        lastName: "",
+        studentId: "",
+        email: "",
+        password: "",
+      });
+      setEmailError("");
+      // Redirect to Login after success
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);  // 1.5 second delay to show success message
+    } catch (error) {
+      setMessage(`⚠️ Error: ${error.message}`);
+      setIsError(true);
+    }
   };
 
   return (
@@ -123,7 +175,7 @@ export default function StudentSignup() {
             style={{
               marginTop: "15px",
               textAlign: "center",
-              color: message.includes("⚠️") ? "red" : "green",
+              color: isError ? "red" : "green",
               fontWeight: "500",
             }}
           >
