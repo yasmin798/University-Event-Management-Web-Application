@@ -4,8 +4,8 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import StudentSignup from "./pages/StudentSignup";
 import StaffSignup from "./pages/StaffSignup";
-import ProfessorSignup from "./pages/ProfessorSignup";
-import TASignup from "./pages/TASignup";
+//import ProfessorSignup from "./pages/ProfessorSignup";
+//import TASignup from "./pages/TASignup";
 import VendorSignup from "./pages/VendorSignup";
 
 
@@ -18,8 +18,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup/student" element={<StudentSignup />} />
         <Route path="/signup/staff" element={<StaffSignup />} />
-<Route path="/signup/professor" element={<ProfessorSignup />} />
-<Route path="/signup/ta" element={<TASignup />} />
+
 <Route path="/signup/vendor" element={<VendorSignup />} />
 
       </Routes>

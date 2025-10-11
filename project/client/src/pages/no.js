@@ -1,102 +1,104 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function VendorSignup() {
+export default function StaffSignup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    companyName: "",
+    firstName: "",
+    lastName: "",
+    staffId: "",
     email: "",
     password: "",
   });
   const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "email") {
+      validateEmail(value);
+    }
   };
 
-  const handleSubmit = async (e) => {
+  const validateEmail = (email) => {
+    const regex = /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/;
+    if (!regex.test(email)) {
+      setEmailError("Wrong email format, should be @guc.edu.eg.");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.companyName || !formData.email || !formData.password) {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.staffId ||
+      !formData.email ||
+      !formData.password
+    ) {
       setMessage("Please fill in all fields correctly.");
-      setIsError(true);
       return;
     }
 
-    try {
-      const response = await fetch("http://localhost:3000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          roleSpecificId: formData.companyName,  // Map companyName to roleSpecificId for vendor info
-          email: formData.email,
-          password: formData.password,
-          role: "vendor",
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.error === 'Email already registered') {
-          setMessage(
-            <span>
-              Email already registered. <a href="/login" style={{ color: "#10B981", textDecoration: "underline", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Go to Login page</a>
-            </span>
-          );
-          setIsError(true);
-        } else {
-          throw new Error(data.error || "Signup failed");
-        }
-        return;
-      }
-
-      setMessage("✅ Signup successful! redirecting to login page!");
-      setIsError(false);
-      // Clear form
-      setFormData({
-        companyName: "",
-        email: "",
-        password: "",
-      });
-      // Redirect to Login after success
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500);  // 1.5 second delay to show success message
-    } catch (error) {
-      setMessage(`⚠️ Error: ${error.message}`);
-      setIsError(true);
+    if (emailError) {
+      setMessage("Please fix your email format before submitting.");
+      return;
     }
+
+    console.log("Staff Signup Data:", formData);
+    setMessage("Signup successful!");
   };
 
   return (
     <div style={containerStyle}>
       <div style={formBoxStyle}>
-        <h1 style={titleStyle}>Vendor Signup</h1>
+        <h1 style={titleStyle}>Staff Signup</h1>
 
         <form onSubmit={handleSubmit} style={formStyle}>
           <input
             type="text"
-            name="companyName"
-            placeholder="Company Name"
-            value={formData.companyName}
+            name="firstName"
+            placeholder="First Name"
+            value={formData.firstName}
             onChange={handleChange}
             style={inputStyle}
           />
-
+          <input
+            type="text"
+            name="lastName"
+            placeholder="Last Name"
+            value={formData.lastName}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            name="staffId"
+            placeholder="Staff ID"
+            value={formData.staffId}
+            onChange={handleChange}
+            style={inputStyle}
+          />
           <input
             type="email"
             name="email"
-            placeholder="Email"
+            placeholder="Email (e.g. malak@guc.edu.eg)"
             value={formData.email}
             onChange={handleChange}
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              borderColor: emailError ? "red" : "#D1D5DB",
+            }}
           />
-
+          {emailError && (
+            <p style={{ color: "red", fontSize: "0.9rem", textAlign: "left" }}>
+              {emailError}
+            </p>
+          )}
           <input
             type="password"
             name="password"
@@ -116,7 +118,7 @@ export default function VendorSignup() {
             style={{
               marginTop: "15px",
               textAlign: "center",
-              color: isError ? "red" : "green",
+              color: message.includes("⚠️") ? "red" : "green",
               fontWeight: "500",
             }}
           >
@@ -174,7 +176,7 @@ const inputStyle = {
 };
 
 const buttonStyle = {
-  backgroundColor: "#6366F1",
+  backgroundColor: "#10B981",
   color: "white",
   padding: "12px",
   border: "none",

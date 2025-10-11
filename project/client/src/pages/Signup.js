@@ -5,11 +5,9 @@ export default function Signup() {
   const navigate = useNavigate();
 
   const roles = [
-    { title: "Student", color: "#4F46E5" },
-    { title: "Staff", color: "#10B981" },
-    { title: "Professor", color: "#F59E0B" },
-    { title: "TA", color: "#EC4899" },
-    { title: "Vendor", color: "#6366F1" },
+    { title: "Student", color: "#4F46E5", path: "/signup/student" },
+    { title: "Staff", color: "#F59E0B", path: "/signup/staff" }, // middle box -> ProfessorSignup
+    { title: "Vendor", color: "#6366F1", path: "/signup/vendor" },
   ];
 
   return (
@@ -42,9 +40,9 @@ export default function Signup() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: "25px",
-          maxWidth: "900px",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "30px",
+          maxWidth: "700px",
           width: "100%",
         }}
       >
@@ -55,7 +53,7 @@ export default function Signup() {
               background: "white",
               borderRadius: "16px",
               boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-              padding: "30px 20px",
+              padding: "40px 20px",
               transition: "transform 0.3s, box-shadow 0.3s",
               cursor: "pointer",
             }}
@@ -69,20 +67,20 @@ export default function Signup() {
               e.currentTarget.style.boxShadow =
                 "0 4px 10px rgba(0, 0, 0, 0.1)";
             }}
-            onClick={() => navigate(`/signup/${role.title.toLowerCase()}`)}
+            onClick={() => navigate(role.path)}
           >
             <div
               style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "12px",
+                width: "70px",
+                height: "70px",
+                borderRadius: "14px",
                 backgroundColor: role.color,
-                margin: "0 auto 15px",
+                margin: "0 auto 20px",
               }}
             ></div>
             <h2
               style={{
-                fontSize: "1.3rem",
+                fontSize: "1.4rem",
                 fontWeight: "600",
                 color: "#1F2937",
               }}

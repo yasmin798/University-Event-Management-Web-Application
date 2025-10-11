@@ -10,29 +10,32 @@ export default function StaffSignup() {
     email: "",
     password: "",
   });
+
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
   const [emailError, setEmailError] = useState("");
 
+  // ✅ Handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Email validation
     if (name === "email") {
-      validateEmail(value);
+      const regex = /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/;
+      if (!regex.test(value)) {
+        setEmailError("❌ Wrong email format, should be @guc.edu.eg");
+      } else {
+        setEmailError("");
+      }
     }
   };
 
-  const validateEmail = (email) => {
-    const regex = /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/;
-    if (!regex.test(email)) {
-      setEmailError("Wrong email format, should be @guc.edu.eg.");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  const handleSubmit = (e) => {
+  // ✅ Handle form submit
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Basic validation
     if (
       !formData.firstName ||
       !formData.lastName ||
@@ -40,17 +43,87 @@ export default function StaffSignup() {
       !formData.email ||
       !formData.password
     ) {
-      setMessage("Please fill in all fields correctly.");
+      setMessage("⚠️ Please fill in all fields.");
+      setIsError(true);
       return;
     }
 
     if (emailError) {
-      setMessage("Please fix your email format before submitting.");
+      setMessage("⚠️ Please fix your email format first.");
+      setIsError(true);
       return;
     }
 
-    console.log("Staff Signup Data:", formData);
-    setMessage("Signup successful!");
+    try {
+      // ✅ Send data to backend (runs on port 3000)
+      const response = await fetch("http://localhost:3000/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          roleSpecificId: formData.staffId,
+          email: formData.email,
+          password: formData.password,
+          role: "staff",
+        }),
+      });
+
+      const data = await response.json();
+
+      // Handle failed signup
+      if (!response.ok) {
+        if (data.error === "Email already registered") {
+          setMessage(
+            <>
+              Email already registered.{" "}
+              <a
+                href="/login"
+                style={{
+                  color: "#10B981",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/login");
+                }}
+              >
+                Go to Login page
+              </a>
+            </>
+          );
+          setIsError(true);
+        } else {
+          setMessage(`❌ ${data.error || "Signup failed"}`);
+          setIsError(true);
+        }
+        return;
+      }
+
+      // ✅ Success: show custom staff message
+      if (data.user && data.user.role === "unassigned") {
+        setMessage("✅ Registration complete, awaiting admin verification!");
+      } else {
+        setMessage(data.message || "✅ Signup successful!");
+      }
+
+      setIsError(false);
+
+      // Clear form
+      setFormData({
+        firstName: "",
+        lastName: "",
+        staffId: "",
+        email: "",
+        password: "",
+      });
+      setEmailError("");
+    } catch (error) {
+      console.error("❌ Fetch error:", error);
+      setMessage(`❌ Error: ${error.message}`);
+      setIsError(true);
+    }
   };
 
   return (
@@ -86,7 +159,7 @@ export default function StaffSignup() {
           <input
             type="email"
             name="email"
-            placeholder="Email (e.g. malak@guc.edu.eg)"
+            placeholder="Email (e.g. staff@guc.edu.eg)"
             value={formData.email}
             onChange={handleChange}
             style={{
@@ -118,7 +191,7 @@ export default function StaffSignup() {
             style={{
               marginTop: "15px",
               textAlign: "center",
-              color: message.includes("⚠️") ? "red" : "green",
+              color: isError ? "red" : "green",
               fontWeight: "500",
             }}
           >
@@ -134,7 +207,7 @@ export default function StaffSignup() {
   );
 }
 
-// Styles
+/* ---------- Styles ---------- */
 const containerStyle = {
   minHeight: "100vh",
   backgroundColor: "#F3F4F6",
@@ -144,7 +217,6 @@ const containerStyle = {
   fontFamily: "Poppins, Arial, sans-serif",
   padding: "20px",
 };
-
 const formBoxStyle = {
   background: "white",
   borderRadius: "16px",
@@ -153,20 +225,13 @@ const formBoxStyle = {
   width: "100%",
   maxWidth: "400px",
 };
-
 const titleStyle = {
   textAlign: "center",
   fontSize: "2rem",
   color: "#111827",
   marginBottom: "30px",
 };
-
-const formStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "15px",
-};
-
+const formStyle = { display: "flex", flexDirection: "column", gap: "15px" };
 const inputStyle = {
   padding: "10px 14px",
   borderRadius: "8px",
@@ -174,7 +239,6 @@ const inputStyle = {
   fontSize: "1rem",
   outline: "none",
 };
-
 const buttonStyle = {
   backgroundColor: "#10B981",
   color: "white",
@@ -184,7 +248,6 @@ const buttonStyle = {
   cursor: "pointer",
   fontWeight: "600",
 };
-
 const backButtonStyle = {
   marginTop: "25px",
   backgroundColor: "#E5E7EB",

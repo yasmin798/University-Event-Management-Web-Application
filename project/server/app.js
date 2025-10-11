@@ -1,87 +1,100 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');  // For hashing
+// app.js  (backend runs on port 3000)
+require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const User = require("./models/User"); // make sure models/User.js exists
 
 const app = express();
 app.use(express.json());
-const cors = require('cors');
-app.use(cors({ origin: 'http://localhost:3001' }));  // Allows React on 3001
-// Connect to "signup" database
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connected to signup DB'))
-  .catch(err => console.error('❌ DB connection error:', err));
 
-const User = require('./models/User');  // Import from models folder
+// ✅ allow frontend on port 3001
+app.use(cors({ origin: "http://localhost:3001" }));
 
-// Signup route: Saves student info to "signup" DB
-app.post('/api/register', async (req, res) => {
+// simple logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log("Body:", req.body);
+  next();
+});
+
+// ✅ connect to MongoDB
+const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/signup";
+mongoose
+  .connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+/* ---------------- SIGNUP ---------------- */
+app.post("/api/register", async (req, res) => {
   try {
-    const { firstName, lastName, roleSpecificId, email, password, role: requestedRole } = req.body;
+    const { firstName, lastName, roleSpecificId, email, password, role } = req.body;
 
-    // Enforce role
-    let correctRole;
-    switch (requestedRole) {
-      case 'student': correctRole = 'student'; break;
-      case 'professor': correctRole = 'professor'; break;
-      case 'staff': correctRole = 'staff'; break;
-      case 'ta': correctRole = 'ta'; break;
-      default: return res.status(400).json({ error: 'Invalid role' });
+    console.log("📩 Signup request:", req.body);
+
+    // validate required fields
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Check duplicate email
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: 'Email already registered' });
+    const validRoles = ["student", "professor", "staff", "ta", "vendor"];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: "Invalid role" });
+    }
 
-    // Create and save user directly (isVerified true by default)
+    // duplicate email check
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
+    // staff, professor, ta → need admin verification
+    const needsApproval = ["staff", "professor", "ta"].includes(role);
+    const isVerified = !needsApproval;
+
+    // save to DB
     const newUser = new User({
-      firstName,
-      lastName,
+      firstName: firstName || "",
+      lastName: lastName || "",
       roleSpecificId,
       email,
       password,
-      role: correctRole
+      role,
+      isVerified,
     });
-    await newUser.save();  // Saves to "signup" DB immediately
 
-    res.status(201).json({ message: '✅ Signup successful! Your info has been stored in the signup database for later use.' });
-  } catch (error) {
-    console.error('Signup error:', error);
-    res.status(500).json({ error: 'Server error during signup' });
-  }
-});
+    const saved = await newUser.save();
 
-// Login route: Queries "signup" DB for authentication
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+    console.log("✅ User saved:", saved.email);
 
-    // Find user in "signup" DB
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Invalid email or password' });
-
-    // Compare hashed password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid email or password' });
-
-    // Success: Return user info (no password)
-    res.json({
-      message: '✅ Login successful!',
+    return res.status(201).json({
+      success: true,
+      message: needsApproval
+        ? "✅ Registration complete, awaiting admin verification!"
+        : "✅ Signup successful!",
       user: {
-        id: user._id,
-        firstName: user.firstName,
-        email: user.email,
-        role: user.role,
-        roleSpecificId: user.roleSpecificId
-      }
+        id: saved._id,
+        email: saved.email,
+        role: saved.role,
+        isVerified: saved.isVerified,
+      },
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+  } catch (err) {
+    console.error("❌ Signup error:", err);
+    return res
+      .status(500)
+      .json({ error: "Server error during signup", details: err.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+/* ---------------- DEBUG ---------------- */
+app.get("/api/debug/users", async (_req, res) => {
+  const users = await User.find().sort({ createdAt: -1 });
+  res.json({ count: users.length, users });
 });
+
+/* ---------------- START SERVER ---------------- */
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`🚀 Backend running at http://localhost:${PORT}`)
+);
