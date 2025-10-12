@@ -13,11 +13,8 @@
     "dotenv": "^17.2.3",
     "env": "^0.0.2",
     "express": "^5.1.0",
-<<<<<<< HEAD
     "jsonwebtoken": "^9.0.2",
-=======
     "lucide-react": "^0.545.0",
->>>>>>> 4c1214504747e4bbce6645a0a7b5afa6d05a6f6e
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.0",
     "nodemailer": "^7.0.6",
