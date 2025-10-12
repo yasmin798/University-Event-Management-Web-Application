@@ -8,7 +8,7 @@ export default function Home() {
         textAlign: "center",
         paddingTop: "100px",
         fontFamily: "Arial, sans-serif",
-        backgroundColor: "#f4f4f4",
+        backgroundColor: "#c8d9e6", //f5efeb beigee //c8d9e6 blue
         minHeight: "100vh",
       }}
     >

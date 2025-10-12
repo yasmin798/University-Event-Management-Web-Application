@@ -194,7 +194,7 @@ export default function StudentSignup() {
 // Styles (same as before)
 const containerStyle = {
   minHeight: "100vh",
-  backgroundColor: "#F3F4F6",
+  backgroundColor: "#c8d9e6",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -202,7 +202,7 @@ const containerStyle = {
   padding: "20px",
 };
 const formBoxStyle = {
-  background: "white",
+  background: "#f5efeb ",
   borderRadius: "16px",
   boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
   padding: "40px",
@@ -228,7 +228,7 @@ const inputStyle = {
   outline: "none",
 };
 const buttonStyle = {
-  backgroundColor: "#4F46E5",
+  backgroundColor: "#567c8d",
   color: "white",
   padding: "12px",
   border: "none",

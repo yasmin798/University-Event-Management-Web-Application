@@ -6,16 +6,21 @@ const userSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
+    companyName: String, // ✅ Added for vendors
     roleSpecificId: String,
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["student", "staff", "professor", "ta", "vendor"],
+      required: true,
+    },
     isVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-// hash password before save
+// ✅ Hash password before save
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt(10);
@@ -23,7 +28,7 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// compare password method
+// ✅ Compare password method
 userSchema.methods.comparePassword = async function (entered) {
   return await bcrypt.compare(entered, this.password);
 };

@@ -20,7 +20,7 @@ export default function VendorSignup() {
     e.preventDefault();
 
     if (!formData.companyName || !formData.email || !formData.password) {
-      setMessage("Please fill in all fields correctly.");
+      setMessage("⚠️ Please fill in all fields correctly.");
       setIsError(true);
       return;
     }
@@ -32,7 +32,7 @@ export default function VendorSignup() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          roleSpecificId: formData.companyName,  // Map companyName to roleSpecificId for vendor info
+          companyName: formData.companyName, // ✅ send companyName
           email: formData.email,
           password: formData.password,
           role: "vendor",
@@ -42,10 +42,24 @@ export default function VendorSignup() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error === 'Email already registered') {
+        if (data.error === "Email already registered") {
           setMessage(
             <span>
-              Email already registered. <a href="/login" style={{ color: "#10B981", textDecoration: "underline", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Go to Login page</a>
+              Email already registered.{" "}
+              <a
+                href="/login"
+                style={{
+                  color: "#10B981",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/login");
+                }}
+              >
+                Go to Login page
+              </a>
             </span>
           );
           setIsError(true);
@@ -55,18 +69,11 @@ export default function VendorSignup() {
         return;
       }
 
-      setMessage("✅ Signup successful! redirecting to login page!");
+      setMessage("✅ Signup successful! Redirecting to login page...");
       setIsError(false);
-      // Clear form
-      setFormData({
-        companyName: "",
-        email: "",
-        password: "",
-      });
-      // Redirect to Login after success
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500);  // 1.5 second delay to show success message
+      setFormData({ companyName: "", email: "", password: "" });
+
+      setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
       setMessage(`⚠️ Error: ${error.message}`);
       setIsError(true);
@@ -135,7 +142,7 @@ export default function VendorSignup() {
 // Styles
 const containerStyle = {
   minHeight: "100vh",
-  backgroundColor: "#F3F4F6",
+  backgroundColor: "#c8d9e6",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -144,7 +151,7 @@ const containerStyle = {
 };
 
 const formBoxStyle = {
-  background: "white",
+  background: "#f5efeb",
   borderRadius: "16px",
   boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
   padding: "40px",
@@ -174,7 +181,7 @@ const inputStyle = {
 };
 
 const buttonStyle = {
-  backgroundColor: "#6366F1",
+  backgroundColor: "#567c8d",
   color: "white",
   padding: "12px",
   border: "none",

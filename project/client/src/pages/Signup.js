@@ -5,16 +5,16 @@ export default function Signup() {
   const navigate = useNavigate();
 
   const roles = [
-    { title: "Student", color: "#4F46E5", path: "/signup/student" },
-    { title: "Staff", color: "#F59E0B", path: "/signup/staff" }, // middle box -> ProfessorSignup
-    { title: "Vendor", color: "#6366F1", path: "/signup/vendor" },
+    { title: "Student", color: "#2f4156", path: "/signup/student" },
+    { title: "Staff", color: "#567c8d", path: "/signup/staff" }, // middle box -> ProfessorSignup
+    { title: "Vendor", color: "#c8d9e6", path: "/signup/vendor" },
   ];
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#F3F4F6",
+        backgroundColor: "#c8d9e6",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -50,7 +50,7 @@ export default function Signup() {
           <div
             key={index}
             style={{
-              background: "white",
+              background: "#f5efeb", //567c8d
               borderRadius: "16px",
               boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
               padding: "40px 20px",
