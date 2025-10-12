@@ -7,7 +7,11 @@ import { useLocalEvents } from "../hooks/useLocalEvents";
 import { isEditable } from "../utils/validation";
 import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
+<<<<<<< HEAD
+import conference from "../images/conference.jpg"; // Add your conference image here
+=======
 
+>>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -24,7 +28,11 @@ export default function EventsHome() {
   const [filter, setFilter] = useState("all");
   const { list } = useLocalEvents();
 
+<<<<<<< HEAD
+  // All saved events (bazaars + trips + conferences), sorted by start date
+=======
   // All events sorted by start time
+>>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
   const events = list().sort(
     (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime)
   );
@@ -49,6 +57,16 @@ export default function EventsHome() {
       tone: "sky",
       imageSrc: trip,
       imageAlt: "Students on a field trip bus",
+    },
+    {
+      type: "conferences",
+      to: "/conferences/new",
+      title: "Conferences",
+      subtitle: "Plan, edit, and publish conferences.",
+      cta: "Create Conference",
+      tone: "sky",
+      imageSrc: conference,
+      imageAlt: "Students attending a conference",
     },
   ];
 
@@ -82,6 +100,12 @@ export default function EventsHome() {
             onClick={() => setFilter("trips")}
           >
             Trips
+          </button>
+          <button
+            className={`eo-pill ${filter === "conferences" ? "active" : ""}`}
+            onClick={() => setFilter("conferences")}
+          >
+            Conferences
           </button>
         </div>
 
@@ -155,7 +179,29 @@ export default function EventsHome() {
                     className="btn btn-outline"
                     to={`/bazaars/${ev.id}/vendor-requests`}
                   >
+<<<<<<< HEAD
+                    Edit
+                  </Link>
+                ) : ev.type === "CONFERENCE" ? (
+                  <Link
+                    className={`btn ${
+                      isEditable(ev.startDateTime) ? "" : "btn-disabled"
+                    }`}
+                    to={`/conferences/${ev.id}`}
+                  >
+                    Edit
+                  </Link>
+                ) : (
+                  <Link
+                    className={`btn ${
+                      isEditable(ev.startDateTime) ? "" : "btn-disabled"
+                    }`}
+                    to={`/trips/${ev.id}`}
+                  >
+                    Edit
+=======
                     Vendor Participation
+>>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
                   </Link>
                 )}
 

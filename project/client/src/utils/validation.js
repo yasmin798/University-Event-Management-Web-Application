@@ -29,6 +29,37 @@ export function validateCommon(fields) {
   
     return errors;
   }
+
+  // In client/src/utils/validation.js
+// ... existing imports/exports (e.g., validateBazaar, isEditable, newId)
+
+// Add this new export
+export function validateConference(data) {
+  const errors = {};
+
+  // Required fields
+  if (!data.name?.trim()) errors.name = "Name is required.";
+  if (!data.shortDescription?.trim()) errors.shortDescription = "Short description is required.";
+  if (!data.startDateTime) errors.startDateTime = "Start date/time is required.";
+  if (!data.endDateTime) errors.endDateTime = "End date/time is required.";
+  if (!data.fullAgenda?.trim()) errors.fullAgenda = "Full agenda is required.";
+  if (!data.requiredBudget || data.requiredBudget < 0) errors.requiredBudget = "Valid budget (non-negative) is required.";
+  if (!data.fundingSource) errors.fundingSource = "Funding source is required.";
+
+  // Logical checks
+  if (data.startDateTime && data.endDateTime && new Date(data.startDateTime) >= new Date(data.endDateTime)) {
+    errors.endDateTime = "End must be after start.";
+  }
+
+  // Optional fields (URL format if provided)
+  if (data.website && !/^https?:\/\//.test(data.website)) {
+    errors.website = "Website must be a valid URL (e.g., https://example.com).";
+  }
+
+  return errors;
+}
+
+// ... rest of file
   
   export function validateBazaar(fields) {
     return validateCommon(fields);

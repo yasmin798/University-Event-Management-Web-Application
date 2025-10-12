@@ -11,9 +11,35 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = await loginUser(email, password);
-      localStorage.setItem("token", data.token);
-      navigate("/dashboard"); // redirect after login
+       const data = await loginUser(email, password);
+
+    // Save token and user info in localStorage
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    // Redirect based on role
+    switch (data.user.role) {
+      case "student":
+        navigate("/dashboard/student");
+        break;
+      case "staff":
+        navigate("/dashboard/staff");
+        break;
+      case "ta":
+        navigate("/dashboard/ta");
+        break;
+      case "professor":
+        navigate("/dashboard/professor");
+        break;
+      case "admin":
+        navigate("/dashboard/admin");
+        break;
+      case "events_office":
+        navigate("/EvenetsHome");
+        break;
+      default:
+        navigate("/dashboard"); // fallback
+        break;}
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }
