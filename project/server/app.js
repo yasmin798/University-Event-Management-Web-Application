@@ -1,17 +1,16 @@
-// app.js (Backend runs on port 3000)
+// app.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const cors = require("cors");
-const User = require("./models/User"); // ensure models/User.js exists
+const User = require("./models/User");
 
 const app = express();
 app.use(express.json());
-
-// ✅ Allow frontend on port 3001
 app.use(cors({ origin: "http://localhost:3001" }));
 
-// ✅ Simple logger
+// ✅ Logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   console.log("Body:", req.body);
@@ -28,48 +27,34 @@ mongoose
 /* ---------------- SIGNUP ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
-    const {
-      firstName,
-      lastName,
-      companyName, // ✅ added to handle vendor signup
-      roleSpecificId,
-      email,
-      password,
-      role,
-    } = req.body;
-
-    console.log("📩 Signup request:", req.body);
+    const { firstName, lastName, companyName, roleSpecificId, email, password, role: requestedRole } = req.body;
 
     // ✅ Validate required fields
-    if (!email || !password || !role) {
+    if (!email || !password || !requestedRole || !firstName || !lastName || !roleSpecificId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // ✅ Check valid roles
+    // ✅ Validate role
     const validRoles = ["student", "professor", "staff", "ta", "vendor"];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({ error: "Invalid role" });
-    }
+    if (!validRoles.includes(requestedRole)) return res.status(400).json({ error: "Invalid role" });
 
-    // ✅ Prevent duplicate email
+    // ✅ Check duplicate email
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email already registered" });
-    }
+    if (existingUser) return res.status(400).json({ error: "Email already registered" });
 
-    // ✅ Determine if verification is needed
-    const needsApproval = ["staff", "professor", "ta"].includes(role);
+    // ✅ Determine verification
+    const needsApproval = ["staff", "professor", "ta"].includes(requestedRole);
     const isVerified = !needsApproval;
 
-    // ✅ Save new user
+    // ✅ Save new user (password hashing handled by schema pre-save)
     const newUser = new User({
-      firstName: firstName || "",
-      lastName: lastName || "",
-      companyName: companyName || "", // ✅ save company name for vendors
+      firstName,
+      lastName,
+      companyName: companyName || "",
       roleSpecificId,
       email,
       password,
-      role,
+      role: requestedRole,
       isVerified,
     });
 
@@ -90,101 +75,88 @@ app.post("/api/register", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Signup error:", err);
-    return res
-      .status(500)
-      .json({ error: "Server error during signup", details: err.message });
+    return res.status(500).json({ error: "Server error during signup", details: err.message });
   }
 });
 
-/* ---------------- DEBUG (VIEW ALL USERS) ---------------- */
+/* ---------------- LOGIN ---------------- */
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: "Invalid email or password" });
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return res.status(400).json({ error: "Invalid email or password" });
+
+    if (!user.isVerified) return res.status(403).json({ error: "Account not verified yet." });
+
+    res.json({
+      message: "✅ Login successful!",
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        email: user.email,
+        role: user.role,
+        roleSpecificId: user.roleSpecificId,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Login error:", err);
+    res.status(500).json({ error: "Server error during login" });
+  }
+});
+
+/* ---------------- DEBUG USERS ---------------- */
 app.get("/api/debug/users", async (_req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
     res.json({ count: users.length, users });
   } catch (err) {
-    console.error("❌ Debug fetch error:", err);
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
-/* ---------------- ADMIN VERIFY ROUTE ---------------- */
+/* ---------------- ADMIN VERIFY ---------------- */
 app.patch("/api/admin/verify/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
 
-    console.log(`🟢 Admin verifying user: ${id} as role: ${role}`);
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid user ID" });
 
-    // ✅ Validate ID format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid user ID format" });
-    }
-
-    // ✅ Find user
     const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    // ✅ Validate assigned role
     const allowedRoles = ["staff", "ta", "professor"];
-    if (role && !allowedRoles.includes(role)) {
-      return res.status(400).json({ error: "Invalid assigned role" });
-    }
+    if (role && !allowedRoles.includes(role)) return res.status(400).json({ error: "Invalid role" });
 
-    // ✅ Update verification + role
     user.isVerified = true;
     if (role) user.role = role;
 
     const saved = await user.save();
-
-    console.log(`✅ User ${saved.email} verified as ${saved.role}`);
-
-    return res.status(200).json({
-      success: true,
-      message: "✅ User verified and role updated successfully!",
-      user: saved,
-    });
+    res.status(200).json({ success: true, message: "✅ User verified", user: saved });
   } catch (err) {
-    console.error("❌ Verification error:", err);
-    return res.status(500).json({
-      error: "Server error during verification",
-      details: err.message,
-    });
+    res.status(500).json({ error: "Server error during verification", details: err.message });
   }
 });
 
-/* ---------------- ADMIN DELETE ROUTE ---------------- */
+/* ---------------- ADMIN DELETE ---------------- */
 app.delete("/api/admin/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
-
-    console.log(`🗑️ Admin deleting user: ${id}`);
-
-    // ✅ Validate ID format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid user ID format" });
-    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid user ID" });
 
     const deleted = await User.findByIdAndDelete(id);
-    if (!deleted) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    console.log(`✅ Deleted user: ${deleted.email}`);
+    if (!deleted) return res.status(404).json({ error: "User not found" });
 
     res.status(200).json({ message: "🗑️ User deleted successfully." });
   } catch (err) {
-    console.error("❌ Delete error:", err);
-    res.status(500).json({
-      error: "Server error during delete",
-      details: err.message,
-    });
+    res.status(500).json({ error: "Server error during delete", details: err.message });
   }
 });
 
 /* ---------------- START SERVER ---------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Backend running at http://localhost:${PORT}`));

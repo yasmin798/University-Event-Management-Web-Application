@@ -10,6 +10,12 @@ import StaffSignup from "./pages/StaffSignup";
 import VendorSignup from "./pages/VendorSignup";
 import Admin from "./pages/Admin"; // ✅ Added admin page
 
+// Events pages
+import EventsHome from "./pages/EventsHome"; // NEW dashboard page
+import EventList from "./pages/EventList"; // All events list page
+import BazaarForm from "./pages/BazaarForm";
+import TripForm from "./pages/TripForm";
+
 function App() {
   return (
     <Router>
@@ -26,6 +32,24 @@ function App() {
 
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+
+        {/* Events */}
+        <Route path="/events" element={<EventsHome />} />
+        <Route path="/events/list" element={<EventList />} />
+
+        {/* Bazaar */}
+        <Route path="/bazaars/new" element={<BazaarForm />} />
+        <Route path="/bazaars/:id" element={<BazaarForm />} />
+        <Route path="/bazaars/:id/edit" element={<BazaarForm />} />
+        <Route path="/events/bazaars/:id" element={<BazaarForm />} />
+        <Route path="/events/bazaars/:id/edit" element={<BazaarForm />} />
+
+        {/* Trip */}
+        <Route path="/trips/new" element={<TripForm />} />
+        <Route path="/trips/:id" element={<TripForm />} />
+        <Route path="/trips/:id/edit" element={<TripForm />} />
+        <Route path="/events/trips/:id" element={<TripForm />} />
+        <Route path="/events/trips/:id/edit" element={<TripForm />} />
       </Routes>
     </Router>
   );
