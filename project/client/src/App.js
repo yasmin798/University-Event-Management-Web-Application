@@ -17,6 +17,7 @@ import BazaarForm from "./pages/BazaarForm";
 import TripForm from "./pages/TripForm";
 
 function App() {
+  
   return (
     <Router>
       <Routes>
