@@ -7,6 +7,7 @@ import { useLocalEvents } from "../hooks/useLocalEvents";
 import { isEditable } from "../utils/validation";
 import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
+import conference from "../images/conference.jpg";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -56,7 +57,7 @@ export default function EventsHome() {
       subtitle: "Plan, edit, and publish upcoming conferences.",
       cta: "Create Conference",
       tone: "sky",
-      imageSrc: "https://via.placeholder.com/400x300/4A90E2/white?text=Conference",
+      imageSrc: conference,
       imageAlt: "Students attending a conference",
       style: { "--cta-margin-top": "-10px" },
     },
