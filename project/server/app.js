@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
 const User = require("./models/User");
+const gymRouter = require("./routes/gym");
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,7 @@ app.use((req, res, next) => {
   console.log("Body:", req.body);
   next();
 });
+app.use("/api/gym", gymRouter);
 
 // ✅ Connect to MongoDB
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/signup";
