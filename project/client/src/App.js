@@ -21,6 +21,7 @@ import WorkshopsListPage from './pages/WorkshopsListPage';
 import EditWorkshopPage from './pages/EditWorkshopPage';
 
 function App() {
+  
   return (
     <Router>
       <Routes>
