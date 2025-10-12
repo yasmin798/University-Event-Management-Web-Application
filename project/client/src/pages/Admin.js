@@ -3,24 +3,43 @@ import React, { useEffect, useState } from "react";
 export default function Admin() {
   const [verifiedUsers, setVerifiedUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [vendorBazaarRequests, setVendorBazaarRequests] = useState([]);
+  const [vendorBoothRequests, setVendorBoothRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [assignedRoles, setAssignedRoles] = useState({}); // store selected roles
 
-  // ✅ Fetch all users
+  // Fetch users + vendor requests
   const fetchUsers = async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/debug/users");
-      const data = await res.json();
+      setLoading(true);
+      // Fetch users
+      const usersRes = await fetch("http://localhost:3000/api/debug/users");
+      const usersData = await usersRes.json();
 
-      if (data.users) {
-        setVerifiedUsers(data.users.filter((u) => u.isVerified));
-        setPendingUsers(data.users.filter((u) => !u.isVerified));
+      if (usersData.users) {
+        setVerifiedUsers(usersData.users.filter((u) => u.isVerified));
+        setPendingUsers(usersData.users.filter((u) => !u.isVerified));
       }
+
+      // Fetch vendor participation requests for bazaars
+      const bazaarReqRes = await fetch(
+        "http://localhost:3000/api/admin/bazaar-vendor-requests"
+      );
+      const bazaarReqData = await bazaarReqRes.json();
+      setVendorBazaarRequests(bazaarReqData.requests || []);
+
+      // Fetch vendor participation requests for booths
+      const boothReqRes = await fetch(
+        "http://localhost:3000/api/admin/booth-vendor-requests"
+      );
+      const boothReqData = await boothReqRes.json();
+      setVendorBoothRequests(boothReqData.requests || []);
+
       setLoading(false);
     } catch (err) {
       console.error("❌ Fetch error:", err);
-      setMessage("❌ Could not load users.");
+      setMessage("❌ Could not load data.");
       setLoading(false);
     }
   };
@@ -29,7 +48,7 @@ export default function Admin() {
     fetchUsers();
   }, []);
 
-  // ✅ Verify user (with confirmation + assigned role)
+  // Verify user (with confirmation + assigned role)
   const handleVerify = async (userId) => {
     const confirm = window.confirm("Are you sure you want to VERIFY this user?");
     if (!confirm) return;
@@ -61,7 +80,7 @@ export default function Admin() {
     }
   };
 
-  // ✅ Delete user (with confirmation)
+  // Delete user (with confirmation)
   const handleDelete = async (userId) => {
     const confirm = window.confirm("Are you sure you want to DELETE this user?");
     if (!confirm) return;
@@ -84,7 +103,37 @@ export default function Admin() {
     }
   };
 
-  if (loading) return <p style={{ textAlign: "center" }}>Loading users...</p>;
+  // Handle vendor participation requests (accept/reject)
+  const handleVendorRequestStatus = async (requestId, type, newStatus) => {
+    const confirm = window.confirm(
+      `Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/admin/${type}-vendor-requests/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage(`✅ Vendor request ${newStatus} successfully!`);
+        fetchUsers(); // refresh all data
+      } else {
+        setMessage(`❌ ${data.error || "Update failed"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Server error during request update");
+    }
+  };
+
+  if (loading) return <p style={{ textAlign: "center" }}>Loading users and requests...</p>;
 
   return (
     <div style={{ padding: "30px", fontFamily: "Poppins, Arial, sans-serif" }}>
@@ -102,7 +151,7 @@ export default function Admin() {
         </p>
       )}
 
-      {/* ✅ VERIFIED USERS */}
+      {/* VERIFIED USERS */}
       <h2 style={{ color: "#10B981", marginTop: "40px" }}>✅ Verified Users</h2>
       <table style={tableStyle}>
         <thead>
@@ -125,10 +174,7 @@ export default function Admin() {
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
                 <td style={tdStyle}>
-                  <button
-                    onClick={() => handleDelete(user._id)}
-                    style={deleteBtnStyle}
-                  >
+                  <button onClick={() => handleDelete(user._id)} style={deleteBtnStyle}>
                     Delete
                   </button>
                 </td>
@@ -144,7 +190,7 @@ export default function Admin() {
         </tbody>
       </table>
 
-      {/* 🕓 PENDING USERS */}
+      {/* PENDING USERS */}
       <h2 style={{ color: "#F59E0B", marginTop: "50px" }}>🕓 Pending Verification</h2>
       <table style={tableStyle}>
         <thead>
@@ -185,16 +231,10 @@ export default function Admin() {
                   </select>
                 </td>
                 <td style={tdStyle}>
-                  <button
-                    onClick={() => handleVerify(user._id)}
-                    style={verifyBtnStyle}
-                  >
+                  <button onClick={() => handleVerify(user._id)} style={verifyBtnStyle}>
                     Verify
                   </button>
-                  <button
-                    onClick={() => handleDelete(user._id)}
-                    style={deleteBtnStyle}
-                  >
+                  <button onClick={() => handleDelete(user._id)} style={deleteBtnStyle}>
                     Delete
                   </button>
                 </td>
@@ -204,6 +244,106 @@ export default function Admin() {
             <tr>
               <td colSpan="5" style={tdEmptyStyle}>
                 No pending users.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {/* VENDOR PARTICIPATION REQUESTS FOR BAZAARS */}
+      <h2 style={{ color: "#3B82F6", marginTop: "50px" }}>Vendor Participation Requests - Bazaars</h2>
+      <table style={tableStyle}>
+        <thead>
+          <tr style={{ background: "#3B82F6", color: "white" }}>
+            <th style={thStyle}>Bazaar ID</th>
+            <th style={thStyle}>Vendor Name</th>
+            <th style={thStyle}>Description</th>
+            <th style={thStyle}>Status</th>
+            <th style={thStyle}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {vendorBazaarRequests.length > 0 ? (
+            vendorBazaarRequests.map((req) => (
+              <tr key={req._id} style={trStyle}>
+                <td style={tdStyle}>{req.bazaarId}</td>
+                <td style={tdStyle}>{req.vendorName}</td>
+                <td style={tdStyle}>{req.description}</td>
+                <td style={tdStyle}>{req.status}</td>
+                <td style={tdStyle}>
+                  {req.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "accepted")}
+                        style={verifyBtnStyle}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")}
+                        style={deleteBtnStyle}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" style={tdEmptyStyle}>
+                No vendor participation requests for bazaars.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {/* VENDOR PARTICIPATION REQUESTS FOR BOOTHS */}
+      <h2 style={{ color: "#6366F1", marginTop: "50px" }}>Vendor Participation Requests - Booths</h2>
+      <table style={tableStyle}>
+        <thead>
+          <tr style={{ background: "#6366F1", color: "white" }}>
+            <th style={thStyle}>Booth ID</th>
+            <th style={thStyle}>Vendor Name</th>
+            <th style={thStyle}>Description</th>
+            <th style={thStyle}>Status</th>
+            <th style={thStyle}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {vendorBoothRequests.length > 0 ? (
+            vendorBoothRequests.map((req) => (
+              <tr key={req._id} style={trStyle}>
+                <td style={tdStyle}>{req.boothId}</td>
+                <td style={tdStyle}>{req.vendorName}</td>
+                <td style={tdStyle}>{req.description}</td>
+                <td style={tdStyle}>{req.status}</td>
+                <td style={tdStyle}>
+                  {req.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "booth", "accepted")}
+                        style={verifyBtnStyle}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "booth", "rejected")}
+                        style={deleteBtnStyle}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" style={tdEmptyStyle}>
+                No vendor participation requests for booths.
               </td>
             </tr>
           )}
@@ -261,3 +401,4 @@ const dropdownStyle = {
   border: "1px solid #D1D5DB",
   backgroundColor: "#F9FAFB",
 };
+

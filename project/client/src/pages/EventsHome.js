@@ -7,16 +7,20 @@ import { useLocalEvents } from "../hooks/useLocalEvents";
 import { isEditable } from "../utils/validation";
 import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
+<<<<<<< HEAD
 import conference from "../images/conference.jpg"; // Add your conference image here
+=======
+
+>>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   return d.toLocaleString(undefined, {
-    weekday: "short", // Tue
-    month: "short", // Oct
-    day: "numeric", // 8
-    hour: "numeric", // 2 AM
-    minute: "2-digit", // 20
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -24,7 +28,11 @@ export default function EventsHome() {
   const [filter, setFilter] = useState("all");
   const { list } = useLocalEvents();
 
+<<<<<<< HEAD
   // All saved events (bazaars + trips + conferences), sorted by start date
+=======
+  // All events sorted by start time
+>>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
   const events = list().sort(
     (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime)
   );
@@ -62,8 +70,7 @@ export default function EventsHome() {
     },
   ];
 
-  const visible =
-    filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
+  const visible = filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
 
   return (
     <div className="events-theme events-home">
@@ -102,14 +109,14 @@ export default function EventsHome() {
           </button>
         </div>
 
-        {/* “Create …” feature cards */}
+        {/* Create cards */}
         <section className="eo-grid">
           {visible.map((c) => (
             <FeatureCard key={c.type} {...c} />
           ))}
         </section>
 
-        {/* All Events (now with labeled fields) */}
+        {/* Event List */}
         <h2 style={{ margin: "24px 0 12px" }}>All Events</h2>
         <div className="grid">
           {events.length === 0 && (
@@ -120,7 +127,6 @@ export default function EventsHome() {
             <article key={ev.id} className="card">
               <div className="chip">{ev.type}</div>
 
-              {/* Labeled dates */}
               <div className="kv kv-date">
                 <span className="k">Starts:</span>
                 <span className="v">{formatDate(ev.startDateTime)}</span>
@@ -130,7 +136,6 @@ export default function EventsHome() {
                 <span className="v">{formatDate(ev.endDateTime)}</span>
               </div>
 
-              {/* Labeled fields */}
               <div className="kv">
                 <span className="k">Name:</span>
                 <span className="v">{ev.name}</span>
@@ -139,16 +144,42 @@ export default function EventsHome() {
                 <span className="k">Location:</span>
                 <span className="v">{ev.location}</span>
               </div>
+
               {ev.shortDescription && <p>{ev.shortDescription}</p>}
 
+              {/* Vendor request summary */}
+              {ev.type === "BAZAAR" &&
+                Array.isArray(ev.vendorRequests) &&
+                ev.vendorRequests.length > 0 && (
+                  <div className="vendor-requests-summary">
+                    <strong>Vendor Requests:</strong>{" "}
+                    {ev.vendorRequests.filter((r) => r.status === "pending").length} pending,{" "}
+                    {ev.vendorRequests.filter((r) => r.status === "accepted").length} accepted,{" "}
+                    {ev.vendorRequests.filter((r) => r.status === "rejected").length} rejected
+                  </div>
+              )}
+
+              {/* Buttons */}
               <div className="actions">
-                {ev.type === "BAZAAR" ? (
+                {/* Edit button */}
+                <Link
+                  className={`btn ${isEditable(ev.startDateTime) ? "" : "btn-disabled"}`}
+                  to={
+                    ev.type === "BAZAAR"
+                      ? `/bazaars/${ev.id}`
+                      : `/trips/${ev.id}`
+                  }
+                >
+                  Edit
+                </Link>
+
+                {/* Vendor Participation button (only for bazaars) */}
+                {ev.type === "BAZAAR" && (
                   <Link
-                    className={`btn ${
-                      isEditable(ev.startDateTime) ? "" : "btn-disabled"
-                    }`}
-                    to={`/bazaars/${ev.id}`}
+                    className="btn btn-outline"
+                    to={`/bazaars/${ev.id}/vendor-requests`}
                   >
+<<<<<<< HEAD
                     Edit
                   </Link>
                 ) : ev.type === "CONFERENCE" ? (
@@ -168,8 +199,13 @@ export default function EventsHome() {
                     to={`/trips/${ev.id}`}
                   >
                     Edit
+=======
+                    Vendor Participation
+>>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
                   </Link>
                 )}
+
+                {/* Notice if event has started */}
                 {!isEditable(ev.startDateTime) && (
                   <span className="blocked">Event already started</span>
                 )}
