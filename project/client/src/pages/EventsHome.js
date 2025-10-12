@@ -7,11 +7,9 @@ import { useLocalEvents } from "../hooks/useLocalEvents";
 import { isEditable } from "../utils/validation";
 import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
-<<<<<<< HEAD
-import conference from "../images/conference.jpg"; // Add your conference image here
-=======
 
->>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
+import conference from "../images/conference.jpg"; // Add your conference image here
+
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -28,11 +26,7 @@ export default function EventsHome() {
   const [filter, setFilter] = useState("all");
   const { list } = useLocalEvents();
 
-<<<<<<< HEAD
-  // All saved events (bazaars + trips + conferences), sorted by start date
-=======
-  // All events sorted by start time
->>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
+
   const events = list().sort(
     (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime)
   );
