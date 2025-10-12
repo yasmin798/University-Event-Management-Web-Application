@@ -15,14 +15,11 @@ import EventsHome from "./pages/EventsHome";
 import EventList from "./pages/EventList";
 import BazaarForm from "./pages/BazaarForm";
 import TripForm from "./pages/TripForm";
-<<<<<<< HEAD
 import ConferenceForm from "./pages/ConferenceForm"; // ✅ NEW IMPORT
-=======
 import ProfessorDashboard from './pages/ProfessorDashboard';
 import CreateWorkshopPage from './pages/CreateWorkshopPage';
 import WorkshopsListPage from './pages/WorkshopsListPage';
 import EditWorkshopPage from './pages/EditWorkshopPage';
->>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
 
 function App() {
   return (
@@ -41,9 +38,7 @@ function App() {
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
 
-<<<<<<< HEAD
         {/* 🗓️ Events overview */}
-=======
         {/* 👨‍🏫 Professor Dashboard and Workshop Management */}
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
         <Route path="/professor/workshops" element={<WorkshopsListPage />} />
@@ -52,7 +47,6 @@ function App() {
 
 
         {/* Events */}
->>>>>>> c637978253fc2b89a9d1a4accbc0439d96a635b7
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
 
