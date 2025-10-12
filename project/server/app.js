@@ -9,6 +9,8 @@ const User = require("./models/User");
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:3001" }));
+const authRoutes = require("./routes/authRoutes");
+app.use("/api/auth", authRoutes);
 
 // ✅ Logger
 app.use((req, res, next) => {
