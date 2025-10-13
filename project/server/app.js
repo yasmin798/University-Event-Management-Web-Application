@@ -1,42 +1,52 @@
-// app.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
 const morgan = require("morgan");
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 const User = require("./models/User");
 const gymRouter = require("./routes/gym");
-const eventRoutes = require("./routes/eventRoutes"); // bazaars/trips routes
+const authRoutes = require("./routes/authRoutes");
+const eventRoutes = require("./routes/eventRoutes");
 
 const app = express();
+
+// Middleware
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:3001" }));
-const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
+app.use(morgan("dev"));
 app.set("etag", false);
-// ✅ Logger
+
+// Custom Logger Middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   if (req.body && Object.keys(req.body).length) console.log("Body:", req.body);
   next();
 });
-// Also tell the browser not to cache API responses
+
+// Prevent browser caching of API responses
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
+
+// Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-app.use(cors());
-app.use(morgan("dev"));
-// ✅ Connect to MongoDB
+app.use("/api", eventRoutes);
+
+// Connect to MongoDB
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/signup";
 mongoose
   .connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-app.use("/api", eventRoutes);
+// In-memory token store for email verification
+const verificationTokens = {};
+
 /* ---------------- SIGNUP ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
@@ -50,7 +60,6 @@ app.post("/api/register", async (req, res) => {
       role: requestedRole,
     } = req.body;
 
-    // ✅ Validate required fields
     if (
       !email ||
       !password ||
@@ -62,21 +71,17 @@ app.post("/api/register", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // ✅ Validate role
     const validRoles = ["student", "professor", "staff", "ta", "vendor"];
     if (!validRoles.includes(requestedRole))
       return res.status(400).json({ error: "Invalid role" });
 
-    // ✅ Check duplicate email
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ error: "Email already registered" });
 
-    // ✅ Determine verification
     const needsApproval = ["staff", "professor", "ta"].includes(requestedRole);
     const isVerified = !needsApproval;
 
-    // ✅ Save new user (password hashing handled by schema pre-save)
     const newUser = new User({
       firstName,
       lastName,
@@ -199,6 +204,75 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
     res
       .status(500)
       .json({ error: "Server error during delete", details: err.message });
+  }
+});
+
+/* ---------------- EMAIL VERIFICATION SYSTEM ---------------- */
+app.post("/api/admin/send-verification", async (req, res) => {
+  try {
+    const { email, userId } = req.body;
+    if (!email || !userId)
+      return res.status(400).json({ error: "Missing email or userId" });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    verificationTokens[token] = userId;
+
+    const verifyUrl = `http://localhost:3000/api/verify/${token}`;
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Account Verification - Admin Approval",
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6">
+          <h2 style="color:#10B981;">Account Verification</h2>
+          <p>Hello,</p>
+          <p>Your account has been reviewed. Please click the button below to verify your account:</p>
+          <a href="${verifyUrl}" target="_blank" style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
+            Verify My Account
+          </a>
+          <p style="margin-top:20px;color:#555;">If you didn’t request this, you can ignore this email.</p>
+          <hr/>
+          <small>This link will expire after use.</small>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: `Verification mail sent to ${email}` });
+  } catch (err) {
+    console.error("❌ Mail error:", err);
+    res
+      .status(500)
+      .json({ error: "Failed to send verification mail", details: err.message });
+  }
+});
+
+app.get("/api/verify/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const userId = verificationTokens[token];
+    if (!userId)
+      return res.status(400).send("Invalid or expired verification link.");
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).send("User not found.");
+
+    user.isVerified = true;
+    await user.save();
+    delete verificationTokens[token];
+
+    res.send("<h2>✅ Account verified successfully! You can now log in.</h2>");
+  } catch (err) {
+    console.error("❌ Verification error:", err);
+    res.status(500).send("Server error during verification.");
   }
 });
 

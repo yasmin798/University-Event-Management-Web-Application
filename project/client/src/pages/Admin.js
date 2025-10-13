@@ -7,13 +7,16 @@ export default function Admin() {
   const [vendorBoothRequests, setVendorBoothRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [assignedRoles, setAssignedRoles] = useState({}); // store selected roles
+  const [assignedRoles, setAssignedRoles] = useState({});
+  const [showMailPopup, setShowMailPopup] = useState(false);
+  const [mailTarget, setMailTarget] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [previewLink, setPreviewLink] = useState("");
 
-  // Fetch users + vendor requests
+  // Fetch users and vendor requests
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // Fetch users
       const usersRes = await fetch("http://localhost:3000/api/debug/users");
       const usersData = await usersRes.json();
 
@@ -22,14 +25,12 @@ export default function Admin() {
         setPendingUsers(usersData.users.filter((u) => !u.isVerified));
       }
 
-      // Fetch vendor participation requests for bazaars
       const bazaarReqRes = await fetch(
         "http://localhost:3000/api/admin/bazaar-vendor-requests"
       );
       const bazaarReqData = await bazaarReqRes.json();
       setVendorBazaarRequests(bazaarReqData.requests || []);
 
-      // Fetch vendor participation requests for booths
       const boothReqRes = await fetch(
         "http://localhost:3000/api/admin/booth-vendor-requests"
       );
@@ -48,39 +49,7 @@ export default function Admin() {
     fetchUsers();
   }, []);
 
-  // Verify user (with confirmation + assigned role)
-  const handleVerify = async (userId) => {
-    const confirm = window.confirm("Are you sure you want to VERIFY this user?");
-    if (!confirm) return;
-
-    const assignedRole = assignedRoles[userId];
-    if (!assignedRole) {
-      alert("⚠️ Please select an Assigned Role before verifying.");
-      return;
-    }
-
-    try {
-      const res = await fetch(`http://localhost:3000/api/admin/verify/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: assignedRole }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage(`✅ ${assignedRole} verified successfully!`);
-        fetchUsers(); // refresh lists
-      } else {
-        setMessage(`❌ ${data.error || "Verification failed"}`);
-      }
-    } catch (err) {
-      console.error(err);
-      setMessage("❌ Server error during verification");
-    }
-  };
-
-  // Delete user (with confirmation)
+  // Delete user
   const handleDelete = async (userId) => {
     const confirm = window.confirm("Are you sure you want to DELETE this user?");
     if (!confirm) return;
@@ -103,7 +72,31 @@ export default function Admin() {
     }
   };
 
-  // Handle vendor participation requests (accept/reject)
+  // Send verification email
+  const handleSendMail = async () => {
+    if (!mailTarget) return;
+    setSending(true);
+    try {
+      const res = await fetch("http://localhost:3000/api/admin/send-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mailTarget.email, userId: mailTarget._id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`📧 ${data.message}`);
+        setShowMailPopup(false);
+      } else {
+        setMessage(`❌ ${data.error}`);
+      }
+    } catch (err) {
+      console.error("❌ Mail send error:", err);
+      setMessage("❌ Could not send email.");
+    }
+    setSending(false);
+  };
+
+  // Vendor requests (accept/reject)
   const handleVendorRequestStatus = async (requestId, type, newStatus) => {
     const confirm = window.confirm(
       `Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`
@@ -123,7 +116,7 @@ export default function Admin() {
 
       if (res.ok) {
         setMessage(`✅ Vendor request ${newStatus} successfully!`);
-        fetchUsers(); // refresh all data
+        fetchUsers();
       } else {
         setMessage(`❌ ${data.error || "Update failed"}`);
       }
@@ -131,6 +124,12 @@ export default function Admin() {
       console.error(err);
       setMessage("❌ Server error during request update");
     }
+  };
+
+  // Generate fake preview link for Gmail-style popup
+  const generatePreviewLink = (userId) => {
+    const randomToken = Math.random().toString(36).substring(2, 15);
+    setPreviewLink(`http://localhost:3000/api/verify/${randomToken}-for-${userId}`);
   };
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading users and requests...</p>;
@@ -143,7 +142,7 @@ export default function Admin() {
         <p
           style={{
             textAlign: "center",
-            color: message.startsWith("✅") ? "green" : "red",
+            color: message.startsWith("✅") || message.startsWith("📧") ? "green" : "red",
             fontWeight: "500",
           }}
         >
@@ -167,9 +166,7 @@ export default function Admin() {
             verifiedUsers.map((user) => (
               <tr key={user._id} style={trStyle}>
                 <td style={tdStyle}>
-                  {user.role === "vendor"
-                    ? user.firstName || user.companyName || "Vendor"
-                    : `${user.firstName} ${user.lastName}`}
+                  {user.firstName || user.companyName || "User"}
                 </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
@@ -207,9 +204,7 @@ export default function Admin() {
             pendingUsers.map((user) => (
               <tr key={user._id} style={trStyle}>
                 <td style={tdStyle}>
-                  {user.role === "vendor"
-                    ? user.firstName || user.companyName || "Vendor"
-                    : `${user.firstName} ${user.lastName}`}
+                  {user.firstName || user.companyName || "User"}
                 </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
@@ -231,8 +226,15 @@ export default function Admin() {
                   </select>
                 </td>
                 <td style={tdStyle}>
-                  <button onClick={() => handleVerify(user._id)} style={verifyBtnStyle}>
-                    Verify
+                  <button
+                    onClick={() => {
+                      setMailTarget(user);
+                      generatePreviewLink(user._id);
+                      setShowMailPopup(true);
+                    }}
+                    style={mailBtnStyle}
+                  >
+                    Send Mail
                   </button>
                   <button onClick={() => handleDelete(user._id)} style={deleteBtnStyle}>
                     Delete
@@ -250,13 +252,13 @@ export default function Admin() {
         </tbody>
       </table>
 
-      {/* VENDOR PARTICIPATION REQUESTS FOR BAZAARS */}
-      <h2 style={{ color: "#3B82F6", marginTop: "50px" }}>Vendor Participation Requests - Bazaars</h2>
+      {/* VENDOR REQUESTS */}
+      <h2 style={{ color: "#3B82F6", marginTop: "50px" }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#3B82F6", color: "white" }}>
             <th style={thStyle}>Bazaar ID</th>
-            <th style={thStyle}>Vendor Name</th>
+            <th style={thStyle}>Vendor</th>
             <th style={thStyle}>Description</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
@@ -293,20 +295,20 @@ export default function Admin() {
           ) : (
             <tr>
               <td colSpan="5" style={tdEmptyStyle}>
-                No vendor participation requests for bazaars.
+                No bazaar requests.
               </td>
             </tr>
           )}
         </tbody>
       </table>
 
-      {/* VENDOR PARTICIPATION REQUESTS FOR BOOTHS */}
-      <h2 style={{ color: "#6366F1", marginTop: "50px" }}>Vendor Participation Requests - Booths</h2>
+      {/* VENDOR REQUESTS - BOOTHS */}
+      <h2 style={{ color: "#6366F1", marginTop: "50px" }}>Vendor Requests - Booths</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#6366F1", color: "white" }}>
             <th style={thStyle}>Booth ID</th>
-            <th style={thStyle}>Vendor Name</th>
+            <th style={thStyle}>Vendor</th>
             <th style={thStyle}>Description</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
@@ -343,12 +345,48 @@ export default function Admin() {
           ) : (
             <tr>
               <td colSpan="5" style={tdEmptyStyle}>
-                No vendor participation requests for booths.
+                No booth requests.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+
+      {/* MAIL POPUP (Gmail style) */}
+      {showMailPopup && mailTarget && (
+        <div style={popupOverlayStyle}>
+          <div style={popupHeaderStyle}>
+            <div>
+              <h3 style={{ margin: 0 }}>New Message</h3>
+              <p style={{ color: "#E5E7EB", fontSize: "14px" }}>Admin Compose</p>
+            </div>
+            <button onClick={() => setShowMailPopup(false)} style={closeBtnStyle}>
+              ✕
+            </button>
+          </div>
+          <div style={popupContentStyle}>
+            <div style={mailRowStyle}><b>To:</b> {mailTarget.email}</div>
+            <div style={mailRowStyle}><b>Subject:</b> Account Verification - Admin Approval</div>
+            <div style={mailBodyStyle}>
+              <p>Dear {mailTarget.firstName || "User"},</p>
+              <p>Please click the link below to verify your account:</p>
+              <a href={previewLink} target="_blank" rel="noreferrer">
+                {previewLink}
+              </a>
+              <p>This link will expire once used.</p>
+              <p>— Admin Team</p>
+            </div>
+          </div>
+          <div style={popupFooterStyle}>
+            <button onClick={handleSendMail} style={sendBtnStyle} disabled={sending}>
+              {sending ? "Sending..." : "Send"}
+            </button>
+            <button onClick={() => setShowMailPopup(false)} style={cancelBtnStyle}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -362,43 +400,40 @@ const tableStyle = {
   borderRadius: "10px",
   overflow: "hidden",
 };
-const thStyle = {
-  padding: "10px",
-  fontWeight: "600",
-  textAlign: "center",
-};
-const tdStyle = {
-  padding: "10px",
-  textAlign: "center",
-  borderBottom: "1px solid #E5E7EB",
-};
+const thStyle = { padding: "10px", fontWeight: "600", textAlign: "center" };
+const tdStyle = { padding: "10px", textAlign: "center", borderBottom: "1px solid #E5E7EB" };
 const trStyle = { background: "#fff" };
-const tdEmptyStyle = {
-  padding: "20px",
-  textAlign: "center",
-  color: "#6B7280",
-};
-const verifyBtnStyle = {
-  backgroundColor: "#10B981",
-  color: "white",
-  border: "none",
-  borderRadius: "6px",
-  padding: "6px 10px",
-  cursor: "pointer",
-  marginRight: "5px",
-};
-const deleteBtnStyle = {
-  backgroundColor: "#EF4444",
-  color: "white",
-  border: "none",
-  borderRadius: "6px",
-  padding: "6px 10px",
-  cursor: "pointer",
-};
-const dropdownStyle = {
-  padding: "5px",
-  borderRadius: "6px",
-  border: "1px solid #D1D5DB",
-  backgroundColor: "#F9FAFB",
-};
+const tdEmptyStyle = { padding: "20px", textAlign: "center", color: "#6B7280" };
+const verifyBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", cursor: "pointer", marginRight: "5px" };
+const deleteBtnStyle = { backgroundColor: "#EF4444", color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", cursor: "pointer" };
+const mailBtnStyle = { backgroundColor: "#3B82F6", color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", cursor: "pointer", marginRight: "5px" };
+const dropdownStyle = { padding: "5px", borderRadius: "6px", border: "1px solid #D1D5DB", backgroundColor: "#F9FAFB" };
 
+/* Gmail popup styles */
+const popupOverlayStyle = {
+  position: "fixed",
+  bottom: 0,
+  right: "20px",
+  width: "400px",
+  backgroundColor: "white",
+  borderRadius: "10px 10px 0 0",
+  boxShadow: "0 -4px 15px rgba(0,0,0,0.2)",
+  display: "flex",
+  flexDirection: "column",
+  zIndex: 999,
+};
+const popupHeaderStyle = {
+  background: "#3B82F6",
+  color: "white",
+  padding: "10px 15px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+const closeBtnStyle = { background: "transparent", border: "none", color: "white", fontSize: "18px", cursor: "pointer" };
+const popupContentStyle = { padding: "10px 15px", flexGrow: 1, overflowY: "auto" };
+const mailRowStyle = { padding: "5px 0", borderBottom: "1px solid #E5E7EB", fontSize: "14px" };
+const mailBodyStyle = { padding: "10px 0", fontSize: "14px", color: "#111827" };
+const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: "10px" };
+const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontWeight: "500" };
+const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" };
