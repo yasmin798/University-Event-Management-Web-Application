@@ -1156,3 +1156,25 @@ body {
     40px
   ); /* increase these numbers to move it more */
 }
+
+/* Make all event cards equal height and stack vertically */
+.eo-card,
+.events-theme .card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Let the main body take the available space */
+.eo-card .eo-body {
+  flex: 1;
+}
+
+/* The actions row (with Edit button) sits at the bottom */
+.eo-actions,
+.events-theme .actions {
+  margin-top: auto; /* pushes it down */
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
