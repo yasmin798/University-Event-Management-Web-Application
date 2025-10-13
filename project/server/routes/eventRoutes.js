@@ -2,7 +2,7 @@
 const express = require("express");
 const Bazaar = require("../models/Bazaar");
 const Trip = require("../models/Trips");
-
+const Conference = require("../models/Conference");
 const router = express.Router();
 
 // Helper: normalize title so UI can send either "name" or "title"
@@ -164,4 +164,128 @@ router.put("/trips/:id", async (req, res) => {
   res.json(doc);
 });
 
+
+
+
+router.get("/conferences", async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.max(
+      1,
+      Math.min(100, parseInt(req.query.limit || "50", 10))
+    );
+
+    const [items, total] = await Promise.all([
+      Conference.find()
+        .sort({ startDateTime: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Conference.countDocuments(),
+    ]);
+
+    res.json({ items, total, page, pages: Math.ceil(total / limit) });
+  } catch (e) {
+    console.error("List conferences error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get one conference
+router.get("/conferences/:id", async (req, res) => {
+  try {
+    const doc = await Conference.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: "Conference not found" });
+    res.json(doc);
+  } catch (e) {
+    console.error("Get conference error:", e);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Create conference
+router.post("/conferences", async (req, res) => {
+  try {
+    const b = req.body || {};
+
+    const title = normTitle(b);
+    if (!title) return res.status(400).json({ error: "title is required" });
+    if (!b.startDateTime || !b.endDateTime) {
+      return res
+        .status(400)
+        .json({ error: "startDateTime and endDateTime are required" });
+    }
+    if (!b.requiredBudget)
+      return res.status(400).json({ error: "requiredBudget is required" });
+    if (!b.fundingSource)
+      return res.status(400).json({ error: "fundingSource is required" });
+    if (!b.website)
+      return res.status(400).json({ error: "website is required" }); // Added validation
+
+    const doc = await Conference.create({
+      type: "conference",
+      title,
+      name: b.name || title,
+      shortDescription: b.shortDescription || "",
+      startDateTime: new Date(b.startDateTime),
+      endDateTime: new Date(b.endDateTime),
+      website: b.website,
+      fullAgenda: b.fullAgenda || "",
+      requiredBudget: Number(b.requiredBudget),
+      fundingSource: b.fundingSource,
+      extraResources: b.extraResources || "",
+      status: "published",
+    });
+
+    res.status(201).json(doc);
+  } catch (e) {
+    console.error("Create conference error:", e);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Update conference
+router.put("/conferences/:id", async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (b.website === undefined)
+      return res.status(400).json({ error: "website is required" }); // Added validation
+
+    const updates = {
+      ...(b.title || b.name ? { title: b.title || b.name, name: b.title || b.name } : {}),
+      ...(b.shortDescription !== undefined ? { shortDescription: b.shortDescription } : {}),
+      ...(b.startDateTime ? { startDateTime: new Date(b.startDateTime) } : {}),
+      ...(b.endDateTime ? { endDateTime: new Date(b.endDateTime) } : {}),
+      ...(b.website !== undefined ? { website: b.website } : {}),
+      ...(b.fullAgenda !== undefined ? { fullAgenda: b.fullAgenda } : {}),
+      ...(b.requiredBudget != null ? { requiredBudget: Number(b.requiredBudget) } : {}),
+      ...(b.fundingSource ? { fundingSource: b.fundingSource } : {}),
+      ...(b.extraResources !== undefined ? { extraResources: b.extraResources } : {}),
+    };
+
+    const doc = await Conference.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    });
+    if (!doc) return res.status(404).json({ error: "Conference not found" });
+    res.json(doc);
+  } catch (e) {
+    console.error("Update conference error:", e);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Delete conference
+router.delete("/conferences/:id", async (req, res) => {
+  try {
+    const doc = await Conference.findByIdAndDelete(req.params.id);
+    if (!doc) return res.status(404).json({ error: "Conference not found" });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Delete conference error:", e);
+    res.status(400).json({ error: e.message });
+  }
+});
+
 module.exports = router;
+
+

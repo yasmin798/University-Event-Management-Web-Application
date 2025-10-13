@@ -7,13 +7,13 @@ const API =
 const fetcher = async (path) => {
   const res = await fetch(`${API}${path}`, {
     credentials: "omit",
-    cache: "no-store", // <- force network, avoid 304 bodyless hits
-    headers: { "Cache-Control": "no-cache" }, // <- belt & suspenders
+    cache: "no-store", // Force network, avoid 304 bodyless hits
+    headers: { "Cache-Control": "no-cache" }, // Ensure no caching
   });
 
   // If anything other than 2xx, throw so SWR can surface error
   if (!res.ok) {
-    // If a proxy or extension still gives 304, treat it as empty response
+    // Handle 304 as empty response
     if (res.status === 304) return { items: [] };
     const text = await res.text().catch(() => "");
     throw new Error(`${res.status} ${text}`);
@@ -27,7 +27,6 @@ export function useServerEvents({ refreshMs = 0 } = {}) {
   const { data: bazaars } = useSWR("/api/bazaars", fetcher, {
     refreshInterval: refreshMs,
     revalidateOnFocus: false,
-    // never block UI — start with an empty list
     fallbackData: { items: [] },
   });
 
@@ -37,13 +36,21 @@ export function useServerEvents({ refreshMs = 0 } = {}) {
     fallbackData: { items: [] },
   });
 
-  const events = (bazaars.items || [])
-    .concat(trips.items || [])
-    .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
+  const { data: conferences } = useSWR("/api/conferences", fetcher, {
+    refreshInterval: refreshMs,
+    revalidateOnFocus: false,
+    fallbackData: { items: [] },
+  });
 
-  // loading only while first requests are in-flight (SWR sets isLoading internally,
-  // but this keeps your current shape)
-  const loading = false;
+  const events = [
+    ...(bazaars.items || []).map((e) => ({ ...e, type: "BAZAAR" })),
+    ...(trips.items || []).map((e) => ({ ...e, type: "TRIP" })),
+    ...(conferences.items || []).map((e) => ({ ...e, type: "CONFERENCE" })),
+  ].sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
+
+  // Loading is true if any of the requests are still in-flight
+  const loading =
+    bazaars.isLoading || trips.isLoading || conferences.isLoading;
 
   return { events, loading };
 }

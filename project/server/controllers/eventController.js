@@ -51,15 +51,18 @@ function loadOrDefineModel(modelName, collection) {
   return mongoose.model(modelName, DynamicSchema);
 }
 
+// server/controllers/eventController.js
 function pickModel(req) {
-  // Decide based on route path
   if (req.baseUrl.endsWith("/api") && req.path.startsWith("/bazaars")) {
     return loadOrDefineModel("Bazaar", "bazaars");
   }
   if (req.baseUrl.endsWith("/api") && req.path.startsWith("/trips")) {
     return loadOrDefineModel("Trip", "trips");
   }
-  // default (rare)
+  if (req.baseUrl.endsWith("/api") && req.path.startsWith("/conferences")) {
+    return loadOrDefineModel("Conference", "conferences");
+  }
+  // Default to Bazaar for compatibility
   return loadOrDefineModel("Bazaar", "bazaars");
 }
 
