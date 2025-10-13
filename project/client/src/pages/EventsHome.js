@@ -7,9 +7,9 @@ import FeatureCard from "../components/FeatureCard";
 import { isEditable } from "../utils/validation";
 import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
-import conference from "../images/conference.jpg"; // keep if you want the 3rd card
-//import { useLocalEvents } from "../hooks/useLocalEvents"; // ← the unified hook I gave you
+import conference from "../images/conference.jpg";
 import { useServerEvents } from "../hooks/useServerEvents";
+
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -34,32 +34,9 @@ function formatMoney(n) {
 
 export default function EventsHome() {
   const [filter, setFilter] = useState("all");
-  //const { list } = useLocalEvents(); // async list()
-  //const [events, setEvents] = useState([]);
-  //const [loading, setLoading] = useState(true);
-  const { events, loading } = useServerEvents({ refreshMs: 0 });
-  // Load from server (then mirrors to local) or fallback to local if offline
-  //useEffect(() => {
-  // let alive = true;
-  // (async () => {
-  //  try {
-  // const arr = await list();
-  // if (alive)
-  //  setEvents(
-  // arr.sort(
-  //  (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime)
-  // )
-  // );
-  //} finally {
-  //  if (alive) setLoading(false);
-  //}
-  // })();
-  // return () => {
-  //   alive = false;
-  // };
-  //}, [list]);
+  const { events, loading, refresh } = useServerEvents({ refreshMs: 0 });
 
-  // Feature cards (include Conferences like your teammate’s)
+  // Feature cards
   const CARDS = useMemo(
     () => [
       {
@@ -100,6 +77,30 @@ export default function EventsHome() {
   const visible =
     filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
 
+  // Updated: Handle delete for any event type
+  const handleDelete = async (id, eventType) => {
+    const typeLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g., "Bazaars" -> "Bazaar"
+    if (!window.confirm(`Are you sure you want to delete this ${typeLabel.toLowerCase()}? This action cannot be undone.`)) return;
+
+    try {
+      const res = await fetch(`/api/${eventType}/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || `Failed to delete ${typeLabel.toLowerCase()}`);
+        return;
+      }
+
+      alert(`${typeLabel} deleted successfully`);
+      refresh();  // Re-fetch events
+    } catch (e) {
+      console.error(`Delete ${typeLabel.toLowerCase()} error:`, e);
+      alert(`Network error: Could not delete ${typeLabel.toLowerCase()}`);
+    }
+  };
+
   return (
     <div className="events-theme events-home">
       <div className="container">
@@ -122,14 +123,13 @@ export default function EventsHome() {
           ))}
         </div>
 
-        {/* Create … cards */}
+        {/* Create cards */}
         <section className="eo-grid">
           {visible.map((c) => (
             <FeatureCard key={c.type} {...c} />
           ))}
         </section>
 
-        {/* with this */}
         <h1 className="eo-section-title">All Events</h1>
 
         {loading ? (
@@ -142,12 +142,13 @@ export default function EventsHome() {
 
             {events.map((ev) => {
               const id = ev._id || ev.id;
-              // normalize type across local + server
               const typeRaw = String(ev.type || "").toUpperCase();
               const isBazaar = typeRaw === "BAZAAR";
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
               const title = ev.title || ev.name || "Untitled";
+              const editable = isEditable(ev.startDateTime);  // For Edit buttons
+              const hasRegistrations = Array.isArray(ev.registrations) && ev.registrations.length > 0;
 
               return (
                 <article key={id} className="card">
@@ -194,64 +195,104 @@ export default function EventsHome() {
                     </>
                   )}
 
-                  {/* ✅ Description for ANY type (works with shortDescription OR description) */}
+                  {/* Conference-specific: Website */}
+                  {isConference && ev.website && (
+                    <div className="kv">
+                      <span className="k">Website:</span>
+                      <span className="v">
+                        <a href={ev.website} target="_blank" rel="noopener noreferrer">
+                          {ev.website}
+                        </a>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Optional: Show registration count */}
+                  {hasRegistrations && (
+                    <div className="kv">
+                      <span className="k">Registered:</span>
+                      <span className="v">{ev.registrations.length} participants</span>
+                    </div>
+                  )}
+
+                  {/* Description for any type */}
                   {(ev?.shortDescription && ev.shortDescription.trim()) ||
                   (ev?.description && String(ev.description).trim()) ? (
                     <p>{ev.shortDescription || ev.description}</p>
                   ) : null}
 
-                  <div
-                    className="actions"
-                    style={{ position: "relative", zIndex: 2 }}
-                  >
+                  <div className="actions" style={{ position: "relative", zIndex: 2 }}>
                     {isBazaar ? (
-                      isEditable(ev.startDateTime) ? (
-                        <>
-                          <Link className="btn" to={`/bazaars/${id}`}>
-                            Edit
-                          </Link>
-                          <Link
-                            className="btn"
-                            to={`/bazaars/${id}/vendor-requests`}
-                          >
-                            Vendor Requests
-                          </Link>
-                        </>
-                      ) : (
-                        <>
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                          <button className="btn btn-disabled" disabled>
-                            Vendor Requests
-                          </button>
-                        </>
-                      )
+                      <>
+                        {editable ? (
+                          <>
+                            <Link className="btn" to={`/bazaars/${id}`}>
+                              Edit
+                            </Link>
+                            <Link className="btn" to={`/bazaars/${id}/vendor-requests`}>
+                              Vendor Requests
+                            </Link>
+                          </>
+                        ) : (
+                          <>
+                            <button className="btn btn-disabled" disabled>
+                              Edit
+                            </button>
+                            <button className="btn btn-disabled" disabled>
+                              Vendor Requests
+                            </button>
+                          </>
+                        )}
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "bazaars")}
+                          disabled={hasRegistrations}
+                          title={hasRegistrations ? "Cannot delete: participants registered" : "Delete this bazaar"}
+                        >
+                          Delete
+                        </button>
+                      </>
                     ) : isTrip ? (
-                      isEditable(ev.startDateTime) ? (
-                        <Link className="btn" to={`/trips/${id}`}>
-                          Edit
-                        </Link>
-                      ) : (
-                        <button className="btn btn-disabled" disabled>
-                          Edit
+                      <>
+                        {editable ? (
+                          <Link className="btn" to={`/trips/${id}`}>
+                            Edit
+                          </Link>
+                        ) : (
+                          <button className="btn btn-disabled" disabled>
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "trips")}
+                          disabled={hasRegistrations}
+                          title={hasRegistrations ? "Cannot delete: participants registered" : "Delete this trip"}
+                        >
+                          Delete
                         </button>
-                      )
+                      </>
                     ) : isConference ? (
-                      isEditable(ev.startDateTime) ? (
-                        <Link className="btn" to={`/conferences/${id}`}>
-                          Edit
-                        </Link>
-                      ) : (
-                        <button className="btn btn-disabled" disabled>
-                          Edit
+                      <>
+                        {editable ? (
+                          <Link className="btn" to={`/conferences/${id}`}>
+                            Edit
+                          </Link>
+                        ) : (
+                          <button className="btn btn-disabled" disabled>
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "conferences")}
+                          disabled={hasRegistrations}
+                          title={hasRegistrations ? "Cannot delete: participants registered" : "Delete this conference"}
+                        >
+                          Delete
                         </button>
-                      )
+                      </>
                     ) : null}
-
-                    {!isEditable(ev.startDateTime) && (
-                      <span className="blocked">Event already started</span>
-                    )}
                   </div>
                 </article>
               );
@@ -260,8 +301,23 @@ export default function EventsHome() {
         )}
       </div>
 
-      {/* keep their small CTA nudge for the 3rd card */}
       <style jsx>{`
+        .btn-danger {
+          background-color: #dc3545;
+          color: white;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          margin-left: 8px;
+        }
+        .btn-danger:hover {
+          background-color: #c82333;
+        }
+        .btn-danger:disabled {
+          background-color: #6c757d;
+          cursor: not-allowed;
+        }
         .eo-grid [data-type="conferences"] .feature-cta,
         .eo-grid .feature-card:nth-child(3) .btn,
         .eo-grid [style*="--cta-margin-top"] .btn {

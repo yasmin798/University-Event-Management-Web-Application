@@ -1,7 +1,7 @@
 // server/routes/eventRoutes.js
 const express = require("express");
 const Bazaar = require("../models/Bazaar");
-const Trip = require("../models/Trips");
+const Trip = require("../models/Trips");  // Fixed file name reference
 const Conference = require("../models/Conference");
 const router = express.Router();
 
@@ -43,7 +43,6 @@ router.post("/bazaars", async (req, res) => {
       title,
       location: b.location,
       shortDescription: b.shortDescription || "",
-      // 👇 force dates & numbers into the right types
       startDateTime: new Date(b.startDateTime),
       endDateTime: new Date(b.endDateTime),
       registrationDeadline: b.registrationDeadline
@@ -92,6 +91,25 @@ router.put("/bazaars/:id", async (req, res) => {
   }
 });
 
+// Delete bazaar
+router.delete("/bazaars/:id", async (req, res) => {
+  try {
+    const bazaar = await Bazaar.findById(req.params.id);
+    if (!bazaar) return res.status(404).json({ error: "Bazaar not found" });
+
+    const hasRegistrations = Array.isArray(bazaar.registrations) && bazaar.registrations.length > 0;
+    if (hasRegistrations) {
+      return res.status(403).json({ error: "Cannot delete: participants have registered" });
+    }
+
+    await Bazaar.findByIdAndDelete(req.params.id);
+    res.json({ ok: true, message: "Bazaar deleted successfully" });
+  } catch (e) {
+    console.error("Delete bazaar error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* ---------------- TRIPS ---------------- */
 
 // List trips (paged)
@@ -124,7 +142,6 @@ router.get("/trips/:id", async (req, res) => {
 router.post("/trips", async (req, res) => {
   const b = req.body || {};
 
-  // accept either name or title from UI
   const title = normTitle(b);
   if (!title) return res.status(400).json({ error: "title is required" });
   if (!b.location)
@@ -153,7 +170,6 @@ router.post("/trips", async (req, res) => {
 // Update trip
 router.put("/trips/:id", async (req, res) => {
   const updates = { ...req.body };
-  // (Optional) also allow name -> title on update
   if (updates.name && !updates.title) updates.title = updates.name;
 
   const doc = await Trip.findByIdAndUpdate(req.params.id, updates, {
@@ -164,9 +180,28 @@ router.put("/trips/:id", async (req, res) => {
   res.json(doc);
 });
 
+// Delete trip
+router.delete("/trips/:id", async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ error: "Trip not found" });
 
+    const hasRegistrations = Array.isArray(trip.registrations) && trip.registrations.length > 0;
+    if (hasRegistrations) {
+      return res.status(403).json({ error: "Cannot delete: participants have registered" });
+    }
 
+    await Trip.findByIdAndDelete(req.params.id);
+    res.json({ ok: true, message: "Trip deleted successfully" });
+  } catch (e) {
+    console.error("Delete trip error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
+/* ---------------- CONFERENCES ---------------- */
+
+// List conferences
 router.get("/conferences", async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
@@ -219,7 +254,7 @@ router.post("/conferences", async (req, res) => {
     if (!b.fundingSource)
       return res.status(400).json({ error: "fundingSource is required" });
     if (!b.website)
-      return res.status(400).json({ error: "website is required" }); // Added validation
+      return res.status(400).json({ error: "website is required" });
 
     const doc = await Conference.create({
       type: "conference",
@@ -248,7 +283,7 @@ router.put("/conferences/:id", async (req, res) => {
   try {
     const b = req.body || {};
     if (b.website === undefined)
-      return res.status(400).json({ error: "website is required" }); // Added validation
+      return res.status(400).json({ error: "website is required" });
 
     const updates = {
       ...(b.title || b.name ? { title: b.title || b.name, name: b.title || b.name } : {}),
@@ -277,15 +312,21 @@ router.put("/conferences/:id", async (req, res) => {
 // Delete conference
 router.delete("/conferences/:id", async (req, res) => {
   try {
-    const doc = await Conference.findByIdAndDelete(req.params.id);
-    if (!doc) return res.status(404).json({ error: "Conference not found" });
-    res.json({ ok: true });
+    const conference = await Conference.findById(req.params.id);
+    if (!conference) return res.status(404).json({ error: "Conference not found" });
+
+    // Only check registrations (no start time restriction)
+    const hasRegistrations = Array.isArray(conference.registrations) && conference.registrations.length > 0;
+    if (hasRegistrations) {
+      return res.status(403).json({ error: "Cannot delete: participants have registered" });
+    }
+
+    await Conference.findByIdAndDelete(req.params.id);
+    res.json({ ok: true, message: "Conference deleted successfully" });
   } catch (e) {
     console.error("Delete conference error:", e);
-    res.status(400).json({ error: e.message });
+    res.status(500).json({ error: e.message });
   }
 });
 
 module.exports = router;
-
-

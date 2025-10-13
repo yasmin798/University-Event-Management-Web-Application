@@ -1,4 +1,4 @@
-// server/models/Trips.js
+// server/models/Trip.js
 const mongoose = require("mongoose");
 
 const TripSchema = new mongoose.Schema(
@@ -13,9 +13,18 @@ const TripSchema = new mongoose.Schema(
     price: { type: Number, default: 0, min: 0 },
     capacity: { type: Number, default: 0, min: 0 },
     status: { type: String, default: "published" },
+    registrations: {
+      type: [
+        {
+          userId: { type: String },
+          email: { type: String, required: true },
+          registeredAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],  // Ensure new documents have empty array
+    },
   },
-  { timestamps: true }
+  { timestamps: true, collection: "trips" }  // Explicitly set collection name
 );
 
-// prevent OverwriteModelError on hot reloads
 module.exports = mongoose.models.Trip || mongoose.model("Trip", TripSchema);

@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const BazaarSchema = new mongoose.Schema(
   {
     type: { type: String, default: "bazaar" },
-    title: { type: String, required: true }, // <- stored as "title"
+    title: { type: String, required: true },
     location: { type: String, required: true },
     shortDescription: { type: String, default: "" },
     startDateTime: { type: Date, required: true },
@@ -13,8 +13,17 @@ const BazaarSchema = new mongoose.Schema(
     price: { type: Number, default: 0 },
     capacity: { type: Number, default: 0 },
     status: { type: String, default: "published" },
+    registrations: {
+      type: [
+        {
+          userId: { type: String },
+          email: { type: String, required: true },
+          registeredAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],  // Ensure new documents have empty array
+    },
   },
-  // IMPORTANT: write into signup DB, collection "bazaars"
   { timestamps: true, strict: true, collection: "bazaars" }
 );
 
