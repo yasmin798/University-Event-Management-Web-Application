@@ -1,0 +1,262 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function StaffSignup() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    staffId: "",
+    email: "",
+    password: "",
+  });
+
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  // ✅ Handle input change
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Email validation
+    if (name === "email") {
+      const regex = /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/;
+      if (!regex.test(value)) {
+        setEmailError("❌ Wrong email format, should be @guc.edu.eg");
+      } else {
+        setEmailError("");
+      }
+    }
+  };
+
+  // ✅ Handle form submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Basic validation
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.staffId ||
+      !formData.email ||
+      !formData.password
+    ) {
+      setMessage("⚠️ Please fill in all fields.");
+      setIsError(true);
+      return;
+    }
+
+    if (emailError) {
+      setMessage("⚠️ Please fix your email format first.");
+      setIsError(true);
+      return;
+    }
+
+    try {
+      // ✅ Send data to backend (runs on port 3000)
+      const response = await fetch("http://localhost:3000/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          roleSpecificId: formData.staffId,
+          email: formData.email,
+          password: formData.password,
+          role: "staff",
+        }),
+      });
+
+      const data = await response.json();
+
+      // Handle failed signup
+      if (!response.ok) {
+        if (data.error === "Email already registered") {
+          setMessage(
+            <>
+              Email already registered.{" "}
+              <a
+                href="/login"
+                style={{
+                  color: "#10B981",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/login");
+                }}
+              >
+                Go to Login page
+              </a>
+            </>
+          );
+          setIsError(true);
+        } else {
+          setMessage(`❌ ${data.error || "Signup failed"}`);
+          setIsError(true);
+        }
+        return;
+      }
+
+      // ✅ Success: show custom staff message
+      if (data.user && data.user.role === "unassigned") {
+        setMessage("✅ Registration complete, awaiting admin verification!");
+      } else {
+        setMessage(data.message || "✅ Signup successful!");
+      }
+
+      setIsError(false);
+
+      // Clear form
+      setFormData({
+        firstName: "",
+        lastName: "",
+        staffId: "",
+        email: "",
+        password: "",
+      });
+      setEmailError("");
+    } catch (error) {
+      console.error("❌ Fetch error:", error);
+      setMessage(`❌ Error: ${error.message}`);
+      setIsError(true);
+    }
+  };
+
+  return (
+    <div style={containerStyle}>
+      <div style={formBoxStyle}>
+        <h1 style={titleStyle}>Staff Signup</h1>
+
+        <form onSubmit={handleSubmit} style={formStyle}>
+          <input
+            type="text"
+            name="firstName"
+            placeholder="First Name"
+            value={formData.firstName}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            name="lastName"
+            placeholder="Last Name"
+            value={formData.lastName}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            name="staffId"
+            placeholder="Staff ID"
+            value={formData.staffId}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+          <input
+            type="email"
+            name="email"
+            placeholder="Email (e.g. staff@guc.edu.eg)"
+            value={formData.email}
+            onChange={handleChange}
+            style={{
+              ...inputStyle,
+              borderColor: emailError ? "red" : "#D1D5DB",
+            }}
+          />
+          {emailError && (
+            <p style={{ color: "red", fontSize: "0.9rem", textAlign: "left" }}>
+              {emailError}
+            </p>
+          )}
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+
+          <button type="submit" style={buttonStyle}>
+            Sign Up
+          </button>
+        </form>
+
+        {message && (
+          <p
+            style={{
+              marginTop: "15px",
+              textAlign: "center",
+              color: isError ? "red" : "green",
+              fontWeight: "500",
+            }}
+          >
+            {message}
+          </p>
+        )}
+
+        <button onClick={() => navigate("/signup")} style={backButtonStyle}>
+          ← Back to Role Selection
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Styles ---------- */
+const containerStyle = {
+  minHeight: "100vh",
+  backgroundColor: "#c8d9e6",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily: "Poppins, Arial, sans-serif",
+  padding: "20px",
+};
+const formBoxStyle = {
+  background: "#f5efeb",
+  borderRadius: "16px",
+  boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+  padding: "40px",
+  width: "100%",
+  maxWidth: "400px",
+};
+const titleStyle = {
+  textAlign: "center",
+  fontSize: "2rem",
+  color: "#111827",
+  marginBottom: "30px",
+};
+const formStyle = { display: "flex", flexDirection: "column", gap: "15px" };
+const inputStyle = {
+  padding: "10px 14px",
+  borderRadius: "8px",
+  border: "1px solid #D1D5DB",
+  fontSize: "1rem",
+  outline: "none",
+};
+const buttonStyle = {
+  backgroundColor: "#567c8d",
+  color: "white",
+  padding: "12px",
+  border: "none",
+  borderRadius: "10px",
+  cursor: "pointer",
+  fontWeight: "600",
+};
+const backButtonStyle = {
+  marginTop: "25px",
+  backgroundColor: "#E5E7EB",
+  color: "#111827",
+  border: "none",
+  borderRadius: "10px",
+  padding: "10px 20px",
+  fontSize: "0.95rem",
+  fontWeight: "500",
+  cursor: "pointer",
+  width: "100%",
+};

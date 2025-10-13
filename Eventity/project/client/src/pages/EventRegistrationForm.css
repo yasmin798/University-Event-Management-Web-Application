@@ -1,0 +1,340 @@
+/* Enhanced EventRegistration.css */
+.event-reg-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  position: relative;
+}
+
+.event-reg-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background: linear-gradient(135deg, #2f4156 0%, #567c8d 100%);
+  z-index: 0;
+}
+
+.event-reg-header {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  color: white;
+  padding: 60px 20px 40px;
+  text-align: center;
+}
+
+.event-reg-header h1 {
+  margin: 0 0 16px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.event-reg-header p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 1.2rem;
+  font-weight: 300;
+}
+
+.event-reg-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 20px 60px;
+  margin-top: -60px;
+}
+
+.event-reg-card {
+  width: 100%;
+  max-width: 700px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Add progress indicator */
+.registration-progress {
+  display: flex;
+  padding: 30px 40px 0;
+  margin-bottom: 10px;
+}
+
+.progress-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.progress-step::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  right: -50%;
+  height: 2px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+
+.progress-step:last-child::after {
+  display: none;
+}
+
+.progress-step.active::after {
+  background: #567c8d;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.progress-step.active .step-number {
+  background: #567c8d;
+  border-color: #567c8d;
+  color: white;
+  transform: scale(1.1);
+}
+
+.step-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.progress-step.active .step-label {
+  color: #567c8d;
+  font-weight: 600;
+}
+
+/* Enhanced form styling */
+.event-reg-form-header {
+  padding: 40px 40px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.event-reg-form-header h2 {
+  margin: 0 0 12px;
+  color: #1e293b;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.event-reg-form-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.event-reg-form {
+  padding: 20px 40px 40px;
+}
+
+/* Enhanced input styling */
+.form-group {
+  margin-bottom: 25px;
+  position: relative;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+.event-reg-input, .event-reg-select {
+  width: 100%;
+  padding: 16px 20px;
+  border: 2px solid #f1f5f9;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  background: #f8fafc;
+  font-weight: 500;
+}
+
+.event-reg-input:focus, .event-reg-select:focus {
+  outline: none;
+  border-color: #567c8d;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(86, 124, 141, 0.1);
+  transform: translateY(-2px);
+}
+
+.event-reg-input:hover, .event-reg-select:hover {
+  border-color: #cbd5e1;
+}
+
+/* Enhanced buttons */
+.form-actions {
+  display: flex;
+  gap: 20px;
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.event-reg-button {
+  flex: 1;
+  padding: 18px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.event-reg-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.event-reg-button:hover::before {
+  left: 100%;
+}
+
+.event-reg-button.primary {
+  background: linear-gradient(135deg, #567c8d 0%, #466a7a 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(86, 124, 141, 0.3);
+}
+
+.event-reg-button.primary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(86, 124, 141, 0.4);
+}
+
+.event-reg-button.secondary {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  font-weight: 500;
+}
+
+.event-reg-button.secondary:hover:not(:disabled) {
+  border-color: #567c8d;
+  color: #567c8d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+/* Enhanced success/error states */
+.event-reg-message, .event-reg-error {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  margin: 30px 40px;
+  border-radius: 16px;
+  animation: slideInUp 0.5s ease;
+  border-left: 4px solid;
+}
+
+.event-reg-message {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  color: #166534;
+  border-left-color: #22c55e;
+}
+
+.event-reg-error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #991b1b;
+  border-left-color: #ef4444;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Floating label alternative */
+.floating-label-group {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+.floating-input {
+  width: 100%;
+  padding: 20px 16px 8px;
+  border: 2px solid #f1f5f9;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f8fafc;
+  transition: all 0.3s ease;
+}
+
+.floating-label {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  color: #64748b;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  background: #f8fafc;
+  padding: 0 4px;
+}
+
+.floating-input:focus + .floating-label,
+.floating-input:not(:placeholder-shown) + .floating-label {
+  top: 8px;
+  transform: translateY(0);
+  font-size: 0.8rem;
+  color: #567c8d;
+  font-weight: 600;
+}
+
+.floating-input:focus {
+  border-color: #567c8d;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(86, 124, 141, 0.1);
+}
