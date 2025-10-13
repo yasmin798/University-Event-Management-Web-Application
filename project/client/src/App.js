@@ -16,11 +16,14 @@ import EventList from "./pages/EventList"; // All events list page
 import BazaarForm from "./pages/BazaarForm";
 import TripForm from "./pages/TripForm";
 import ConferenceForm from "./pages/ConferenceForm"; // ✅ NEW IMPORT
-import ProfessorDashboard from './pages/ProfessorDashboard';
-import CreateWorkshopPage from './pages/CreateWorkshopPage';
-import WorkshopsListPage from './pages/WorkshopsListPage';
-import EditWorkshopPage from './pages/EditWorkshopPage';
-
+import ProfessorDashboard from "./pages/ProfessorDashboard";
+import CreateWorkshopPage from "./pages/CreateWorkshopPage";
+import WorkshopsListPage from "./pages/WorkshopsListPage";
+import EditWorkshopPage from "./pages/EditWorkshopPage";
+// Simple 404
+function NotFound() {
+  return <div style={{ padding: 24 }}>Page not found.</div>;
+}
 function App() {
   return (
     <Router>
@@ -42,22 +45,29 @@ function App() {
         {/* 👨‍🏫 Professor Dashboard and Workshop Management */}
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
         <Route path="/professor/workshops" element={<WorkshopsListPage />} />
-        <Route path="/professor/workshops/create" element={<CreateWorkshopPage />} />
-        <Route path="/professor/workshops/edit/:id" element={<EditWorkshopPage />} />
-
+        <Route
+          path="/professor/workshops/create"
+          element={<CreateWorkshopPage />}
+        />
+        <Route
+          path="/professor/workshops/edit/:id"
+          element={<EditWorkshopPage />}
+        />
 
         {/* Events */}
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
 
         {/* Bazaar */}
-        <Route path="/bazaars/:id/vendor-requests" element={<VendorRequests/>} />
+        <Route
+          path="/bazaars/:id/vendor-requests"
+          element={<VendorRequests />}
+        />
         <Route path="/bazaars/new" element={<BazaarForm />} />
         <Route path="/bazaars/:id" element={<BazaarForm />} />
         <Route path="/bazaars/:id/edit" element={<BazaarForm />} />
         <Route path="/events/bazaars/:id" element={<BazaarForm />} />
         <Route path="/events/bazaars/:id/edit" element={<BazaarForm />} />
-      
 
         {/* Trip */}
         <Route path="/trips/new" element={<TripForm />} />
@@ -65,9 +75,14 @@ function App() {
         <Route path="/trips/:id/edit" element={<TripForm />} />
         <Route path="/events/trips/:id" element={<TripForm />} />
         <Route path="/events/trips/:id/edit" element={<TripForm />} />
+        {/* Conference */}
+        <Route path="/conferences/new" element={<ConferenceForm />} />
+        <Route path="/conferences/:id" element={<ConferenceForm />} />
+
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );
 }
-
 export default App;

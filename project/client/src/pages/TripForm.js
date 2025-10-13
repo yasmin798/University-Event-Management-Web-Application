@@ -1,49 +1,67 @@
+// client/src/pages/TripForm.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import FormField from "../components/FormField";
-import { useLocalEvents } from "../hooks/useLocalEvents";
-import { validateTrip, isEditable, newId } from "../utils/validation";
+import { validateTrip, isEditable } from "../utils/validation";
 import "../events.theme.css";
 
 export default function TripForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { get, upsert } = useLocalEvents();
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const editing = Boolean(id);
-  const existing = editing ? get(id) : null;
 
-  const [data, setData] = useState(
-    existing || {
-      id: newId(),
-      type: "TRIP",
-      name: "",
-      location: "",
-      shortDescription: "",
-      startDateTime: "",
-      endDateTime: "",
-      registrationDeadline: "",
-      price: "",
-      capacity: "",
-    }
-  );
+  const editing = Boolean(id);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const [data, setData] = useState({
+    type: "TRIP",
+    name: "",
+    location: "",
+    shortDescription: "",
+    startDateTime: "",
+    endDateTime: "",
+    registrationDeadline: "",
+    price: "",
+    capacity: "",
+  });
   const [errors, setErrors] = useState({});
 
   const canEdit = isEditable(data.startDateTime);
 
+  // Load existing trip when editing (from backend)
   useEffect(() => {
-    if (existing) setData(existing);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    let cancelled = false;
+    if (!editing) return;
+    (async () => {
+      const r = await fetch(`/api/trips/${id}`, { cache: "no-store" });
+      if (!r.ok) return; // optionally show toast
+      const doc = await r.json();
+      if (cancelled) return;
+      setData({
+        type: "TRIP",
+        name: doc.title || "",
+        location: doc.location || "",
+        shortDescription: doc.shortDescription || "",
+        startDateTime: doc.startDateTime ? doc.startDateTime.slice(0, 16) : "",
+        endDateTime: doc.endDateTime ? doc.endDateTime.slice(0, 16) : "",
+        registrationDeadline: doc.registrationDeadline
+          ? doc.registrationDeadline.slice(0, 16)
+          : "",
+        price: doc.price ?? "",
+        capacity: doc.capacity ?? "",
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editing, id]);
 
   function handleChange(e) {
     const { name, value } = e.target;
     setData((d) => ({ ...d, [name]: value }));
   }
-  // --- keep your imports and state as-is (you can remove showSuccess if unused) ---
 
-  function saveTrip() {
+  async function saveTrip() {
     const errs = validateTrip(data);
     setErrors(errs);
     if (Object.keys(errs).length) return;
@@ -53,53 +71,48 @@ export default function TripForm() {
       return;
     }
 
-    upsert(data);
-    navigate("/events", { replace: true }); // go to Events home
-  }
+    const payload = {
+      title: data.name, // backend expects 'title'
+      location: data.location,
+      shortDescription: data.shortDescription,
+      startDateTime: data.startDateTime,
+      endDateTime: data.endDateTime,
+      registrationDeadline: data.registrationDeadline,
+      price: Number(data.price || 0),
+      capacity: Number(data.capacity || 0),
+    };
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    // Validate BEFORE opening the confirm modal
-    const errs = validateTrip(data);
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
+    const method = editing ? "PUT" : "POST";
+    const url = editing ? `/api/trips/${id}` : `/api/trips`;
 
-    if (!canEdit && editing) {
-      alert("Trips can’t be edited after the start time.");
+    const r = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!r.ok) {
+      const msg = await r.text().catch(() => "Failed to save trip");
+      alert(msg);
       return;
     }
 
-    // Open the confirmation modal for BOTH create and edit
-    setConfirmOpen(true);
-  }
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (editing) {
-      setConfirmOpen(true);
-    } else {
-      saveTrip();
-    }
-  }
-  function handleSubmit(e) {
-    e.preventDefault();
-
-    // validate first
-    const errs = validateTrip(data);
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
-
-    if (!canEdit && editing) {
-      alert("Trips can’t be edited after the start time.");
-      return;
-    }
-
-    // OPEN the confirm modal (for both create and edit)
-    setConfirmOpen(true);
-  }
-  function saveTrip() {
-    // (optional) you can skip re-validating if you validated in handleSubmit
-    upsert(data);
     navigate("/events", { replace: true });
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+
+    const errs = validateTrip(data);
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    if (!canEdit && editing) {
+      alert("Trips can’t be edited after the start time.");
+      return;
+    }
+
+    setConfirmOpen(true);
   }
 
   return (
@@ -107,7 +120,6 @@ export default function TripForm() {
       <div className="container">
         <NavBar bleed />
 
-        {/* Title left, Back right */}
         <div className="eo-head-row">
           <h1>{editing ? "Edit Trip" : "Create Trip"}</h1>
           <button
@@ -116,7 +128,7 @@ export default function TripForm() {
             onClick={() => navigate(-1)}
             aria-label="Go back"
           >
-            ← Back
+            Back
           </button>
         </div>
 
@@ -175,7 +187,7 @@ export default function TripForm() {
             </div>
           </fieldset>
 
-          {/* Scheduling */}
+          {/* Schedule */}
           <fieldset className="form-sec">
             <legend>Schedule</legend>
 
@@ -254,43 +266,6 @@ export default function TripForm() {
               </FormField>
             </div>
           </fieldset>
-          {confirmOpen && (
-            <div className="confirm-overlay" role="dialog" aria-modal="true">
-              <div className="confirm">
-                <h2>{editing ? "Save changes?" : "Create this trip?"}</h2>
-                <p>
-                  {editing ? (
-                    <>
-                      Are you sure you want to save these edits to{" "}
-                      <strong>{data.name || "this trip"}</strong>?
-                    </>
-                  ) : (
-                    <>
-                      Are you sure you want to create{" "}
-                      <strong>{data.name || "this trip"}</strong>?
-                    </>
-                  )}
-                </p>
-                <div className="confirm-actions">
-                  <button
-                    className="btn btn-outline"
-                    onClick={() => setConfirmOpen(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      setConfirmOpen(false);
-                      saveTrip(); // ← only here do we save + navigate
-                    }}
-                  >
-                    {editing ? "Save changes" : "Create trip"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="form-actions">
@@ -303,6 +278,45 @@ export default function TripForm() {
             </button>
           </div>
         </form>
+
+        {/* Confirm modal */}
+        {confirmOpen && (
+          <div className="confirm-overlay" role="dialog" aria-modal="true">
+            <div className="confirm">
+              <h2>{editing ? "Save changes?" : "Create this trip?"}</h2>
+              <p>
+                {editing ? (
+                  <>
+                    Are you sure you want to save these edits to{" "}
+                    <strong>{data.name || "this trip"}</strong>?
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to create{" "}
+                    <strong>{data.name || "this trip"}</strong>?
+                  </>
+                )}
+              </p>
+              <div className="confirm-actions">
+                <button
+                  className="btn btn-outline"
+                  onClick={() => setConfirmOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    saveTrip();
+                  }}
+                >
+                  {editing ? "Save changes" : "Create trip"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

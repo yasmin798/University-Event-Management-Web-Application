@@ -17,7 +17,6 @@ export default function NavBar({ bleed = false }) {
 
       <div className="nav-actions">
         <button className="logout-btn" onClick={handleLogout}>
-          <span aria-hidden>↪</span>
           <span>Log out</span>
         </button>
       </div>

@@ -4,23 +4,31 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
+const morgan = require("morgan");
 const User = require("./models/User");
 const gymRouter = require("./routes/gym");
+const eventRoutes = require("./routes/eventRoutes"); // bazaars/trips routes
 
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:3001" }));
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
-
+app.set("etag", false);
 // ✅ Logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  console.log("Body:", req.body);
+  if (req.body && Object.keys(req.body).length) console.log("Body:", req.body);
+  next();
+});
+// Also tell the browser not to cache API responses
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
   next();
 });
 app.use("/api/gym", gymRouter);
-
+app.use(cors());
+app.use(morgan("dev"));
 // ✅ Connect to MongoDB
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/signup";
 mongoose
@@ -28,23 +36,41 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+app.use("/api", eventRoutes);
 /* ---------------- SIGNUP ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
-    const { firstName, lastName, companyName, roleSpecificId, email, password, role: requestedRole } = req.body;
+    const {
+      firstName,
+      lastName,
+      companyName,
+      roleSpecificId,
+      email,
+      password,
+      role: requestedRole,
+    } = req.body;
 
     // ✅ Validate required fields
-    if (!email || !password || !requestedRole || !firstName || !lastName || !roleSpecificId) {
+    if (
+      !email ||
+      !password ||
+      !requestedRole ||
+      !firstName ||
+      !lastName ||
+      !roleSpecificId
+    ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     // ✅ Validate role
     const validRoles = ["student", "professor", "staff", "ta", "vendor"];
-    if (!validRoles.includes(requestedRole)) return res.status(400).json({ error: "Invalid role" });
+    if (!validRoles.includes(requestedRole))
+      return res.status(400).json({ error: "Invalid role" });
 
     // ✅ Check duplicate email
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: "Email already registered" });
+    if (existingUser)
+      return res.status(400).json({ error: "Email already registered" });
 
     // ✅ Determine verification
     const needsApproval = ["staff", "professor", "ta"].includes(requestedRole);
@@ -79,7 +105,9 @@ app.post("/api/register", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Signup error:", err);
-    return res.status(500).json({ error: "Server error during signup", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Server error during signup", details: err.message });
   }
 });
 
@@ -89,12 +117,15 @@ app.post("/api/login", async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: "Invalid email or password" });
+    if (!user)
+      return res.status(400).json({ error: "Invalid email or password" });
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(400).json({ error: "Invalid email or password" });
+    if (!isMatch)
+      return res.status(400).json({ error: "Invalid email or password" });
 
-    if (!user.isVerified) return res.status(403).json({ error: "Account not verified yet." });
+    if (!user.isVerified)
+      return res.status(403).json({ error: "Account not verified yet." });
 
     res.json({
       message: "✅ Login successful!",
@@ -128,21 +159,28 @@ app.patch("/api/admin/verify/:id", async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid user ID" });
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ error: "Invalid user ID" });
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const allowedRoles = ["staff", "ta", "professor"];
-    if (role && !allowedRoles.includes(role)) return res.status(400).json({ error: "Invalid role" });
+    if (role && !allowedRoles.includes(role))
+      return res.status(400).json({ error: "Invalid role" });
 
     user.isVerified = true;
     if (role) user.role = role;
 
     const saved = await user.save();
-    res.status(200).json({ success: true, message: "✅ User verified", user: saved });
+    res
+      .status(200)
+      .json({ success: true, message: "✅ User verified", user: saved });
   } catch (err) {
-    res.status(500).json({ error: "Server error during verification", details: err.message });
+    res.status(500).json({
+      error: "Server error during verification",
+      details: err.message,
+    });
   }
 });
 
@@ -150,17 +188,34 @@ app.patch("/api/admin/verify/:id", async (req, res) => {
 app.delete("/api/admin/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid user ID" });
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ error: "Invalid user ID" });
 
     const deleted = await User.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
 
     res.status(200).json({ message: "🗑️ User deleted successfully." });
   } catch (err) {
-    res.status(500).json({ error: "Server error during delete", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Server error during delete", details: err.message });
   }
 });
 
-/* ---------------- START SERVER ---------------- */
+/* ---------------- Healthcheck ---------------- */
+app.get("/", (_req, res) => res.send("API OK"));
+
+/* ---------------- Error Handler ---------------- */
+app.use((err, _req, res, _next) => {
+  if (err && err.message === "Not allowed by CORS") {
+    return res.status(403).json({ error: "CORS blocked this origin" });
+  }
+  console.error("💥 Unhandled error:", err);
+  res.status(500).json({ error: "Internal Server Error" });
+});
+
+/* ---------------- Start Server ---------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Backend running at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Backend running at http://localhost:${PORT}`);
+});

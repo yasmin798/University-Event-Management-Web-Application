@@ -93,7 +93,7 @@ export default function ConferenceForm() {
             onClick={() => navigate(-1)}
             aria-label="Go back"
           >
-            ← Back
+            Back
           </button>
         </div>
 
@@ -132,7 +132,9 @@ export default function ConferenceForm() {
                   aria-invalid={Boolean(errors.website)}
                   disabled={!canEdit && editing}
                 />
-                <div className="help">Optional link to the conference website.</div>
+                <div className="help">
+                  Optional link to the conference website.
+                </div>
               </FormField>
 
               <FormField
@@ -197,7 +199,9 @@ export default function ConferenceForm() {
                 rows={6}
                 disabled={!canEdit && editing}
               />
-              <div className="help">Provide a comprehensive outline of the conference program.</div>
+              <div className="help">
+                Provide a comprehensive outline of the conference program.
+              </div>
             </FormField>
           </fieldset>
 
@@ -206,7 +210,11 @@ export default function ConferenceForm() {
             <legend>Budget & Funding</legend>
 
             <div className="form-grid">
-              <FormField label="Required Budget" error={errors.requiredBudget} required>
+              <FormField
+                label="Required Budget"
+                error={errors.requiredBudget}
+                required
+              >
                 <input
                   type="number"
                   name="requiredBudget"
@@ -221,7 +229,11 @@ export default function ConferenceForm() {
                 <div className="help">Estimated total budget in EGP.</div>
               </FormField>
 
-              <FormField label="Source of Funding" error={errors.fundingSource} required>
+              <FormField
+                label="Source of Funding"
+                error={errors.fundingSource}
+                required
+              >
                 <select
                   name="fundingSource"
                   value={data.fundingSource}
@@ -242,7 +254,10 @@ export default function ConferenceForm() {
           <fieldset className="form-sec">
             <legend>Resources</legend>
 
-            <FormField label="Extra Required Resources" error={errors.extraResources}>
+            <FormField
+              label="Extra Required Resources"
+              error={errors.extraResources}
+            >
               <textarea
                 name="extraResources"
                 placeholder="e.g., Projector, microphones, venue setup, etc."
@@ -252,7 +267,9 @@ export default function ConferenceForm() {
                 rows={4}
                 disabled={!canEdit && editing}
               />
-              <div className="help">List any additional materials or facilities needed.</div>
+              <div className="help">
+                List any additional materials or facilities needed.
+              </div>
             </FormField>
           </fieldset>
 

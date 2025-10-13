@@ -1,158 +1,204 @@
-// client/src/pages/EventsHome.js
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import "../events.theme.css";
-import NavBar from "../components/NavBar";
-import FeatureCard from "../components/FeatureCard";
-import { useLocalEvents } from "../hooks/useLocalEvents";
-import { isEditable } from "../utils/validation";
-import bazaar from "../images/bazaar.jpeg";
-import trip from "../images/trip.jpeg";
-function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    weekday: "short", // Tue
-    month: "short", // Oct
-    day: "numeric", // 8
-    hour: "numeric", // 2 AM
-    minute: "2-digit", // 20
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function VendorSignup() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    companyName: "",
+    email: "",
+    password: "",
   });
-}
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
 
-export default function EventsHome() {
-  const [filter, setFilter] = useState("all");
-  const { list } = useLocalEvents();
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const all = list().sort(
-    (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime)
-  );
-  const events = all;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const CARDS = [
-    {
-      type: "bazaars",
-      to: "/bazaars/new",
-      title: "Bazaars",
-      subtitle: "Create bazaars",
-      cta: "Create Bazaar",
-      tone: "sky",
-      imageSrc: bazaar,
-      imageAlt: "Students browsing a bazaar stall",
-    },
-    {
-      type: "trips",
-      to: "/trips/new",
-      title: "Trips",
-      subtitle: "Create trips",
-      cta: "Create Trip",
-      tone: "sky",
-      imageSrc: trip,
-      imageAlt: "Students on a field trip bus",
-    },
-  ];
+    if (!formData.companyName || !formData.email || !formData.password) {
+      setMessage("⚠ Please fill in all fields correctly.");
+      setIsError(true);
+      return;
+    }
 
-  const visible =
-    filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
+    try {
+      const response = await fetch("http://localhost:3000/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          companyName: formData.companyName, // ✅ send companyName
+          email: formData.email,
+          password: formData.password,
+          role: "vendor",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "Email already registered") {
+          setMessage(
+            <span>
+              Email already registered.{" "}
+              <a
+                href="/login"
+                style={{
+                  color: "#10B981",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/login");
+                }}
+              >
+                Go to Login page
+              </a>
+            </span>
+          );
+          setIsError(true);
+        } else {
+          throw new Error(data.error || "Signup failed");
+        }
+        return;
+      }
+
+      setMessage("✅ Signup successful! Redirecting to login page...");
+      setIsError(false);
+      setFormData({ companyName: "", email: "", password: "" });
+
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+      setIsError(true);
+    }
+  };
 
   return (
-    <div className="events-theme events-home">
-      <div className="container">
-        <NavBar bleed />
+    <div style={containerStyle}>
+      <div style={formBoxStyle}>
+        <h1 style={titleStyle}>Vendor Signup</h1>
 
-        <header className="eo-pagehead-simple">
-          <h1>Events</h1>
-          <p className="eo-sub">Manage and organize all GUC events.</p>
-        </header>
+        <form onSubmit={handleSubmit} style={formStyle}>
+          <input
+            type="text"
+            name="companyName"
+            placeholder="Company Name"
+            value={formData.companyName}
+            onChange={handleChange}
+            style={inputStyle}
+          />
 
-        <div className="eo-filters">
-          <button
-            className={`eo-pill ${filter === "all" ? "active" : ""}`}
-            onClick={() => setFilter("all")}
-          >
-            All
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+
+          <button type="submit" style={buttonStyle}>
+            Sign Up
           </button>
-          <button
-            className={`eo-pill ${filter === "bazaars" ? "active" : ""}`}
-            onClick={() => setFilter("bazaars")}
+        </form>
+
+        {message && (
+          <p
+            style={{
+              marginTop: "15px",
+              textAlign: "center",
+              color: isError ? "red" : "green",
+              fontWeight: "500",
+            }}
           >
-            Bazaars
-          </button>
-          <button
-            className={`eo-pill ${filter === "trips" ? "active" : ""}`}
-            onClick={() => setFilter("trips")}
-          >
-            Trips
-          </button>
-        </div>
+            {message}
+          </p>
+        )}
 
-        {/* Create cards */}
-        <section className="eo-grid">
-          {visible.map((c) => (
-            <FeatureCard key={c.type} {...c} />
-          ))}
-        </section>
-
-        {/* All Events (cards with labeled fields) */}
-        <h2 style={{ margin: "24px 0 12px" }}>All Events</h2>
-        <div className="grid">
-          {events.length === 0 && (
-            <div className="empty">No events yet. Create one above.</div>
-          )}
-
-          {events.map((ev) => (
-            <article key={ev.id} className="card">
-              <div className="chip">{ev.type}</div>
-
-              {/* Labeled dates */}
-              <div className="kv kv-date">
-                <span className="k">Starts:</span>
-                <span className="v">{formatDate(ev.startDateTime)}</span>
-              </div>
-              <div className="kv kv-date">
-                <span className="k">Ends:</span>
-                <span className="v">{formatDate(ev.endDateTime)}</span>
-              </div>
-
-              <div className="kv">
-                <span className="k">Name:</span>
-                <span className="v">{ev.name}</span>
-              </div>
-              <div className="kv">
-                <span className="k">Location:</span>
-                <span className="v">{ev.location}</span>
-              </div>
-
-              {ev.shortDescription && <p>{ev.shortDescription}</p>}
-
-              <div className="actions">
-                {ev.type === "BAZAAR" ? (
-                  <Link
-                    className={`btn ${
-                      isEditable(ev.startDateTime) ? "" : "btn-disabled"
-                    }`}
-                    to={`/bazaars/${ev.id}`}
-                  >
-                    Edit
-                  </Link>
-                ) : (
-                  <Link
-                    className={`btn ${
-                      isEditable(ev.startDateTime) ? "" : "btn-disabled"
-                    }`}
-                    to={`/trips/${ev.id}`}
-                  >
-                    Edit
-                  </Link>
-                )}
-                {!isEditable(ev.startDateTime) && (
-                  <span className="blocked">Event already started</span>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
+        <button onClick={() => navigate("/signup")} style={backButtonStyle}>
+          Back to Role Selection
+        </button>
       </div>
     </div>
   );
 }
+
+// Styles
+const containerStyle = {
+  minHeight: "100vh",
+  backgroundColor: "#c8d9e6",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily: "Poppins, Arial, sans-serif",
+  padding: "20px",
+};
+
+const formBoxStyle = {
+  background: "#f5efeb",
+  borderRadius: "16px",
+  boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+  padding: "40px",
+  width: "100%",
+  maxWidth: "400px",
+};
+
+const titleStyle = {
+  textAlign: "center",
+  fontSize: "2rem",
+  color: "#111827",
+  marginBottom: "30px",
+};
+
+const formStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "15px",
+};
+
+const inputStyle = {
+  padding: "10px 14px",
+  borderRadius: "8px",
+  border: "1px solid #D1D5DB",
+  fontSize: "1rem",
+  outline: "none",
+};
+
+const buttonStyle = {
+  backgroundColor: "#567c8d",
+  color: "white",
+  padding: "12px",
+  border: "none",
+  borderRadius: "10px",
+  cursor: "pointer",
+  fontWeight: "600",
+};
+
+const backButtonStyle = {
+  marginTop: "25px",
+  backgroundColor: "#E5E7EB",
+  color: "#111827",
+  border: "none",
+  borderRadius: "10px",
+  padding: "10px 20px",
+  fontSize: "0.95rem",
+  fontWeight: "500",
+  cursor: "pointer",
+  width: "100%",
+};

@@ -72,10 +72,24 @@ export default function StudentSignup() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error === 'Email already registered') {
+        if (data.error === "Email already registered") {
           setMessage(
             <span>
-              Email already registered. <a href="/login" style={{ color: "#10B981", textDecoration: "underline", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Go to Login page</a>
+              Email already registered.{" "}
+              <a
+                href="/login"
+                style={{
+                  color: "#10B981",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/login");
+                }}
+              >
+                Go to Login page
+              </a>
             </span>
           );
           setIsError(true);
@@ -98,8 +112,8 @@ export default function StudentSignup() {
       setEmailError("");
       // Redirect to Login after success
       setTimeout(() => {
-        navigate('/login');
-      }, 1500);  // 1.5 second delay to show success message
+        navigate("/login");
+      }, 1500); // 1.5 second delay to show success message
     } catch (error) {
       setMessage(`⚠️ Error: ${error.message}`);
       setIsError(true);
@@ -184,7 +198,7 @@ export default function StudentSignup() {
         )}
 
         <button onClick={() => navigate("/signup")} style={backButtonStyle}>
-          ← Back to Role Selection
+          Back to Role Selection
         </button>
       </div>
     </div>

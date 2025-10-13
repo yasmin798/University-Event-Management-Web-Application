@@ -18,7 +18,6 @@ export default function FormNavBar() {
 
       <div className="nav-actions">
         <button className="logout-btn" onClick={handleLogout}>
-          <span aria-hidden>↪</span>
           <span>Log out</span>
         </button>
       </div>
