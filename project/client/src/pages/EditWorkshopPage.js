@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
+import { workshopAPI } from '../api/workshopApi';
+
 
 const EditWorkshopPage = () => {
   const navigate = useNavigate();
@@ -27,15 +29,30 @@ const EditWorkshopPage = () => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
+  const fetchWorkshop = async () => {
     if (id) {
-      const workshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-      const workshop = workshops.find(w => w.id === id);
-      if (workshop) {
-        setFormData(workshop);
+      try {
+        const workshop = await workshopAPI.getWorkshopById(id);
+        
+        // Format dates for input fields (YYYY-MM-DD format)
+        const formattedWorkshop = {
+          ...workshop,
+          startDate: workshop.startDate ? new Date(workshop.startDate).toISOString().split('T')[0] : '',
+          endDate: workshop.endDate ? new Date(workshop.endDate).toISOString().split('T')[0] : '',
+          registrationDeadline: workshop.registrationDeadline ? new Date(workshop.registrationDeadline).toISOString().split('T')[0] : '',
+        };
+        
+        setFormData(formattedWorkshop);
+      } catch (error) {
+        console.error('Error fetching workshop:', error);
+        alert('Failed to load workshop');
+        navigate('/professor/workshops');
       }
     }
-  }, [id]);
-
+  };
+  
+  fetchWorkshop();
+}, [id, navigate]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -88,21 +105,25 @@ const EditWorkshopPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      const workshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-      const index = workshops.findIndex(w => w.id === id);
+
+  
+
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (validateForm()) {
+    try {
+      const updatedWorkshop = await workshopAPI.updateWorkshop(id, formData);
       
-      if (index !== -1) {
-        workshops[index] = { ...formData, updatedAt: new Date().toISOString() };
-        localStorage.setItem('workshops', JSON.stringify(workshops));
-        alert('Workshop updated successfully!');
-        navigate('/professor/workshops');
-      }
+      console.log('Workshop updated:', updatedWorkshop);
+      alert('Workshop updated successfully!');
+      navigate('/professor/workshops');
+    } catch (error) {
+      console.error('Error updating workshop:', error);
+      alert('Failed to update workshop. Please try again.');
     }
-  };
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -273,9 +294,13 @@ const EditWorkshopPage = () => {
               <option value="">Select faculty</option>
               <option value="MET">MET - Media Engineering and Technology</option>
               <option value="IET">IET - Information Engineering and Technology</option>
-              <option value="DMET">DMET - Design and Manufacturing Engineering and Technology</option>
-              <option value="BAT">BAT - Business Administration and Technology</option>
-              <option value="BIS">BIS - Biotechnology and Informatics Sciences</option>
+              <option value="PBT">PBT - Pharmacy and Biotechnology</option>
+              <option value="EMS">EMS - Engineering and Materials Science</option>
+              <option value="MNGT">MNGT - Management Technology</option>
+              <option value="ASA">ASA - Applied Sciences and Arts</option>
+              <option value="DNT">DNT - Dentistry</option>
+              <option value="LAW">LAW - Law and Legal Studies</option>
+
             </select>
             {errors.facultyResponsible && <p className="text-red-500 text-sm mt-1">{errors.facultyResponsible}</p>}
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, Bell, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin } from 'lucide-react';
 import workshopPlaceholder from "../images/workshop.png";
+import { workshopAPI } from '../api/workshopApi';
 
 const ProfessorDashboard = () => {
   const navigate = useNavigate();
@@ -12,8 +13,16 @@ const ProfessorDashboard = () => {
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
 
   useEffect(() => {
-    const storedWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
-    setWorkshops(storedWorkshops);
+    const fetchWorkshops = async () => {
+      try {
+        const data = await workshopAPI.getAllWorkshops();
+        setWorkshops(data);
+      } catch (error) {
+        console.error('Error fetching workshops:', error);
+      }
+    };
+    
+    fetchWorkshops();
   }, []);
 
   const handleLogout = () => {
@@ -185,7 +194,7 @@ const ProfessorDashboard = () => {
                 <button
                   onClick={() => {
                     closeModal();
-                    navigate(`/professor/workshops/edit/${selectedWorkshop.id}`);
+                    navigate(`/professor/workshops/edit/${selectedWorkshop._id}`);
                   }}
                   className="flex-1 px-6 py-3 bg-[#567c8d] text-white rounded-lg hover:bg-[#2f4156] transition-colors"
                 >
@@ -326,11 +335,11 @@ const ProfessorDashboard = () => {
                   <div className="text-center text-[#567c8d] py-6">No workshops found.</div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredWorkshops.map((workshop, index) => (
+                    {filteredWorkshops.map((workshop) => (
                       <div
-                        key={index}
+                        key={workshop._id}
                         className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer"
-                        onClick={() => navigate(`/professor/workshops/edit/${workshop.id || index}`)}
+                        onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
                       >
                         <div className="h-40 w-full bg-gray-200">
                           <img
@@ -445,9 +454,9 @@ const ProfessorDashboard = () => {
                       .filter(w => new Date(w.startDate) > new Date())
                       .sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
                       .slice(0, 3)
-                      .map((w, i) => (
+                      .map((w) => (
                         <li
-                          key={i}
+                          key={w._id}
                           className="p-4 border border-[#c8d9e6] rounded-lg hover:bg-[#f5efeb] transition-colors cursor-pointer flex justify-between items-center"
                           onClick={() => setSelectedWorkshop(w)}
                         >

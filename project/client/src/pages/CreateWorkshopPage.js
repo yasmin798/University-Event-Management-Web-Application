@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
+import { workshopAPI } from '../api/workshopApi';
+
 
 const CreateWorkshopPage = () => {
   const navigate = useNavigate();
@@ -76,27 +78,31 @@ const CreateWorkshopPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      const existingWorkshops = JSON.parse(localStorage.getItem('workshops') || '[]');
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (validateForm()) {
+    try {
+      // Get professor ID from localStorage (or your auth context)
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
       
-      const newWorkshop = {
-        id: Date.now().toString(),
+      const workshopData = {
         ...formData,
-        createdAt: new Date().toISOString(),
+        createdBy: user.id || user._id || 'unknown-professor', // Add professor ID
         status: 'pending'
       };
       
-      existingWorkshops.push(newWorkshop);
-      localStorage.setItem('workshops', JSON.stringify(existingWorkshops));
+      const createdWorkshop = await workshopAPI.createWorkshop(workshopData);
       
+      console.log('Workshop created:', createdWorkshop);
       alert('Workshop created successfully!');
       navigate('/professor/workshops');
+    } catch (error) {
+      console.error('Error creating workshop:', error);
+      alert('Failed to create workshop. Please try again.');
     }
-  };
-
+  }
+};
   const handleCancel = () => {
     navigate('/professor/dashboard');
   };
