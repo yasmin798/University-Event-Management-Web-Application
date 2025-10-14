@@ -295,5 +295,3 @@ app.listen(PORT, () => {
 });
 
 
-const bazaarRoutes = require("./routes/bazaarRoutes");
-app.use("/api/bazaars", bazaarRoutes);
