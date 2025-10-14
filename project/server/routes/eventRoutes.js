@@ -23,6 +23,20 @@ router.get("/bazaars/:id", async (req, res) => {
   res.json(doc);
 });
 
+
+// GET /api/bazaars/upcoming
+router.get("/upcoming", async (req, res) => {
+  try {
+    // Example: find bazaars with start date >= today, sorted ascending
+    const now = new Date();
+    const bazaars = await Bazaar.find({ startDate: { $gte: now } }).sort({ startDate: 1 }).lean();
+    return res.json({ bazaars });
+  } catch (err) {
+    console.error("Error fetching bazaars:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 // Create bazaar
 router.post("/bazaars", async (req, res) => {
   try {
@@ -328,5 +342,8 @@ router.delete("/conferences/:id", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+
+
 
 module.exports = router;

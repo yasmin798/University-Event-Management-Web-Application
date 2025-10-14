@@ -20,10 +20,14 @@ import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
 import WorkshopsListPage from "./pages/WorkshopsListPage";
 import EditWorkshopPage from "./pages/EditWorkshopPage";
+import VendorsPage from "./pages/Vendorspage";
+
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
 }
+
 function App() {
   return (
     <Router>
@@ -32,6 +36,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
+
 
         {/* 👩‍🎓 Student / Staff / Vendor signup */}
         <Route path="/signup/student" element={<StudentSignup />} />
@@ -81,6 +86,11 @@ function App() {
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
+
+        <Route path="/vendors" element={<VendorsPage />} />
+
+
+
       </Routes>
     </Router>
   );
