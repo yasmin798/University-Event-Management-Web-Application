@@ -79,8 +79,14 @@ export default function EventsHome() {
 
   // Updated: Handle delete for any event type
   const handleDelete = async (id, eventType) => {
-    const typeLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g., "Bazaars" -> "Bazaar"
-    if (!window.confirm(`Are you sure you want to delete this ${typeLabel.toLowerCase()}? This action cannot be undone.`)) return;
+    const typeLabel =
+      eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g., "Bazaars" -> "Bazaar"
+    if (
+      !window.confirm(
+        `Are you sure you want to delete this ${typeLabel.toLowerCase()}? This action cannot be undone.`
+      )
+    )
+      return;
 
     try {
       const res = await fetch(`/api/${eventType}/${id}`, {
@@ -94,7 +100,7 @@ export default function EventsHome() {
       }
 
       alert(`${typeLabel} deleted successfully`);
-      refresh();  // Re-fetch events
+      refresh(); // Re-fetch events
     } catch (e) {
       console.error(`Delete ${typeLabel.toLowerCase()} error:`, e);
       alert(`Network error: Could not delete ${typeLabel.toLowerCase()}`);
@@ -147,8 +153,9 @@ export default function EventsHome() {
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
               const title = ev.title || ev.name || "Untitled";
-              const editable = isEditable(ev.startDateTime);  // For Edit buttons
-              const hasRegistrations = Array.isArray(ev.registrations) && ev.registrations.length > 0;
+              const editable = isEditable(ev.startDateTime); // For Edit buttons
+              const hasRegistrations =
+                Array.isArray(ev.registrations) && ev.registrations.length > 0;
 
               return (
                 <article key={id} className="card">
@@ -200,7 +207,11 @@ export default function EventsHome() {
                     <div className="kv">
                       <span className="k">Website:</span>
                       <span className="v">
-                        <a href={ev.website} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={ev.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           {ev.website}
                         </a>
                       </span>
@@ -211,7 +222,9 @@ export default function EventsHome() {
                   {hasRegistrations && (
                     <div className="kv">
                       <span className="k">Registered:</span>
-                      <span className="v">{ev.registrations.length} participants</span>
+                      <span className="v">
+                        {ev.registrations.length} participants
+                      </span>
                     </div>
                   )}
 
@@ -221,7 +234,10 @@ export default function EventsHome() {
                     <p>{ev.shortDescription || ev.description}</p>
                   ) : null}
 
-                  <div className="actions" style={{ position: "relative", zIndex: 2 }}>
+                  <div
+                    className="actions"
+                    style={{ position: "relative", zIndex: 2 }}
+                  >
                     {isBazaar ? (
                       <>
                         {editable ? (
@@ -229,7 +245,10 @@ export default function EventsHome() {
                             <Link className="btn" to={`/bazaars/${id}`}>
                               Edit
                             </Link>
-                            <Link className="btn" to={`/bazaars/${id}/vendor-requests`}>
+                            <Link
+                              className="btn"
+                              to={`/bazaars/${id}/vendor-requests`}
+                            >
                               Vendor Requests
                             </Link>
                           </>
@@ -247,7 +266,11 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           onClick={() => handleDelete(id, "bazaars")}
                           disabled={hasRegistrations}
-                          title={hasRegistrations ? "Cannot delete: participants registered" : "Delete this bazaar"}
+                          title={
+                            hasRegistrations
+                              ? "Cannot delete: participants registered"
+                              : "Delete this bazaar"
+                          }
                         >
                           Delete
                         </button>
@@ -267,7 +290,11 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           onClick={() => handleDelete(id, "trips")}
                           disabled={hasRegistrations}
-                          title={hasRegistrations ? "Cannot delete: participants registered" : "Delete this trip"}
+                          title={
+                            hasRegistrations
+                              ? "Cannot delete: participants registered"
+                              : "Delete this trip"
+                          }
                         >
                           Delete
                         </button>
@@ -287,7 +314,11 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           onClick={() => handleDelete(id, "conferences")}
                           disabled={hasRegistrations}
-                          title={hasRegistrations ? "Cannot delete: participants registered" : "Delete this conference"}
+                          title={
+                            hasRegistrations
+                              ? "Cannot delete: participants registered"
+                              : "Delete this conference"
+                          }
                         >
                           Delete
                         </button>
@@ -300,30 +331,6 @@ export default function EventsHome() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .btn-danger {
-          background-color: #dc3545;
-          color: white;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 4px;
-          cursor: pointer;
-          margin-left: 8px;
-        }
-        .btn-danger:hover {
-          background-color: #c82333;
-        }
-        .btn-danger:disabled {
-          background-color: #6c757d;
-          cursor: not-allowed;
-        }
-        .eo-grid [data-type="conferences"] .feature-cta,
-        .eo-grid .feature-card:nth-child(3) .btn,
-        .eo-grid [style*="--cta-margin-top"] .btn {
-          margin-top: var(--cta-margin-top, -10px) !important;
-        }
-      `}</style>
     </div>
   );
 }

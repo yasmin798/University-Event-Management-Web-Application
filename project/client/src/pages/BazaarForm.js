@@ -82,11 +82,7 @@ export default function BazaarForm() {
   }
 
   async function saveBazaar() {
-    // validate
-    const errs = validateBazaar({
-      ...data,
-      // validateBazaar likely expects "name"
-    });
+    const errs = validateBazaar({ ...data });
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -95,13 +91,24 @@ export default function BazaarForm() {
       return;
     }
 
+    // Build clean payload (omit optional date if empty)
     const payload = {
-      title: data.name, // <- backend expects 'title'
-      location: data.location,
-      shortDescription: data.shortDescription,
-      startDateTime: data.startDateTime,
-      endDateTime: data.endDateTime,
-      registrationDeadline: data.registrationDeadline,
+      title: (data.name || "").trim(),
+      location: (data.location || "").trim(),
+      shortDescription: (data.shortDescription || "").trim(),
+      startDateTime: data.startDateTime
+        ? new Date(data.startDateTime).toISOString()
+        : null, // required
+      endDateTime: data.endDateTime
+        ? new Date(data.endDateTime).toISOString()
+        : null, // required
+      ...(data.registrationDeadline
+        ? {
+            registrationDeadline: new Date(
+              data.registrationDeadline
+            ).toISOString(),
+          }
+        : {}), // omit if empty
     };
 
     try {
@@ -113,12 +120,16 @@ export default function BazaarForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(`${res.status} ${txt}`);
+        console.error("Save bazaar failed:", res.status, txt);
+        alert(
+          `Failed to save bazaar (${res.status}). ${txt || "See console."}`
+        );
+        return;
       }
 
-      // go back to Events; SWR will refetch
       navigate("/events", { replace: true });
     } catch (e) {
       console.error(e);

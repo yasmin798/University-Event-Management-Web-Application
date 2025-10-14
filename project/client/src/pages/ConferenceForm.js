@@ -151,7 +151,9 @@ export default function ConferenceForm() {
                 <div className="help">Use a clear, searchable title.</div>
               </FormField>
 
-              <FormField label="Website" error={errors.website} required> {/* Added required prop */}
+              <FormField label="Website" error={errors.website} required>
+                {" "}
+                {/* Added required prop */}
                 <input
                   type="url"
                   name="website"
@@ -257,13 +259,17 @@ export default function ConferenceForm() {
                 required
               >
                 <select
+                  className="eo-select eo-select-lg"
                   name="fundingSource"
                   value={data.fundingSource}
                   onChange={handleChange}
                   aria-invalid={Boolean(errors.fundingSource)}
                   disabled={!canEdit && editing}
+                  required
                 >
-                  <option value="">Select source</option>
+                  <option value="" disabled hidden>
+                    Select source
+                  </option>
                   <option value="GUC">GUC</option>
                   <option value="external">External</option>
                 </select>
@@ -321,6 +327,8 @@ export default function ConferenceForm() {
                   </>
                 )}
               </p>
+
+              {/* ✨ Same structure & classes as Bazaar */}
               <div className="confirm-actions">
                 <button
                   className="btn btn-outline"

@@ -1178,3 +1178,139 @@ body {
   gap: 10px;
   align-items: center;
 }
+/* === Force Conference confirm buttons to match Bazaar === */
+.events-theme .confirm-actions .btn {
+  appearance: none !important;
+  border: 2px solid var(--accent) !important;
+  background: var(--accent) !important;
+  color: #fff !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  min-width: 120px !important; /* same compact width Bazaar uses */
+}
+
+.events-theme .confirm-actions .btn:hover {
+  filter: brightness(0.95) !important;
+  transform: translateY(-1px) !important;
+}
+
+.events-theme .confirm-actions .btn.btn-outline {
+  background: transparent !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+/* FINAL: compact confirm buttons everywhere */
+.events-theme .confirm-actions .btn,
+.events-theme .confirm-actions .btn.btn-outline {
+  min-width: auto !important; /* stop forced width */
+  padding: 17px 12px !important; /* smaller height */
+  font-size: 14px !important; /* match card buttons */
+  line-height: 1.15 !important; /* prevent tall lines */
+  border-radius: 12px !important; /* same pill radius */
+}
+/* --- Pretty select with clear dropdown affordance --- */
+.events-theme .eo-select {
+  appearance: none; /* remove native arrow */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  width: 100%;
+  padding: 12px 44px 12px 14px; /* extra right space for chevron */
+  border-radius: 12px;
+  border: 1.5px solid rgba(47, 65, 86, 0.22);
+  background: #fff;
+  color: var(--text-strong);
+  font-size: 14px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+
+  /* big friendly chevron */
+  background-image: url("data:image/svg+xml;utf8,\
+  <svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23567c8d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 20px 20px;
+}
+
+.events-theme .eo-select:hover {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(86, 124, 141, 0.12);
+}
+
+.events-theme .eo-select:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(86, 124, 141, 0.18);
+}
+
+/* Slightly larger, more “dropdown-ish” height */
+.events-theme .eo-select-lg {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+
+/* Placeholder look when nothing chosen (needs required + value="") */
+.events-theme .eo-select:invalid {
+  color: var(--text-muted);
+}
+
+/* Safari fix: ensure arrow stays visible on dark backgrounds */
+@supports (-webkit-touch-callout: none) {
+  .events-theme .eo-select {
+    background-position: right 12px center;
+  }
+}
+
+/* High-contrast mode friendly outline */
+@media (prefers-contrast: more) {
+  .events-theme .eo-select:focus {
+    box-shadow: 0 0 0 2px var(--teal);
+  }
+}
+/* Danger variant aligned with primary .btn */
+.events-theme .btn-danger {
+  border: 2px solid var(--danger);
+  background: var(--danger);
+  color: #fff;
+  padding: 10px 14px; /* same as .btn */
+  border-radius: 12px; /* same as .btn */
+  font-weight: 700; /* same as .btn */
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.events-theme .btn-danger:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+
+.events-theme .btn-danger:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+/* Match ProfessorDashboard logout color */
+.events-theme {
+  --danger: #c88585; /* base */
+}
+
+/* precise hover to match */
+.events-theme .btn-danger:hover {
+  background: #b87575 !important;
+  border-color: #b87575 !important;
+  filter: none; /* override brightness filter if present */
+  transform: translateY(-1px); /* keep hover lift */
+}

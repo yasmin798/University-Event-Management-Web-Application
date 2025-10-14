@@ -44,7 +44,8 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-app.use("/api/events", eventRoutes);
+app.use("/api", eventRoutes);
+
 app.use("/api/workshops", workshopRoutes);
 
 // Connect to MongoDB
@@ -60,8 +61,23 @@ const verificationTokens = {};
 /* ---------------- SIGNUP ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
-    const { firstName, lastName, email, password, role, roleSpecificId, companyName } = req.body;
-    if (!firstName || !lastName || !email || !password || !role || !roleSpecificId) {
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      roleSpecificId,
+      companyName,
+    } = req.body;
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !password ||
+      !role ||
+      !roleSpecificId
+    ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -70,7 +86,8 @@ app.post("/api/register", async (req, res) => {
       return res.status(400).json({ error: "Invalid role" });
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: "Email already registered" });
+    if (existingUser)
+      return res.status(400).json({ error: "Email already registered" });
 
     const needsApproval = ["staff", "professor", "ta"].includes(role);
     const isVerified = !needsApproval;
@@ -92,11 +109,18 @@ app.post("/api/register", async (req, res) => {
       message: needsApproval
         ? "✅ Registration complete, awaiting admin verification!"
         : "✅ Signup successful!",
-      user: { id: saved._id, email: saved.email, role: saved.role, isVerified: saved.isVerified },
+      user: {
+        id: saved._id,
+        email: saved.email,
+        role: saved.role,
+        isVerified: saved.isVerified,
+      },
     });
   } catch (err) {
     console.error("❌ Signup error:", err);
-    return res.status(500).json({ error: "Server error during signup", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Server error during signup", details: err.message });
   }
 });
 
@@ -117,7 +141,12 @@ app.post("/api/login", async (req, res) => {
 
     res.json({
       message: "✅ Login successful!",
-      user: { id: user._id, firstName: user.firstName, email: user.email, role: user.role }
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -154,9 +183,16 @@ app.patch("/api/admin/verify/:id", async (req, res) => {
     if (role) user.role = role;
 
     const saved = await user.save();
-    res.status(200).json({ success: true, message: "✅ User verified", user: saved });
+    res
+      .status(200)
+      .json({ success: true, message: "✅ User verified", user: saved });
   } catch (err) {
-    res.status(500).json({ error: "Server error during verification", details: err.message });
+    res
+      .status(500)
+      .json({
+        error: "Server error during verification",
+        details: err.message,
+      });
   }
 });
 
@@ -172,7 +208,9 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
 
     res.status(200).json({ message: "🗑️ User deleted successfully." });
   } catch (err) {
-    res.status(500).json({ error: "Server error during delete", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Server error during delete", details: err.message });
   }
 });
 
@@ -180,7 +218,8 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
 app.post("/api/admin/send-verification", async (req, res) => {
   try {
     const { email, userId } = req.body;
-    if (!email || !userId) return res.status(400).json({ error: "Missing email or userId" });
+    if (!email || !userId)
+      return res.status(400).json({ error: "Missing email or userId" });
 
     const token = crypto.randomBytes(32).toString("hex");
     verificationTokens[token] = userId;
@@ -218,7 +257,12 @@ app.post("/api/admin/send-verification", async (req, res) => {
     res.json({ success: true, message: `Verification mail sent to ${email}` });
   } catch (err) {
     console.error("❌ Mail error:", err);
-    res.status(500).json({ error: "Failed to send verification mail", details: err.message });
+    res
+      .status(500)
+      .json({
+        error: "Failed to send verification mail",
+        details: err.message,
+      });
   }
 });
 
@@ -226,7 +270,8 @@ app.get("/api/verify/:token", async (req, res) => {
   try {
     const { token } = req.params;
     const userId = verificationTokens[token];
-    if (!userId) return res.status(400).send("Invalid or expired verification link.");
+    if (!userId)
+      return res.status(400).send("Invalid or expired verification link.");
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).send("User not found.");
@@ -259,5 +304,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Backend running at http://localhost:${PORT}`);
 });
-
-
