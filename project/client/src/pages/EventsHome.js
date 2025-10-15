@@ -1,5 +1,5 @@
 // client/src/pages/EventsHome.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../events.theme.css";
 import NavBar from "../components/NavBar";
@@ -35,6 +35,17 @@ function formatMoney(n) {
 export default function EventsHome() {
   const [filter, setFilter] = useState("all");
   const { events, loading, refresh } = useServerEvents({ refreshMs: 0 });
+  const [toast, setToast] = useState({ open: false, text: "" });
+
+  // Styled confirm modal state
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    body: "",
+    onConfirm: null,
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+  });
 
   // Feature cards
   const CARDS = useMemo(
@@ -77,34 +88,35 @@ export default function EventsHome() {
   const visible =
     filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
 
-  // Updated: Handle delete for any event type
-  const handleDelete = async (id, eventType) => {
-    const typeLabel =
-      eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g., "Bazaars" -> "Bazaar"
-    if (
-      !window.confirm(
-        `Are you sure you want to delete this ${typeLabel.toLowerCase()}? This action cannot be undone.`
-      )
-    )
-      return;
-
+  // Do the actual DELETE
+  const doDelete = async (id, eventType) => {
     try {
-      const res = await fetch(`/api/${eventType}/${id}`, {
-        method: "DELETE",
-      });
-
+      const res = await fetch(`/api/${eventType}/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || `Failed to delete ${typeLabel.toLowerCase()}`);
+        const err = await res.json().catch(() => ({}));
+        setToast({ open: true, text: err.error || "Failed to delete" });
         return;
       }
-
-      alert(`${typeLabel} deleted successfully`);
-      refresh(); // Re-fetch events
+      setToast({ open: true, text: "Event Deleted successfully!" });
+      refresh();
     } catch (e) {
-      console.error(`Delete ${typeLabel.toLowerCase()} error:`, e);
-      alert(`Network error: Could not delete ${typeLabel.toLowerCase()}`);
+      console.error("Delete error:", e);
+      setToast({ open: true, text: "Network error: Could not delete" });
     }
+  };
+
+  // Open themed confirm dialog
+  const handleDelete = (id, eventType) => {
+    const typeLabel =
+      eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g. "Bazaars" -> "Bazaar"
+    setConfirm({
+      open: true,
+      title: `Delete this ${typeLabel.toLowerCase()}?`,
+      body: `Are you sure you want to delete this ${typeLabel.toLowerCase()}? This action cannot be undone.`,
+      onConfirm: () => doDelete(id, eventType),
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+    });
   };
 
   return (
@@ -153,7 +165,7 @@ export default function EventsHome() {
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
               const title = ev.title || ev.name || "Untitled";
-              const editable = isEditable(ev.startDateTime); // For Edit buttons
+              const editable = isEditable(ev.startDateTime);
               const hasRegistrations =
                 Array.isArray(ev.registrations) && ev.registrations.length > 0;
 
@@ -218,7 +230,7 @@ export default function EventsHome() {
                     </div>
                   )}
 
-                  {/* Optional: Show registration count */}
+                  {/* Optional: registration count */}
                   {hasRegistrations && (
                     <div className="kv">
                       <span className="k">Registered:</span>
@@ -228,7 +240,7 @@ export default function EventsHome() {
                     </div>
                   )}
 
-                  {/* Description for any type */}
+                  {/* Description */}
                   {(ev?.shortDescription && ev.shortDescription.trim()) ||
                   (ev?.description && String(ev.description).trim()) ? (
                     <p>{ev.shortDescription || ev.description}</p>
@@ -331,6 +343,47 @@ export default function EventsHome() {
           </div>
         )}
       </div>
+
+      {/* Themed confirmation modal (same look as Save/Cancel modal) */}
+      {confirm.open && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm">
+            <h2>{confirm.title || "Are you sure?"}</h2>
+            <p>{confirm.body}</p>
+            <div className="confirm-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setConfirm((c) => ({ ...c, open: false }))}
+              >
+                {confirm.cancelLabel || "Cancel"}
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  const fn = confirm.onConfirm;
+                  setConfirm((c) => ({ ...c, open: false }));
+                  fn && fn();
+                }}
+              >
+                {confirm.confirmLabel || "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {toast.open && (
+        <div className="eo-toast" role="status" aria-live="polite">
+          <span className="eo-toast-text">{toast.text}</span>
+          <button
+            className="eo-toast-x"
+            onClick={() => setToast({ open: false, text: "" })}
+            aria-label="Close notification"
+            title="Close"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

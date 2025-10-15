@@ -1314,3 +1314,63 @@ body {
   filter: none; /* override brightness filter if present */
   transform: translateY(-1px); /* keep hover lift */
 }
+/* --- Tiny themed toast (matches modal/card styling) --- */
+.eo-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  background: var(--card);
+  color: var(--text-strong);
+  border: 1px solid rgba(47, 65, 86, 0.08);
+  box-shadow: 0 18px 40px rgba(47, 65, 86, 0.2);
+  padding: 12px 14px;
+  border-radius: 14px;
+
+  animation: eo-toast-in 160ms ease-out;
+}
+
+.eo-toast-text {
+  font-weight: 600;
+}
+
+/* small “x” close button, same tone as your theme buttons */
+.eo-toast-x {
+  appearance: none;
+  border: 2px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  width: 28px;
+  height: 28px;
+  line-height: 24px;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.eo-toast-x:hover {
+  background: var(--teal);
+  color: #fff;
+}
+
+/* subtle pop-in */
+@keyframes eo-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
