@@ -22,7 +22,13 @@ import WorkshopsListPage from "./pages/WorkshopsListPage";
 import EditWorkshopPage from "./pages/EditWorkshopPage";
 import VendorsPage from "./pages/Vendorspage";
 import EventRegistrationForm from "./pages/EventRegistrationForm"; // Added for testing registration
-
+import StudentDashboard from "./pages/studentDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
+import TaDashboard from "./pages/TaDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+// Simple 404
+// Simple 404
+// Simple 404
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -45,6 +51,10 @@ function App() {
 
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+<Route path="/student/dashboard" element={<StudentDashboard />} />
+<Route path="/staff/dashboard" element={<StaffDashboard />} />
+<Route path="/ta/dashboard" element={<TaDashboard />} />
+<Route path="/admin/dashboard" element={<AdminDashboard />} />
 
         {/* 🗓️ Events overview */}
         {/* 👨‍🏫 Professor Dashboard and Workshop Management */}
