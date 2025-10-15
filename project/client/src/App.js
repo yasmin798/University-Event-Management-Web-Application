@@ -21,7 +21,7 @@ import CreateWorkshopPage from "./pages/CreateWorkshopPage";
 import WorkshopsListPage from "./pages/WorkshopsListPage";
 import EditWorkshopPage from "./pages/EditWorkshopPage";
 import VendorsPage from "./pages/Vendorspage";
-
+import EventRegistrationForm from "./pages/EventRegistrationForm"; // Added for testing registration
 
 // Simple 404
 function NotFound() {
@@ -63,6 +63,9 @@ function App() {
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
 
+      {/* Events - Registration */}
+        <Route path="/events/register/:eventId" element={<EventRegistrationForm />} /> {/* New route for testing registration */}
+        
         {/* Bazaar */}
         <Route
           path="/bazaars/:id/vendor-requests"

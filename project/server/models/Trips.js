@@ -13,6 +13,7 @@ const TripSchema = new mongoose.Schema(
     price: { type: Number, default: 0, min: 0 },
     capacity: { type: Number, default: 0, min: 0 },
     status: { type: String, default: "published" },
+    registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // For registration
     registrations: {
       type: [
         {

@@ -16,6 +16,11 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     isVerified: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ["active", "blocked"],
+      default: "active",     // added for checking if user is active/blocked
+    },
   },
   { timestamps: true }
 );

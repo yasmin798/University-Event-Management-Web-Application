@@ -5,12 +5,14 @@ const cors = require("cors");
 const morgan = require("morgan");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
-
+const jwt = require("jsonwebtoken");
+const { protect, adminOnly } = require("./middleware/auth"); // New
 // Routers
 const authRoutes = require("./routes/authRoutes");
 const gymRouter = require("./routes/gym");
 const eventRoutes = require("./routes/eventRoutes");
 const workshopRoutes = require("./routes/workshopRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 // Models
 const User = require("./models/User");
@@ -44,8 +46,10 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
+app.use("/api", userRoutes); // New
 app.use("/api/events", eventRoutes);
 app.use("/api/workshops", workshopRoutes);
+
 
 // Connect to MongoDB
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
@@ -114,9 +118,14 @@ app.post("/api/login", async (req, res) => {
 
     if (!user.isVerified)
       return res.status(403).json({ error: "Account not verified yet." });
-
+    const token = jwt.sign(
+    { id: user._id, role: user.role, email: user.email },
+    process.env.JWT_SECRET || "your_jwt_secret",
+    { expiresIn: "1h" }
+  );
     res.json({
       message: "✅ Login successful!",
+      token,
       user: { id: user._id, firstName: user.firstName, email: user.email, role: user.role }
     });
   } catch (err) {

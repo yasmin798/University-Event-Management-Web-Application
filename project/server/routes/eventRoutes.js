@@ -4,7 +4,8 @@ const Bazaar = require("../models/Bazaar");
 const Trip = require("../models/Trips");  // Fixed file name reference
 const Conference = require("../models/Conference");
 const router = express.Router();
-
+const { register } = require("../controllers/registrationController");
+const { protect } = require("../middleware/auth"); // Import protect
 // Helper: normalize title so UI can send either "name" or "title"
 const normTitle = (b = {}) => b.title || b.name || "";
 
@@ -343,7 +344,8 @@ router.delete("/conferences/:id", async (req, res) => {
   }
 });
 
-
+// Register for any event (generic)
+router.post("/events/:eventId/register", protect, register); // protect requires token
 
 
 module.exports = router;
