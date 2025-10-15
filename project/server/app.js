@@ -6,7 +6,8 @@ const morgan = require("morgan");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const { protect, adminOnly } = require("./middleware/auth"); // New
+const { protect, adminOnly } = require("./middleware/auth");
+
 // Routers
 const authRoutes = require("./routes/authRoutes");
 const gymRouter = require("./routes/gym");
@@ -30,14 +31,14 @@ app.use(
 app.use(morgan("dev"));
 app.set("etag", false);
 
-// Custom Logger Middleware
+// Logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   if (req.body && Object.keys(req.body).length) console.log("Body:", req.body);
   next();
 });
 
-// Prevent browser caching of API responses
+// No-cache
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
@@ -46,35 +47,31 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-app.use("/api", userRoutes); // New
+app.use("/api", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/workshops", workshopRoutes);
 
-
-// Connect to MongoDB
+// MongoDB connection
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
 mongoose
   .connect(MONGO)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// In-memory token store for email verification
-const verificationTokens = {};
-
 /* ---------------- SIGNUP ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
     const { firstName, lastName, email, password, role, roleSpecificId, companyName } = req.body;
-    if (!firstName || !lastName || !email || !password || !role || !roleSpecificId) {
+    if (!firstName || !lastName || !email || !password || !role || !roleSpecificId)
       return res.status(400).json({ error: "Missing required fields" });
-    }
 
     const validRoles = ["student", "professor", "staff", "ta", "vendor"];
     if (!validRoles.includes(role))
       return res.status(400).json({ error: "Invalid role" });
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: "Email already registered" });
+    if (existingUser)
+      return res.status(400).json({ error: "Email already registered" });
 
     const needsApproval = ["staff", "professor", "ta"].includes(role);
     const isVerified = !needsApproval;
@@ -96,7 +93,12 @@ app.post("/api/register", async (req, res) => {
       message: needsApproval
         ? "✅ Registration complete, awaiting admin verification!"
         : "✅ Signup successful!",
-      user: { id: saved._id, email: saved.email, role: saved.role, isVerified: saved.isVerified },
+      user: {
+        id: saved._id,
+        email: saved.email,
+        role: saved.role,
+        isVerified: saved.isVerified,
+      },
     });
   } catch (err) {
     console.error("❌ Signup error:", err);
@@ -104,7 +106,7 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// LOGIN
+/* ---------------- LOGIN ---------------- */
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -118,15 +120,22 @@ app.post("/api/login", async (req, res) => {
 
     if (!user.isVerified)
       return res.status(403).json({ error: "Account not verified yet." });
+
     const token = jwt.sign(
-    { id: user._id, role: user.role, email: user.email },
-    process.env.JWT_SECRET || "your_jwt_secret",
-    { expiresIn: "1h" }
-  );
+      { id: user._id, role: user.role, email: user.email },
+      process.env.JWT_SECRET || "your_jwt_secret",
+      { expiresIn: "1h" }
+    );
+
     res.json({
       message: "✅ Login successful!",
       token,
-      user: { id: user._id, firstName: user.firstName, email: user.email, role: user.role }
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -186,16 +195,19 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
 });
 
 /* ---------------- EMAIL VERIFICATION SYSTEM ---------------- */
+const verificationTokens = {}; // token → { userId, assignedRole }
+
 app.post("/api/admin/send-verification", async (req, res) => {
   try {
-    const { email, userId } = req.body;
-    if (!email || !userId) return res.status(400).json({ error: "Missing email or userId" });
+    const { email, userId, role } = req.body;
+    if (!email || !userId)
+      return res.status(400).json({ error: "Missing email or userId" });
 
     const token = crypto.randomBytes(32).toString("hex");
-    verificationTokens[token] = userId;
+    verificationTokens[token] = { userId, role };
 
-    const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verifyUrl = `${frontend}/api/verify/${token}`;
+    const verifyUrl = `http://localhost:3000/api/verify/${token}`;
+
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -209,16 +221,17 @@ app.post("/api/admin/send-verification", async (req, res) => {
       to: email,
       subject: "Account Verification - Admin Approval",
       html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6">
+        <div style="font-family:Arial,sans-serif;line-height:1.6;">
           <h2 style="color:#10B981;">Account Verification</h2>
           <p>Hello,</p>
           <p>Your account has been reviewed. Please click the button below to verify your account:</p>
-          <a href="${verifyUrl}" target="_blank" style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
+          <a href="${verifyUrl}" target="_blank"
+             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">
             Verify My Account
           </a>
-          <p style="margin-top:20px;color:#555;">If you didn’t request this, you can ignore this email.</p>
+          <p style="margin-top:20px;color:#555;">This link will expire once used.</p>
           <hr/>
-          <small>This link will expire after use.</small>
+          <small>© 2025 Your App Team</small>
         </div>
       `,
     };
@@ -227,27 +240,68 @@ app.post("/api/admin/send-verification", async (req, res) => {
     res.json({ success: true, message: `Verification mail sent to ${email}` });
   } catch (err) {
     console.error("❌ Mail error:", err);
-    res.status(500).json({ error: "Failed to send verification mail", details: err.message });
+    res.status(500).json({ error: "Failed to send verification mail" });
   }
 });
 
 app.get("/api/verify/:token", async (req, res) => {
   try {
     const { token } = req.params;
-    const userId = verificationTokens[token];
-    if (!userId) return res.status(400).send("Invalid or expired verification link.");
+    const data = verificationTokens[token];
+    if (!data)
+      return res
+        .status(400)
+        .send("<h2 style='color:red;text-align:center;'>❌ Invalid or expired verification link.</h2>");
 
+    const { userId, role } = data;
     const user = await User.findById(userId);
-    if (!user) return res.status(404).send("User not found.");
+    if (!user)
+      return res
+        .status(404)
+        .send("<h2 style='color:red;text-align:center;'>User not found.</h2>");
 
+    // ✅ Apply verification & assigned role only when user clicks link
     user.isVerified = true;
+    if (role) user.role = role;
     await user.save();
-    delete verificationTokens[token];
 
-    res.send("<h2>✅ Account verified successfully! You can now log in.</h2>");
+    delete verificationTokens[token]; // one-time use
+
+    res.send(`
+      <html>
+        <head>
+          <meta http-equiv="refresh" content="4;url=http://localhost:3001/login" />
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f0fdf4;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              color: #10B981;
+              text-align: center;
+            }
+            h1 {
+              font-size: 24px;
+              margin-bottom: 10px;
+            }
+            p {
+              color: #065f46;
+              font-size: 16px;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>✅ Verified Successfully!</h1>
+          <p>You’re being redirected to the login page...</p>
+        </body>
+      </html>
+    `);
   } catch (err) {
     console.error("❌ Verification error:", err);
-    res.status(500).send("Server error during verification.");
+    res.status(500).send("<h2>Server error during verification.</h2>");
   }
 });
 
@@ -265,8 +319,4 @@ app.use((err, _req, res, _next) => {
 
 /* ---------------- Start Server ---------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running at http://localhost:${PORT}`);
-});
-
-
+app.listen(PORT, () => console.log(`🚀 Backend running at http://localhost:${PORT}`));

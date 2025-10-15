@@ -72,15 +72,20 @@ export default function Admin() {
     }
   };
 
-  // Send verification email
+  // ✅ UPDATED — Send verification email (includes assigned role)
   const handleSendMail = async () => {
     if (!mailTarget) return;
     setSending(true);
     try {
+      const assignedRole = assignedRoles[mailTarget._id]; // 🟩 get selected role
       const res = await fetch("http://localhost:3000/api/admin/send-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: mailTarget.email, userId: mailTarget._id }),
+        body: JSON.stringify({
+          email: mailTarget.email,
+          userId: mailTarget._id,
+          role: assignedRole, // 🟩 include role in body
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -252,7 +257,7 @@ export default function Admin() {
         </tbody>
       </table>
 
-      {/* VENDOR REQUESTS */}
+      {/* VENDOR REQUESTS - BAZAARS */}
       <h2 style={{ color: "#3B82F6", marginTop: "50px" }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>
         <thead>
@@ -276,13 +281,17 @@ export default function Admin() {
                   {req.status === "pending" && (
                     <>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "accepted")}
+                        onClick={() =>
+                          handleVendorRequestStatus(req._id, "bazaar", "accepted")
+                        }
                         style={verifyBtnStyle}
                       >
                         Accept
                       </button>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")}
+                        onClick={() =>
+                          handleVendorRequestStatus(req._id, "bazaar", "rejected")
+                        }
                         style={deleteBtnStyle}
                       >
                         Reject
@@ -326,13 +335,17 @@ export default function Admin() {
                   {req.status === "pending" && (
                     <>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "booth", "accepted")}
+                        onClick={() =>
+                          handleVendorRequestStatus(req._id, "booth", "accepted")
+                        }
                         style={verifyBtnStyle}
                       >
                         Accept
                       </button>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "booth", "rejected")}
+                        onClick={() =>
+                          handleVendorRequestStatus(req._id, "booth", "rejected")
+                        }
                         style={deleteBtnStyle}
                       >
                         Reject
