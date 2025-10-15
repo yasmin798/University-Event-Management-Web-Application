@@ -450,3 +450,4 @@ const mailBodyStyle = { padding: "10px 0", fontSize: "14px", color: "#111827" };
 const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: "10px" };
 const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontWeight: "500" };
 const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" };
+//testing if this code runs, all that is left in the verification is to allow the staff to get the mail.
