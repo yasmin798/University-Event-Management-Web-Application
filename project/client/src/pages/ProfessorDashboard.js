@@ -299,7 +299,7 @@ const ProfessorDashboard = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]" size={20} />
                 <input
                   type="text"
-                  placeholder="Search workshops"
+                  placeholder="Search by workshop or professor"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"

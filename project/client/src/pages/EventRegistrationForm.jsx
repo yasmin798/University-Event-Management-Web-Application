@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-//import axios from 'axios'; // uncomment after testing ui
-import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
+import axios from 'axios'; // uncomment after testing ui
+//import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
 import "./EventRegistrationForm.css";
 
 const EventRegistrationForm = () => {
@@ -28,7 +28,7 @@ const EventRegistrationForm = () => {
       day: "numeric",
     });
   };
-  const [currentStep, setCurrentStep] = useState(1);
+  //const [currentStep, setCurrentStep] = useState(1);
   const [formErrors, setFormErrors] = useState({});
   const validateForm = () => {
     const errors = {};
@@ -43,21 +43,31 @@ const EventRegistrationForm = () => {
     return Object.keys(errors).length === 0;
   };
 
-  /* const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(`http://localhost:3000/api/events/${eventId}/register`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMessage(res.data.message);
-      setError('');
-    } catch (err) {
-      setError(err.response?.data.error || 'Registration failed');
-      setMessage('');
-    }
-  }; */ // uncomment after testing ui
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found. Please log in.");
+
+      const res = await axios.post(
+        `http://localhost:3000/api/events/${eventId}/register`,
+        { ...formData, type: eventDetails?.type || "workshop" }, // Include event type
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage(res.data.message);
+      setError("");
+      setTimeout(() => navigate("/registered-events"), 2000); // Redirect after 2s
+    } catch (err) {
+      setError(err.response?.data.error || "Registration failed. Please try again.");
+      setMessage("");
+    } finally {
+      setIsLoading(false);
+    }
+  }; // uncomment after testing ui
+  /* const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -69,29 +79,51 @@ const EventRegistrationForm = () => {
       setError("Registration failed. Using mock data.");
       setMessage("");
     }
-  }; // remove after testing ui
+  }; */ // remove after testing ui
   const handleCancel = () => {
     navigate(-1); // Go back to previous page
   };
+  // Fetch real event details
   useEffect(() => {
-    // Simulate fetching event details
-    const mockEventData = {
-      _id: eventId || "1",
-      name: "Workshop A",
-      startDate: "2025-11-01",
-      capacity: 50,
-      location: "Room 101",
-      type: "workshop",
+    const fetchEventDetails = async () => {
+      try {
+        setIsLoading(true);
+        const token = localStorage.getItem("token");
+        let endpoint = "";
+        // Determine endpoint based on event type (assumes type is in URL or defaults to workshop)
+        if (eventId) {
+          // Try workshop first, then trip if fails (basic type detection)
+          try {
+            const workshopRes = await axios.get(`http://localhost:3000/api/workshops/${eventId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setEventDetails(workshopRes.data);
+          } catch (workshopErr) {
+            const tripRes = await axios.get(`http://localhost:3000/api/trips/${eventId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setEventDetails(tripRes.data);
+          }
+        }
+      } catch (err) {
+        setError("Failed to load event details.");
+        setEventDetails({ _id: eventId, name: "Unknown Event", type: "workshop" }); // Fallback
+      } finally {
+        setIsLoading(false);
+      }
     };
-    setEventDetails(mockEventData);
+    fetchEventDetails();
   }, [eventId]);
+
+  if (isLoading && !eventDetails) return <p style={{ textAlign: "center" }}>Loading event details...</p>;
+
   return (
     <div className="event-reg-page">
       {eventDetails && (
         <div className="event-reg-header">
           <h1>Register for {eventDetails.name}</h1>
           <p>
-            {formatDate(eventDetails.startDate)} • {eventDetails.location} •
+            {formatDate(eventDetails.startDateTime)} • {eventDetails.location} •
             Capacity: {eventDetails.capacity}
           </p>
         </div>
@@ -119,6 +151,7 @@ const EventRegistrationForm = () => {
                   onChange={handleChange}
                   required
                 />
+                {formErrors.firstName && <span className="error-text">{formErrors.firstName}</span>}
               </div>
 
               <div className="form-group">
@@ -134,6 +167,7 @@ const EventRegistrationForm = () => {
                   onChange={handleChange}
                   required
                 />
+                {formErrors.lastName && <span className="error-text">{formErrors.lastName}</span>}
               </div>
             </div>
 
@@ -152,6 +186,7 @@ const EventRegistrationForm = () => {
                 required
               />
               <small className="input-hint">Use your GUC email address</small>
+              {formErrors.email && <span className="error-text">{formErrors.email}</span>}
             </div>
 
             <div className="form-group">
@@ -191,6 +226,7 @@ const EventRegistrationForm = () => {
                 onChange={handleChange}
                 required
               />
+              {formErrors.roleSpecificId && <span className="error-text">{formErrors.roleSpecificId}</span>}
             </div>
 
             <div className="form-actions">
@@ -205,7 +241,7 @@ const EventRegistrationForm = () => {
               <button
                 className="event-reg-button primary"
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || Object.keys(formErrors).length > 0}
               >
                 {isLoading ? (
                   <>

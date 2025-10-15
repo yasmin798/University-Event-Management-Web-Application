@@ -5,19 +5,22 @@ const cors = require("cors");
 const morgan = require("morgan");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+const { protect, adminOnly } = require("./middleware/auth");
 
 // Routers
 const authRoutes = require("./routes/authRoutes");
 const gymRouter = require("./routes/gym");
-const eventRoutes = require("./routes/eventRoutes");
+const eventRoutes = require("./routes/eventRoutes"); // exposes /bazaars, /trips, /conferences
 const workshopRoutes = require("./routes/workshopRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 // Models
 const User = require("./models/User");
 
 const app = express();
 
-// Middleware
+/* ---------------- Middleware ---------------- */
 app.use(express.json());
 app.use(
   cors({
@@ -28,37 +31,37 @@ app.use(
 app.use(morgan("dev"));
 app.set("etag", false);
 
-// Custom Logger Middleware
-app.use((req, res, next) => {
+// Logger
+app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   if (req.body && Object.keys(req.body).length) console.log("Body:", req.body);
   next();
 });
 
-// Prevent browser caching of API responses
-app.use((req, res, next) => {
+// No-cache
+app.use((_, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
 
-// Routes
+/* ---------------- Routes ---------------- */
+// auth / gym
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-app.use("/api", eventRoutes);
 
+// mount feature routers
+app.use("/api", eventRoutes); // -> /api/bazaars, /api/trips, /api/conferences
+app.use("/api", userRoutes); // -> /api/users/... (or similar)
 app.use("/api/workshops", workshopRoutes);
 
-// Connect to MongoDB
+/* ---------------- DB ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
 mongoose
   .connect(MONGO)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// In-memory token store for email verification
-const verificationTokens = {};
-
-/* ---------------- SIGNUP ---------------- */
+/* ---------------- Auth: Signup/Login ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
     const {
@@ -124,7 +127,6 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// LOGIN
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -139,8 +141,15 @@ app.post("/api/login", async (req, res) => {
     if (!user.isVerified)
       return res.status(403).json({ error: "Account not verified yet." });
 
+    const token = jwt.sign(
+      { id: user._id, role: user.role, email: user.email },
+      process.env.JWT_SECRET || "your_jwt_secret",
+      { expiresIn: "1h" }
+    );
+
     res.json({
       message: "✅ Login successful!",
+      token,
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -153,7 +162,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-/* ---------------- DEBUG USERS ---------------- */
+/* ---------------- Debug ---------------- */
 app.get("/api/debug/users", async (_req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
@@ -163,7 +172,7 @@ app.get("/api/debug/users", async (_req, res) => {
   }
 });
 
-/* ---------------- ADMIN VERIFY ---------------- */
+/* ---------------- Admin Verify/Delete ---------------- */
 app.patch("/api/admin/verify/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -196,7 +205,6 @@ app.patch("/api/admin/verify/:id", async (req, res) => {
   }
 });
 
-/* ---------------- ADMIN DELETE ---------------- */
 app.delete("/api/admin/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -206,7 +214,7 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
     const deleted = await User.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
 
-    res.status(200).json({ message: "🗑️ User deleted successfully." });
+    res.status(200).json({ message: "🗑️  User deleted successfully." });
   } catch (err) {
     res
       .status(500)
@@ -214,24 +222,23 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
   }
 });
 
-/* ---------------- EMAIL VERIFICATION SYSTEM ---------------- */
+/* ---------------- Email Verification ---------------- */
+const verificationTokens = {}; // token -> { userId, role }
+
 app.post("/api/admin/send-verification", async (req, res) => {
   try {
-    const { email, userId } = req.body;
+    const { email, userId, role } = req.body;
     if (!email || !userId)
       return res.status(400).json({ error: "Missing email or userId" });
 
     const token = crypto.randomBytes(32).toString("hex");
-    verificationTokens[token] = userId;
+    verificationTokens[token] = { userId, role };
 
-    const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verifyUrl = `${frontend}/api/verify/${token}`;
+    const verifyUrl = `http://localhost:3000/api/verify/${token}`;
+
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
     const mailOptions = {
@@ -239,16 +246,17 @@ app.post("/api/admin/send-verification", async (req, res) => {
       to: email,
       subject: "Account Verification - Admin Approval",
       html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6">
+        <div style="font-family:Arial,sans-serif;line-height:1.6;">
           <h2 style="color:#10B981;">Account Verification</h2>
           <p>Hello,</p>
           <p>Your account has been reviewed. Please click the button below to verify your account:</p>
-          <a href="${verifyUrl}" target="_blank" style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
+          <a href="${verifyUrl}" target="_blank"
+             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">
             Verify My Account
           </a>
-          <p style="margin-top:20px;color:#555;">If you didn’t request this, you can ignore this email.</p>
+          <p style="margin-top:20px;color:#555;">This link will expire once used.</p>
           <hr/>
-          <small>This link will expire after use.</small>
+          <small>© 2025 Your App Team</small>
         </div>
       `,
     };
@@ -269,28 +277,54 @@ app.post("/api/admin/send-verification", async (req, res) => {
 app.get("/api/verify/:token", async (req, res) => {
   try {
     const { token } = req.params;
-    const userId = verificationTokens[token];
-    if (!userId)
-      return res.status(400).send("Invalid or expired verification link.");
+    const data = verificationTokens[token];
+    if (!data) {
+      return res
+        .status(400)
+        .send(
+          "<h2 style='color:red;text-align:center;'>❌ Invalid or expired verification link.</h2>"
+        );
+    }
 
+    const { userId, role } = data;
     const user = await User.findById(userId);
-    if (!user) return res.status(404).send("User not found.");
+    if (!user) {
+      return res
+        .status(404)
+        .send("<h2 style='color:red;text-align:center;'>User not found.</h2>");
+    }
 
     user.isVerified = true;
+    if (role) user.role = role;
     await user.save();
+
     delete verificationTokens[token];
 
-    res.send("<h2>✅ Account verified successfully! You can now log in.</h2>");
+    res.send(`
+      <html>
+        <head>
+          <meta http-equiv="refresh" content="4;url=http://localhost:3001/login" />
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f0fdf4; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; color:#10B981; text-align:center; }
+            h1 { font-size: 24px; margin-bottom: 10px; }
+            p { color: #065f46; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>✅ Verified Successfully!</h1>
+          <p>You’re being redirected to the login page...</p>
+        </body>
+      </html>
+    `);
   } catch (err) {
     console.error("❌ Verification error:", err);
-    res.status(500).send("Server error during verification.");
+    res.status(500).send("<h2>Server error during verification.</h2>");
   }
 });
 
-/* ---------------- Healthcheck ---------------- */
+/* ---------------- Health & Errors ---------------- */
 app.get("/", (_req, res) => res.send("API OK"));
 
-/* ---------------- Error Handler ---------------- */
 app.use((err, _req, res, _next) => {
   if (err && err.message === "Not allowed by CORS") {
     return res.status(403).json({ error: "CORS blocked this origin" });
@@ -299,8 +333,8 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Internal Server Error" });
 });
 
-/* ---------------- Start Server ---------------- */
+/* ---------------- Start ---------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () =>
+  console.log(`🚀 Backend running at http://localhost:${PORT}`)
+);

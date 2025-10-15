@@ -20,19 +20,19 @@ export default function Login() {
     // Redirect based on role
     switch (data.user.role) {
       case "student":
-        navigate("/dashboard/student");
+        navigate("/student/dashboard");
         break;
       case "staff":
-        navigate("/dashboard/staff");
+        navigate("/staff/dashboard");
         break;
       case "ta":
-        navigate("/dashboard/ta");
+        navigate("/ta/dashboard");
         break;
       case "professor":
-        navigate("/dashboard/professor");
+        navigate("/professor/dashboard");
         break;
       case "admin":
-        navigate("/dashboard/admin");
+        navigate("/admin/dashboard");
         break;
       case "events_office":
         navigate("/EvenetsHome");
