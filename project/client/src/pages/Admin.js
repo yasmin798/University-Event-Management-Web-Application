@@ -1,4 +1,3 @@
-
 // client/src/pages/Admin.jsx
 import React, { useEffect, useState } from "react";
 
@@ -142,7 +141,7 @@ export default function Admin() {
         console.warn("Users endpoint returned no data.");
       }
 
-      // Fetch bazaar applications
+      // Fetch bazaar applications (admin or public endpoint)
       const appsAttempt = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
       console.log("appsAttempt:", appsAttempt);
       let appsArr = [];
@@ -152,17 +151,14 @@ export default function Admin() {
         else if (appsAttempt.data.items) appsArr = appsAttempt.data.items;
         else appsArr = appsAttempt.data;
       } else {
-        // fallback to port 3000 if necessary
-        const fallbackApps = await tryFetchJson(`http://localhost:3000/api/bazaar-applications`);
-        if (fallbackApps.ok && fallbackApps.data) {
-          if (Array.isArray(fallbackApps.data)) appsArr = fallbackApps.data;
-          else if (fallbackApps.data.requests) appsArr = fallbackApps.data.requests;
-          else if (fallbackApps.data.items) appsArr = fallbackApps.data.items;
-          else appsArr = fallbackApps.data;
+        // fallback to admin endpoint if available
+        const adminApps = await tryFetchJson(`${API_ORIGIN}/api/admin/bazaar-vendor-requests`);
+        if (adminApps.ok && adminApps.data) {
+          appsArr = Array.isArray(adminApps.data) ? adminApps.data : adminApps.data.requests || [];
         }
       }
 
-      const enrichedApps = await enrichBazaarRequestsWithBazaarInfo(appsArr);
+      const enrichedApps = await enrichBazaarRequestsWithBazaarInfo(appsArr || []);
       setVendorBazaarRequests(enrichedApps);
 
       // Booth requests (admin route or public fallback)
@@ -171,7 +167,7 @@ export default function Admin() {
       if (boothAdminAttempt.ok && boothAdminAttempt.data) {
         boothArr = Array.isArray(boothAdminAttempt.data) ? boothAdminAttempt.data : boothAdminAttempt.data.requests || [];
       } else {
-        const boothPublicAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-vendor-requests`);
+        const boothPublicAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
         if (boothPublicAttempt.ok && boothPublicAttempt.data) {
           boothArr = Array.isArray(boothPublicAttempt.data) ? boothPublicAttempt.data : boothPublicAttempt.data.requests || [];
         }
@@ -240,16 +236,20 @@ export default function Admin() {
     setSending(false);
   };
 
-  // Update vendor request status (bazaar -> updates application; booth -> admin booth route)
+  // Update vendor request status (bazaar -> application route; booth -> admin booth route)
   const handleVendorRequestStatus = async (requestId, type, newStatus) => {
     if (!window.confirm(`Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`)) return;
     setProcessingId(requestId);
     try {
       let url;
       if (type === "bazaar") {
+        // This updates the application document status
         url = `${API_ORIGIN}/api/bazaar-applications/${requestId}`;
       } else if (type === "booth") {
+        // admin booth requests route (if you used admin route for booths)
         url = `${API_ORIGIN}/api/admin/booth-vendor-requests/${requestId}`;
+        // fallback to booth-applications route if admin route is not present:
+        // url = `${API_ORIGIN}/api/booth-applications/${requestId}`;
       } else {
         url = `${API_ORIGIN}/api/admin/${type}-vendor-requests/${requestId}`;
       }
@@ -259,9 +259,11 @@ export default function Admin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
+
       const data = await res.json();
       if (res.ok) {
         setMessage(`✅ Vendor request ${newStatus} successfully!`);
+        // Refresh lists
         await fetchUsers();
       } else {
         setMessage(`❌ ${data.error || "Update failed"}`);
@@ -387,7 +389,7 @@ export default function Admin() {
           )}
         </tbody>
       </table>
-
+      
       {/* VENDOR REQUESTS - BAZAARS */}
       <h2 style={{ color: "#3B82F6", marginTop: 50 }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>
@@ -562,4 +564,3 @@ const mailBodyStyle = { padding: "10px 0", fontSize: 14, color: "#111827" };
 const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: 10 };
 const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontWeight: 500 };
 const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer" };
-
