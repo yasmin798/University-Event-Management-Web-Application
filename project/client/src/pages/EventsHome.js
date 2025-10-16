@@ -1,6 +1,6 @@
 // client/src/pages/EventsHome.jsx
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../events.theme.css";
 import NavBar from "../components/NavBar";
 import FeatureCard from "../components/FeatureCard";
@@ -33,6 +33,7 @@ function formatMoney(n) {
 }
 
 export default function EventsHome() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
   const { events, loading, refresh } = useServerEvents({ refreshMs: 0 });
   const [toast, setToast] = useState({ open: false, text: "" });
@@ -147,6 +148,18 @@ export default function EventsHome() {
             <FeatureCard key={c.type} {...c} />
           ))}
         </section>
+
+        {/* Vendor Requests Booth Button - Added above All Events list, shown when filter === "all" */}
+        {filter === "all" && (
+          <div style={{ margin: "24px 0" }}>
+            <button
+              className="btn"
+              onClick={() => navigate("/vendor-requests-booths")}
+            >
+              Vendor Requests Booth
+            </button>
+          </div>
+        )}
 
         <h1 className="eo-section-title">All Events</h1>
 

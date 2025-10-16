@@ -321,6 +321,79 @@ app.get("/api/verify/:token", async (req, res) => {
     res.status(500).send("<h2>Server error during verification.</h2>");
   }
 });
+// Models
+const BazaarVendorRequest = require("./models/BazaarVendorRequest");
+const BoothVendorRequest = require("./models/BoothVendorRequest");
+
+/* ---------------- Vendor Requests ---------------- */
+
+// Get all bazaar vendor requests
+app.get("/api/admin/bazaar-vendor-requests", adminOnly, async (_req, res) => {
+  try {
+    const requests = await BazaarVendorRequest.find().sort({ createdAt: -1 });
+    res.json({ requests });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch bazaar vendor requests" });
+  }
+});
+
+// Get all booth vendor requests
+app.get("/api/admin/booth-vendor-requests", adminOnly, async (_req, res) => {
+  try {
+    const requests = await BoothVendorRequest.find().sort({ createdAt: -1 });
+    res.json({ requests });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch booth vendor requests" });
+  }
+});
+
+// Accept/Reject a bazaar vendor request
+app.patch("/api/admin/bazaar-vendor-requests/:id", adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // expected: "accepted" or "rejected"
+
+    if (!["accepted", "rejected"].includes(status.toLowerCase())) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const request = await BazaarVendorRequest.findById(id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    request.status = status.toUpperCase();
+    await request.save();
+
+    res.json({ success: true, message: `Bazaar request ${status} successfully`, request });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update bazaar request" });
+  }
+});
+
+// Accept/Reject a booth vendor request
+app.patch("/api/admin/booth-vendor-requests/:id", adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["accepted", "rejected"].includes(status.toLowerCase())) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const request = await BoothVendorRequest.findById(id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    request.status = status.toUpperCase();
+    await request.save();
+
+    res.json({ success: true, message: `Booth request ${status} successfully`, request });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update booth request" });
+  }
+});
 
 /* ---------------- Health & Errors ---------------- */
 app.get("/", (_req, res) => res.send("API OK"));

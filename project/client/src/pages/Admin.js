@@ -17,29 +17,32 @@ export default function Admin() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+
+      // Users
       const usersRes = await fetch("http://localhost:3000/api/debug/users");
       const usersData = await usersRes.json();
-
       if (usersData.users) {
         setVerifiedUsers(usersData.users.filter((u) => u.isVerified));
         setPendingUsers(usersData.users.filter((u) => !u.isVerified));
       }
 
-      const bazaarReqRes = await fetch(
+      // Bazaar requests
+      const bazaarRes = await fetch(
         "http://localhost:3000/api/admin/bazaar-vendor-requests"
       );
-      const bazaarReqData = await bazaarReqRes.json();
-      setVendorBazaarRequests(bazaarReqData.requests || []);
+      const bazaarData = await bazaarRes.json();
+      setVendorBazaarRequests(bazaarData.requests || []);
 
-      const boothReqRes = await fetch(
+      // Booth requests
+      const boothRes = await fetch(
         "http://localhost:3000/api/admin/booth-vendor-requests"
       );
-      const boothReqData = await boothReqRes.json();
-      setVendorBoothRequests(boothReqData.requests || []);
+      const boothData = await boothRes.json();
+      setVendorBoothRequests(boothData.requests || []);
 
       setLoading(false);
     } catch (err) {
-      console.error("❌ Fetch error:", err);
+      console.error(err);
       setMessage("❌ Could not load data.");
       setLoading(false);
     }
@@ -51,15 +54,13 @@ export default function Admin() {
 
   // Delete user
   const handleDelete = async (userId) => {
-    const confirm = window.confirm("Are you sure you want to DELETE this user?");
-    if (!confirm) return;
+    if (!window.confirm("Are you sure you want to DELETE this user?")) return;
 
     try {
       const res = await fetch(`http://localhost:3000/api/admin/delete/${userId}`, {
         method: "DELETE",
       });
       const data = await res.json();
-
       if (res.ok) {
         setMessage("🗑️ User deleted successfully!");
         fetchUsers();
@@ -72,19 +73,19 @@ export default function Admin() {
     }
   };
 
-  // ✅ UPDATED — Send verification email (includes assigned role)
+  // Send verification mail
   const handleSendMail = async () => {
     if (!mailTarget) return;
     setSending(true);
     try {
-      const assignedRole = assignedRoles[mailTarget._id]; // 🟩 get selected role
+      const assignedRole = assignedRoles[mailTarget._id];
       const res = await fetch("http://localhost:3000/api/admin/send-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: mailTarget.email,
           userId: mailTarget._id,
-          role: assignedRole, // 🟩 include role in body
+          role: assignedRole,
         }),
       });
       const data = await res.json();
@@ -95,18 +96,15 @@ export default function Admin() {
         setMessage(`❌ ${data.error}`);
       }
     } catch (err) {
-      console.error("❌ Mail send error:", err);
+      console.error(err);
       setMessage("❌ Could not send email.");
     }
     setSending(false);
   };
 
-  // Vendor requests (accept/reject)
+  // Vendor request status
   const handleVendorRequestStatus = async (requestId, type, newStatus) => {
-    const confirm = window.confirm(
-      `Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`
-    );
-    if (!confirm) return;
+    if (!window.confirm(`Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`)) return;
 
     try {
       const res = await fetch(
@@ -118,7 +116,6 @@ export default function Admin() {
         }
       );
       const data = await res.json();
-
       if (res.ok) {
         setMessage(`✅ Vendor request ${newStatus} successfully!`);
         fetchUsers();
@@ -131,10 +128,10 @@ export default function Admin() {
     }
   };
 
-  // Generate fake preview link for Gmail-style popup
+  // Generate preview link
   const generatePreviewLink = (userId) => {
-    const randomToken = Math.random().toString(36).substring(2, 15);
-    setPreviewLink(`http://localhost:3000/api/verify/${randomToken}-for-${userId}`);
+    const token = Math.random().toString(36).substring(2, 15);
+    setPreviewLink(`http://localhost:3000/api/verify/${token}-for-${userId}`);
   };
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading users and requests...</p>;
@@ -142,13 +139,12 @@ export default function Admin() {
   return (
     <div style={{ padding: "30px", fontFamily: "Poppins, Arial, sans-serif" }}>
       <h1 style={{ textAlign: "center", color: "#111827" }}>Admin Dashboard</h1>
-
       {message && (
         <p
           style={{
             textAlign: "center",
             color: message.startsWith("✅") || message.startsWith("📧") ? "green" : "red",
-            fontWeight: "500",
+            fontWeight: 500,
           }}
         >
           {message}
@@ -156,7 +152,7 @@ export default function Admin() {
       )}
 
       {/* VERIFIED USERS */}
-      <h2 style={{ color: "#10B981", marginTop: "40px" }}>✅ Verified Users</h2>
+      <h2 style={{ color: "#10B981", marginTop: 40 }}>✅ Verified Users</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#10B981", color: "white" }}>
@@ -167,12 +163,10 @@ export default function Admin() {
           </tr>
         </thead>
         <tbody>
-          {verifiedUsers.length > 0 ? (
+          {verifiedUsers.length ? (
             verifiedUsers.map((user) => (
               <tr key={user._id} style={trStyle}>
-                <td style={tdStyle}>
-                  {user.firstName || user.companyName || "User"}
-                </td>
+                <td style={tdStyle}>{user.firstName || user.companyName || "User"}</td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
                 <td style={tdStyle}>
@@ -184,16 +178,14 @@ export default function Admin() {
             ))
           ) : (
             <tr>
-              <td colSpan="4" style={tdEmptyStyle}>
-                No verified users yet.
-              </td>
+              <td colSpan="4" style={tdEmptyStyle}>No verified users yet.</td>
             </tr>
           )}
         </tbody>
       </table>
 
       {/* PENDING USERS */}
-      <h2 style={{ color: "#F59E0B", marginTop: "50px" }}>🕓 Pending Verification</h2>
+      <h2 style={{ color: "#F59E0B", marginTop: 50 }}>🕓 Pending Verification</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#F59E0B", color: "white" }}>
@@ -205,24 +197,17 @@ export default function Admin() {
           </tr>
         </thead>
         <tbody>
-          {pendingUsers.length > 0 ? (
+          {pendingUsers.length ? (
             pendingUsers.map((user) => (
               <tr key={user._id} style={trStyle}>
-                <td style={tdStyle}>
-                  {user.firstName || user.companyName || "User"}
-                </td>
+                <td style={tdStyle}>{user.firstName || user.companyName || "User"}</td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
                 <td style={tdStyle}>
                   <select
                     style={dropdownStyle}
                     value={assignedRoles[user._id] || ""}
-                    onChange={(e) =>
-                      setAssignedRoles({
-                        ...assignedRoles,
-                        [user._id]: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setAssignedRoles({ ...assignedRoles, [user._id]: e.target.value })}
                   >
                     <option value="">Select Role</option>
                     <option value="staff">Staff</option>
@@ -249,16 +234,14 @@ export default function Admin() {
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>
-                No pending users.
-              </td>
+              <td colSpan="5" style={tdEmptyStyle}>No pending users.</td>
             </tr>
           )}
         </tbody>
       </table>
 
       {/* VENDOR REQUESTS - BAZAARS */}
-      <h2 style={{ color: "#3B82F6", marginTop: "50px" }}>Vendor Requests - Bazaars</h2>
+      <h2 style={{ color: "#3B82F6", marginTop: 50 }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#3B82F6", color: "white" }}>
@@ -270,7 +253,7 @@ export default function Admin() {
           </tr>
         </thead>
         <tbody>
-          {vendorBazaarRequests.length > 0 ? (
+          {vendorBazaarRequests.length ? (
             vendorBazaarRequests.map((req) => (
               <tr key={req._id} style={trStyle}>
                 <td style={tdStyle}>{req.bazaarId}</td>
@@ -280,22 +263,8 @@ export default function Admin() {
                 <td style={tdStyle}>
                   {req.status === "pending" && (
                     <>
-                      <button
-                        onClick={() =>
-                          handleVendorRequestStatus(req._id, "bazaar", "accepted")
-                        }
-                        style={verifyBtnStyle}
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleVendorRequestStatus(req._id, "bazaar", "rejected")
-                        }
-                        style={deleteBtnStyle}
-                      >
-                        Reject
-                      </button>
+                      <button onClick={() => handleVendorRequestStatus(req._id, "bazaar", "accepted")} style={verifyBtnStyle}>Accept</button>
+                      <button onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")} style={deleteBtnStyle}>Reject</button>
                     </>
                   )}
                 </td>
@@ -303,16 +272,14 @@ export default function Admin() {
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>
-                No bazaar requests.
-              </td>
+              <td colSpan="5" style={tdEmptyStyle}>No bazaar requests.</td>
             </tr>
           )}
         </tbody>
       </table>
 
       {/* VENDOR REQUESTS - BOOTHS */}
-      <h2 style={{ color: "#6366F1", marginTop: "50px" }}>Vendor Requests - Booths</h2>
+      <h2 style={{ color: "#6366F1", marginTop: 50 }}>Vendor Requests - Booths</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#6366F1", color: "white" }}>
@@ -324,7 +291,7 @@ export default function Admin() {
           </tr>
         </thead>
         <tbody>
-          {vendorBoothRequests.length > 0 ? (
+          {vendorBoothRequests.length ? (
             vendorBoothRequests.map((req) => (
               <tr key={req._id} style={trStyle}>
                 <td style={tdStyle}>{req.boothId}</td>
@@ -334,22 +301,8 @@ export default function Admin() {
                 <td style={tdStyle}>
                   {req.status === "pending" && (
                     <>
-                      <button
-                        onClick={() =>
-                          handleVendorRequestStatus(req._id, "booth", "accepted")
-                        }
-                        style={verifyBtnStyle}
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleVendorRequestStatus(req._id, "booth", "rejected")
-                        }
-                        style={deleteBtnStyle}
-                      >
-                        Reject
-                      </button>
+                      <button onClick={() => handleVendorRequestStatus(req._id, "booth", "accepted")} style={verifyBtnStyle}>Accept</button>
+                      <button onClick={() => handleVendorRequestStatus(req._id, "booth", "rejected")} style={deleteBtnStyle}>Reject</button>
                     </>
                   )}
                 </td>
@@ -357,25 +310,21 @@ export default function Admin() {
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>
-                No booth requests.
-              </td>
+              <td colSpan="5" style={tdEmptyStyle}>No booth requests.</td>
             </tr>
           )}
         </tbody>
       </table>
 
-      {/* MAIL POPUP (Gmail style) */}
+      {/* MAIL POPUP */}
       {showMailPopup && mailTarget && (
         <div style={popupOverlayStyle}>
           <div style={popupHeaderStyle}>
             <div>
               <h3 style={{ margin: 0 }}>New Message</h3>
-              <p style={{ color: "#E5E7EB", fontSize: "14px" }}>Admin Compose</p>
+              <p style={{ color: "#E5E7EB", fontSize: 14 }}>Admin Compose</p>
             </div>
-            <button onClick={() => setShowMailPopup(false)} style={closeBtnStyle}>
-              ✕
-            </button>
+            <button onClick={() => setShowMailPopup(false)} style={closeBtnStyle}>✕</button>
           </div>
           <div style={popupContentStyle}>
             <div style={mailRowStyle}><b>To:</b> {mailTarget.email}</div>
@@ -383,20 +332,14 @@ export default function Admin() {
             <div style={mailBodyStyle}>
               <p>Dear {mailTarget.firstName || "User"},</p>
               <p>Please click the link below to verify your account:</p>
-              <a href={previewLink} target="_blank" rel="noreferrer">
-                {previewLink}
-              </a>
+              <a href={previewLink} target="_blank" rel="noreferrer">{previewLink}</a>
               <p>This link will expire once used.</p>
               <p>— Admin Team</p>
             </div>
           </div>
           <div style={popupFooterStyle}>
-            <button onClick={handleSendMail} style={sendBtnStyle} disabled={sending}>
-              {sending ? "Sending..." : "Send"}
-            </button>
-            <button onClick={() => setShowMailPopup(false)} style={cancelBtnStyle}>
-              Cancel
-            </button>
+            <button onClick={handleSendMail} style={sendBtnStyle} disabled={sending}>{sending ? "Sending..." : "Send"}</button>
+            <button onClick={() => setShowMailPopup(false)} style={cancelBtnStyle}>Cancel</button>
           </div>
         </div>
       )}
@@ -405,49 +348,23 @@ export default function Admin() {
 }
 
 /* ---------- Styles ---------- */
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse",
-  marginTop: "10px",
-  backgroundColor: "white",
-  borderRadius: "10px",
-  overflow: "hidden",
-};
-const thStyle = { padding: "10px", fontWeight: "600", textAlign: "center" };
-const tdStyle = { padding: "10px", textAlign: "center", borderBottom: "1px solid #E5E7EB" };
+const tableStyle = { width: "100%", borderCollapse: "collapse", marginTop: 10, backgroundColor: "white", borderRadius: 10, overflow: "hidden" };
+const thStyle = { padding: 10, fontWeight: 600, textAlign: "center" };
+const tdStyle = { padding: 10, textAlign: "center", borderBottom: "1px solid #E5E7EB" };
 const trStyle = { background: "#fff" };
-const tdEmptyStyle = { padding: "20px", textAlign: "center", color: "#6B7280" };
-const verifyBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", cursor: "pointer", marginRight: "5px" };
-const deleteBtnStyle = { backgroundColor: "#EF4444", color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", cursor: "pointer" };
-const mailBtnStyle = { backgroundColor: "#3B82F6", color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", cursor: "pointer", marginRight: "5px" };
-const dropdownStyle = { padding: "5px", borderRadius: "6px", border: "1px solid #D1D5DB", backgroundColor: "#F9FAFB" };
+const tdEmptyStyle = { padding: 20, textAlign: "center", color: "#6B7280" };
+const verifyBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", marginRight: 5 };
+const deleteBtnStyle = { backgroundColor: "#EF4444", color: "white", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" };
+const mailBtnStyle = { backgroundColor: "#3B82F6", color: "white", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", marginRight: 5 };
+const dropdownStyle = { padding: 5, borderRadius: 6, border: "1px solid #D1D5DB", backgroundColor: "#F9FAFB" };
 
-/* Gmail popup styles */
-const popupOverlayStyle = {
-  position: "fixed",
-  bottom: 0,
-  right: "20px",
-  width: "400px",
-  backgroundColor: "white",
-  borderRadius: "10px 10px 0 0",
-  boxShadow: "0 -4px 15px rgba(0,0,0,0.2)",
-  display: "flex",
-  flexDirection: "column",
-  zIndex: 999,
-};
-const popupHeaderStyle = {
-  background: "#3B82F6",
-  color: "white",
-  padding: "10px 15px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-};
-const closeBtnStyle = { background: "transparent", border: "none", color: "white", fontSize: "18px", cursor: "pointer" };
+/* Popup styles */
+const popupOverlayStyle = { position: "fixed", bottom: 0, right: 20, width: 400, backgroundColor: "white", borderRadius: "10px 10px 0 0", boxShadow: "0 -4px 15px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", zIndex: 999 };
+const popupHeaderStyle = { background: "#3B82F6", color: "white", padding: "10px 15px", display: "flex", justifyContent: "space-between", alignItems: "center" };
+const closeBtnStyle = { background: "transparent", border: "none", color: "white", fontSize: 18, cursor: "pointer" };
 const popupContentStyle = { padding: "10px 15px", flexGrow: 1, overflowY: "auto" };
-const mailRowStyle = { padding: "5px 0", borderBottom: "1px solid #E5E7EB", fontSize: "14px" };
-const mailBodyStyle = { padding: "10px 0", fontSize: "14px", color: "#111827" };
-const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: "10px" };
-const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontWeight: "500" };
-const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" };
-//testing if this code runs, all that is left in the verification is to allow the staff to get the mail.
+const mailRowStyle = { padding: "5px 0", borderBottom: "1px solid #E5E7EB", fontSize: 14 };
+const mailBodyStyle = { padding: "10px 0", fontSize: 14, color: "#111827" };
+const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: 10 };
+const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontWeight: 500 };
+const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer" };
