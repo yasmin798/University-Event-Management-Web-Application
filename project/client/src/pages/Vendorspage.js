@@ -77,13 +77,20 @@ const VendorsPage = () => {
                 <span className="capitalize">{bazaar.status}</span>
               </p>
 
-              {/* Apply Button Only */}
-              <div className="flex justify-center">
+              {/* Apply Buttons */}
+              <div className="flex gap-3 justify-center">
                 <Link
                   to={`/apply/${bazaar._id}`}
                   className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium shadow-md"
                 >
-                  Apply
+                  Apply (General)
+                </Link>
+
+                <Link
+                  to={`/apply-booth/${bazaar._id}`}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium shadow-md"
+                >
+                  Apply for Booth
                 </Link>
               </div>
             </div>

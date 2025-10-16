@@ -39,7 +39,11 @@ import EditWorkshopPage from "./pages/EditWorkshopPage";
 
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
+
+
 import BazaarApplicationForm from "./pages/BazaarApplicationForm";
+import BoothApplicationForm from "./pages/BoothApplicationForm";
+
 
 // Simple 404
 function NotFound() {
@@ -106,6 +110,8 @@ function App() {
 
         {/* Courts */}
         <Route path="/courts-availability" element={<CourtsAvailability />} />
+        <Route path="/apply-booth/:bazaarId" element={<BoothApplicationForm />} />
+
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

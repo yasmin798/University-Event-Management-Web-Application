@@ -418,3 +418,7 @@ app.listen(PORT, () =>
 const bazaarApplicationRoutes = require("./routes/bazaarApplications");
 
 app.use("/api/bazaar-applications", bazaarApplicationRoutes);
+
+
+const boothApplicationsRouter = require("./routes/boothApplications");
+app.use("/api/booth-applications", boothApplicationsRouter);
