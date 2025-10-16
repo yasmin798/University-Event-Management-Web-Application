@@ -422,3 +422,6 @@ app.use("/api/bazaar-applications", bazaarApplicationRoutes);
 
 const boothApplicationsRouter = require("./routes/boothApplications");
 app.use("/api/booth-applications", boothApplicationsRouter);
+
+const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
+app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
