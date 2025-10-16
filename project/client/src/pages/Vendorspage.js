@@ -1,19 +1,20 @@
+// client/src/pages/VendorsPage.js
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 const VendorsPage = () => {
   const [bazaars, setBazaars] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
 
   const fetchBazaars = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:3001/api/bazaars"); // your working endpoint
+      const res = await fetch("http://localhost:3001/api/bazaars");
       if (!res.ok) throw new Error("Failed to fetch bazaars");
       const data = await res.json();
-      const list = data.items || [];
+      const list = data.items || data || [];
       setBazaars(list);
       if (list.length === 0) setError("No upcoming bazaars found.");
     } catch (err) {
@@ -71,10 +72,20 @@ const VendorsPage = () => {
               <p className="text-gray-600 mb-3">
                 <strong>Description:</strong> {bazaar.shortDescription || "N/A"}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 mb-4">
                 <strong>Status:</strong>{" "}
                 <span className="capitalize">{bazaar.status}</span>
               </p>
+
+              {/* Apply Button Only */}
+              <div className="flex justify-center">
+                <Link
+                  to={`/apply/${bazaar._id}`}
+                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium shadow-md"
+                >
+                  Apply
+                </Link>
+              </div>
             </div>
           ))}
         </div>
