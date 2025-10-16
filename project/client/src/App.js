@@ -10,6 +10,11 @@ import StaffSignup from "./pages/StaffSignup";
 import VendorSignup from "./pages/VendorSignup";
 import Admin from "./pages/Admin";
 
+//gymSessions
+import GymSessions from "./pages/GymSessions";
+import GymManager from "./pages/GymManager";
+
+
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
@@ -111,6 +116,11 @@ function App() {
         {/* Courts */}
         <Route path="/courts-availability" element={<CourtsAvailability />} />
         <Route path="/apply-booth/:bazaarId" element={<BoothApplicationForm />} />
+
+
+        <Route path="/gym-sessions" element={<GymSessions />} />
+        <Route path="/gym-manager" element={<GymManager />} />
+
 
 
         {/* 404 */}

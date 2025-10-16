@@ -158,6 +158,13 @@ export default function EventsHome() {
             >
               Vendor Requests Booth
             </button>
+            <button
+              className="btn"
+              onClick={() => navigate("/gym-manager")}
+              style={{ marginLeft: "12px" }}
+            >
+              Create Gym Session
+            </button>
           </div>
         )}
 
