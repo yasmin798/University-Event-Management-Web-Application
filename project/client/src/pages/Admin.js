@@ -162,7 +162,7 @@ export default function Admin() {
       setVendorBazaarRequests(enrichedApps);
 
       // Booth requests (admin route or public fallback)
-      const boothAdminAttempt = await tryFetchJson(`${API_ORIGIN}/api/admin/booth-vendor-requests`);
+      const boothAdminAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
       let boothArr = [];
       if (boothAdminAttempt.ok && boothAdminAttempt.data) {
         boothArr = Array.isArray(boothAdminAttempt.data) ? boothAdminAttempt.data : boothAdminAttempt.data.requests || [];
@@ -246,10 +246,8 @@ export default function Admin() {
         // This updates the application document status
         url = `${API_ORIGIN}/api/bazaar-applications/${requestId}`;
       } else if (type === "booth") {
-        // admin booth requests route (if you used admin route for booths)
-        url = `${API_ORIGIN}/api/admin/booth-vendor-requests/${requestId}`;
-        // fallback to booth-applications route if admin route is not present:
-        // url = `${API_ORIGIN}/api/booth-applications/${requestId}`;
+        // admin booth requests route
+        url = `${API_ORIGIN}/api/booth-applications/${requestId}`;
       } else {
         url = `${API_ORIGIN}/api/admin/${type}-vendor-requests/${requestId}`;
       }
@@ -435,7 +433,7 @@ export default function Admin() {
                         {processingId === req._id ? "Processing..." : "Accept"}
                       </button>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")}
+                        onClick={() => handleVendorRequestStatus(req._1d, "bazaar", "rejected")}
                         style={deleteBtnStyle}
                         disabled={processingId === req._id}
                       >
@@ -458,52 +456,118 @@ export default function Admin() {
         </tbody>
       </table>
 
-      {/* VENDOR REQUESTS - BOOTHS */}
+      {/* VENDOR REQUESTS - BOOTHS (UPDATED: show booth id + description with location & duration) */}
       <h2 style={{ color: "#6366F1", marginTop: 50 }}>Vendor Requests - Booths</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#6366F1", color: "white" }}>
             <th style={thStyle}>Booth ID</th>
             <th style={thStyle}>Vendor</th>
-            <th style={thStyle}>Description</th>
+            <th style={thStyle}>Description (location & duration)</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {vendorBoothRequests.length ? (
-            vendorBoothRequests.map((req) => (
-              <tr key={req._id} style={trStyle}>
-                <td style={tdStyle}>{req.boothId}</td>
-                <td style={tdStyle}>{req.vendorName || (req.attendees && req.attendees[0] && req.attendees[0].name) || "—"}</td>
-                <td style={tdStyle}>{req.description}</td>
-                <td style={tdStyle}>{(req.status || "pending").toLowerCase()}</td>
-                <td style={tdStyle}>
-                  {req.status === "pending" ? (
-                    <>
-                      <button
-                        onClick={() => handleVendorRequestStatus(req._id, "booth", "accepted")}
-                        style={verifyBtnStyle}
-                        disabled={processingId === req._id}
-                      >
-                        {processingId === req._id ? "Processing..." : "Accept"}
-                      </button>
-                      <button
-                        onClick={() => handleVendorRequestStatus(req._id, "booth", "rejected")}
-                        style={deleteBtnStyle}
-                        disabled={processingId === req._id}
-                      >
-                        {processingId === req._id ? "Processing..." : "Reject"}
-                      </button>
-                    </>
-                  ) : (
-                    <span style={{ color: req.status === "accepted" ? "green" : "red", fontWeight: 600 }}>
-                      {req.status}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))
+            vendorBoothRequests.map((req) => {
+  // Booth ID: try several common places
+  const boothId = req.boothId || req.booth || req.id || req._id || "—";
+
+  // Vendor: prefer vendorName, fallback to attendees array first item
+  const vendorName = req.vendorName || (Array.isArray(req.attendees) && req.attendees[0] && req.attendees[0].name) || "—";
+
+  // LOCATION: try many likely keys (add any other key your backend actually uses)
+  const locationVal =
+    req.platformSlot ||
+    req.boothLocation ||
+    req.platformLocation ||
+    req.selectedLocation ||
+    req.locationSelected ||
+    req.locationName ||
+    req.slotLocation ||
+    (req.meta && (req.meta.location || req.meta.locationName)) ||
+    (req.details && req.details.location) ||
+    "";
+
+  // DURATION: accept different shapes, normalize to a string and append "weeks" if numeric or short form
+  let rawDuration =
+    req.duration ||
+    req.durationWeeks ||
+    req.setupDuration ||
+    req.weeks ||
+    (req.meta && req.meta.duration) ||
+    (req.details && req.details.duration) ||
+    "";
+
+  // Normalize duration into a friendly string
+  let durationVal = "";
+  if (typeof rawDuration === "number") {
+    durationVal = `${rawDuration} weeks`;
+  } else if (typeof rawDuration === "string" && rawDuration.trim() !== "") {
+    const s = rawDuration.trim();
+    // If it already mentions 'week' or 'weeks', keep as-is; if it's a number-like string, append weeks
+    if (/\bweek(s)?\b/i.test(s)) {
+      durationVal = s;
+    } else if (/^\d+(\.\d+)?$/.test(s)) {
+      durationVal = `${s} weeks`;
+    } else {
+      durationVal = s; // free-text fallback
+    }
+  }
+
+  // Description: prefer explicit req.description, else build from location + duration, else fallback to details/raw
+  let description = "";
+  if (req.description && String(req.description).trim() !== "") {
+    description = String(req.description);
+  } else {
+    const parts = [];
+    if (locationVal) parts.push(`Location: ${locationVal}`);
+    if (durationVal) parts.push(`Duration: ${durationVal}`);
+    if (parts.length === 0 && (req.details || req.info)) {
+      // try to pull text from details/info if present
+      description = String(req.details || req.info);
+    } else {
+      description = parts.join(" • ");
+    }
+    if (!description) description = "No details provided.";
+  }
+
+  const status = (req.status || "pending").toLowerCase();
+
+  return (
+    <tr key={req._id || req.id || boothId} style={trStyle}>
+      <td style={tdStyle}>{boothId}</td>
+      <td style={tdStyle}>{vendorName}</td>
+      <td style={tdStyle}>{description}</td>
+      <td style={tdStyle}>{status}</td>
+      <td style={tdStyle}>
+        {status === "pending" ? (
+          <>
+            <button
+              onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "accepted")}
+              style={verifyBtnStyle}
+              disabled={processingId === (req._id || req.id || boothId)}
+            >
+              {processingId === (req._id || req.id || boothId) ? "Processing..." : "Accept"}
+            </button>
+            <button
+              onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "rejected")}
+              style={deleteBtnStyle}
+              disabled={processingId === (req._id || req.id || boothId)}
+            >
+              {processingId === (req._id || req.id || boothId) ? "Processing..." : "Reject"}
+            </button>
+          </>
+        ) : (
+          <span style={{ color: status === "accepted" ? "green" : "red", fontWeight: 600 }}>
+            {status}
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+})
           ) : (
             <tr>
               <td colSpan="5" style={tdEmptyStyle}>No booth requests.</td>

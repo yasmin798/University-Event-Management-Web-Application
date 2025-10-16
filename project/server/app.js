@@ -425,3 +425,6 @@ app.use("/api/booth-applications", boothApplicationsRouter);
 
 const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
 app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
+
+const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
+app.use("/api/booth-applications", adminBoothRequestsRoute);
