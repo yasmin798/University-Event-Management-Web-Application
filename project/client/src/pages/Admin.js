@@ -1,3 +1,5 @@
+
+// client/src/pages/Admin.jsx
 import React, { useEffect, useState } from "react";
 
 export default function Admin() {
@@ -12,37 +14,172 @@ export default function Admin() {
   const [mailTarget, setMailTarget] = useState(null);
   const [sending, setSending] = useState(false);
   const [previewLink, setPreviewLink] = useState("");
+  const [processingId, setProcessingId] = useState(null); // id currently being processed
 
-  // Fetch users and vendor requests
+  // <-- change if your backend is on another host/port -->
+  const API_ORIGIN = "http://localhost:3001";
+
+  // Generic safe fetch + JSON parse helper
+  const tryFetchJson = async (url) => {
+    try {
+      const r = await fetch(url);
+      const txt = await r.text();
+      try {
+        const data = txt ? JSON.parse(txt) : null;
+        return { ok: r.ok, data, status: r.status, url };
+      } catch {
+        return { ok: r.ok, data: txt, status: r.status, url };
+      }
+    } catch (err) {
+      return { ok: false, error: err.message, url };
+    }
+  };
+
+  // Enrich bazaar applications with bazaar details
+  async function enrichBazaarRequestsWithBazaarInfo(requestsArr) {
+    if (!Array.isArray(requestsArr) || requestsArr.length === 0) return [];
+
+    const uniqueIds = Array.from(
+      new Set(
+        requestsArr
+          .map((r) => {
+            if (!r) return null;
+            if (r.bazaar) {
+              if (typeof r.bazaar === "string") return r.bazaar;
+              if (r.bazaar._id) return r.bazaar._id;
+            }
+            if (r.bazaarId) return r.bazaarId;
+            return null;
+          })
+          .filter(Boolean)
+      )
+    );
+
+    const fetches = uniqueIds.map((id) =>
+      fetch(`${API_ORIGIN}/api/bazaars/${id}`)
+        .then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text().catch(() => null);
+            console.warn(`Failed to fetch bazaar ${id}:`, res.status, txt);
+            return { id, data: null };
+          }
+          const json = await res.json();
+          return { id, data: json };
+        })
+        .catch((err) => {
+          console.error(`Error fetching bazaar ${id}:`, err);
+          return { id, data: null };
+        })
+    );
+
+    const results = await Promise.all(fetches);
+    const bazaarMap = {};
+    results.forEach((r) => {
+      bazaarMap[r.id] = r.data || null;
+    });
+
+    return requestsArr.map((req) => {
+      const firstAtt = Array.isArray(req.attendees) ? req.attendees[0] : null;
+      const vendorName = req.vendorName || firstAtt?.name || "";
+      const vendorEmail = req.vendorEmail || firstAtt?.email || "";
+
+      const attendeesList = Array.isArray(req.attendees)
+        ? req.attendees.map((a) => `${a.name} <${a.email}>`).join(", ")
+        : "";
+      const description = req.description || `Booth: ${req.boothSize || "N/A"}. Attendees: ${attendeesList}`;
+
+      const bazId =
+        req.bazaar && typeof req.bazaar === "string"
+          ? req.bazaar
+          : req.bazaar && req.bazaar._id
+          ? req.bazaar._id
+          : req.bazaarId
+          ? req.bazaarId
+          : null;
+
+      const baz = bazId ? bazaarMap[String(bazId)] : null;
+      const bazaarInfo = baz
+        ? {
+            bazaarTitle: baz.title || baz.name || "",
+            bazaarLocation: baz.location || baz.venue || "",
+            bazaarStart: baz.startDateTime || baz.start || null,
+            bazaarEnd: baz.endDateTime || baz.end || null,
+            bazaarRaw: baz,
+          }
+        : null;
+
+      return {
+        ...req,
+        vendorName,
+        vendorEmail,
+        description,
+        bazaarInfo,
+      };
+    });
+  }
+
+  // Main loader
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setMessage("");
 
-      // Users
-      const usersRes = await fetch("http://localhost:3000/api/debug/users");
-      const usersData = await usersRes.json();
-      if (usersData.users) {
-        setVerifiedUsers(usersData.users.filter((u) => u.isVerified));
-        setPendingUsers(usersData.users.filter((u) => !u.isVerified));
+      // Try users endpoint on backend origin, else fallback to 3000 debug
+      const usersAttempt = await tryFetchJson(`${API_ORIGIN}/api/debug/users`);
+      let usersData = null;
+      if (usersAttempt.ok && usersAttempt.data) usersData = usersAttempt.data;
+      else {
+        const fallback = await tryFetchJson(`http://localhost:3000/api/debug/users`);
+        if (fallback.ok && fallback.data) usersData = fallback.data;
       }
 
-      // Bazaar requests
-      const bazaarRes = await fetch(
-        "http://localhost:3000/api/admin/bazaar-vendor-requests"
-      );
-      const bazaarData = await bazaarRes.json();
-      setVendorBazaarRequests(bazaarData.requests || []);
+      if (usersData?.users) {
+        setVerifiedUsers(usersData.users.filter((u) => u.isVerified));
+        setPendingUsers(usersData.users.filter((u) => !u.isVerified));
+      } else {
+        setVerifiedUsers([]);
+        setPendingUsers([]);
+        console.warn("Users endpoint returned no data.");
+      }
 
-      // Booth requests
-      const boothRes = await fetch(
-        "http://localhost:3000/api/admin/booth-vendor-requests"
-      );
-      const boothData = await boothRes.json();
-      setVendorBoothRequests(boothData.requests || []);
+      // Fetch bazaar applications
+      const appsAttempt = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
+      console.log("appsAttempt:", appsAttempt);
+      let appsArr = [];
+      if (appsAttempt.ok && appsAttempt.data) {
+        if (Array.isArray(appsAttempt.data)) appsArr = appsAttempt.data;
+        else if (appsAttempt.data.requests) appsArr = appsAttempt.data.requests;
+        else if (appsAttempt.data.items) appsArr = appsAttempt.data.items;
+        else appsArr = appsAttempt.data;
+      } else {
+        // fallback to port 3000 if necessary
+        const fallbackApps = await tryFetchJson(`http://localhost:3000/api/bazaar-applications`);
+        if (fallbackApps.ok && fallbackApps.data) {
+          if (Array.isArray(fallbackApps.data)) appsArr = fallbackApps.data;
+          else if (fallbackApps.data.requests) appsArr = fallbackApps.data.requests;
+          else if (fallbackApps.data.items) appsArr = fallbackApps.data.items;
+          else appsArr = fallbackApps.data;
+        }
+      }
 
+      const enrichedApps = await enrichBazaarRequestsWithBazaarInfo(appsArr);
+      setVendorBazaarRequests(enrichedApps);
+
+      // Booth requests (admin route or public fallback)
+      const boothAdminAttempt = await tryFetchJson(`${API_ORIGIN}/api/admin/booth-vendor-requests`);
+      let boothArr = [];
+      if (boothAdminAttempt.ok && boothAdminAttempt.data) {
+        boothArr = Array.isArray(boothAdminAttempt.data) ? boothAdminAttempt.data : boothAdminAttempt.data.requests || [];
+      } else {
+        const boothPublicAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-vendor-requests`);
+        if (boothPublicAttempt.ok && boothPublicAttempt.data) {
+          boothArr = Array.isArray(boothPublicAttempt.data) ? boothPublicAttempt.data : boothPublicAttempt.data.requests || [];
+        }
+      }
+      setVendorBoothRequests(boothArr || []);
       setLoading(false);
     } catch (err) {
-      console.error(err);
+      console.error("fetchUsers error:", err);
       setMessage("❌ Could not load data.");
       setLoading(false);
     }
@@ -50,6 +187,7 @@ export default function Admin() {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Delete user
@@ -57,7 +195,7 @@ export default function Admin() {
     if (!window.confirm("Are you sure you want to DELETE this user?")) return;
 
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/delete/${userId}`, {
+      const res = await fetch(`${API_ORIGIN}/api/admin/delete/${userId}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -79,7 +217,7 @@ export default function Admin() {
     setSending(true);
     try {
       const assignedRole = assignedRoles[mailTarget._id];
-      const res = await fetch("http://localhost:3000/api/admin/send-verification", {
+      const res = await fetch(`${API_ORIGIN}/api/admin/send-verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,36 +240,45 @@ export default function Admin() {
     setSending(false);
   };
 
-  // Vendor request status
+  // Update vendor request status (bazaar -> updates application; booth -> admin booth route)
   const handleVendorRequestStatus = async (requestId, type, newStatus) => {
     if (!window.confirm(`Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`)) return;
-
+    setProcessingId(requestId);
     try {
-      const res = await fetch(
-        `http://localhost:3000/api/admin/${type}-vendor-requests/${requestId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
+      let url;
+      if (type === "bazaar") {
+        url = `${API_ORIGIN}/api/bazaar-applications/${requestId}`;
+      } else if (type === "booth") {
+        url = `${API_ORIGIN}/api/admin/booth-vendor-requests/${requestId}`;
+      } else {
+        url = `${API_ORIGIN}/api/admin/${type}-vendor-requests/${requestId}`;
+      }
+
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
       const data = await res.json();
       if (res.ok) {
         setMessage(`✅ Vendor request ${newStatus} successfully!`);
-        fetchUsers();
+        await fetchUsers();
       } else {
         setMessage(`❌ ${data.error || "Update failed"}`);
+        console.warn("Update failed response:", data);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error updating vendor request status:", err);
       setMessage("❌ Server error during request update");
+    } finally {
+      setProcessingId(null);
     }
   };
 
   // Generate preview link
   const generatePreviewLink = (userId) => {
     const token = Math.random().toString(36).substring(2, 15);
-    setPreviewLink(`http://localhost:3000/api/verify/${token}-for-${userId}`);
+    setPreviewLink(`${API_ORIGIN}/api/verify/${token}-for-${userId}`);
   };
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading users and requests...</p>;
@@ -139,6 +286,7 @@ export default function Admin() {
   return (
     <div style={{ padding: "30px", fontFamily: "Poppins, Arial, sans-serif" }}>
       <h1 style={{ textAlign: "center", color: "#111827" }}>Admin Dashboard</h1>
+
       {message && (
         <p
           style={{
@@ -239,13 +387,13 @@ export default function Admin() {
           )}
         </tbody>
       </table>
-      
+
       {/* VENDOR REQUESTS - BAZAARS */}
       <h2 style={{ color: "#3B82F6", marginTop: 50 }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#3B82F6", color: "white" }}>
-            <th style={thStyle}>Bazaar ID</th>
+            <th style={thStyle}>Bazaar</th>
             <th style={thStyle}>Vendor</th>
             <th style={thStyle}>Description</th>
             <th style={thStyle}>Status</th>
@@ -256,16 +404,46 @@ export default function Admin() {
           {vendorBazaarRequests.length ? (
             vendorBazaarRequests.map((req) => (
               <tr key={req._id} style={trStyle}>
-                <td style={tdStyle}>{req.bazaarId}</td>
-                <td style={tdStyle}>{req.vendorName}</td>
-                <td style={tdStyle}>{req.description}</td>
-                <td style={tdStyle}>{req.status}</td>
                 <td style={tdStyle}>
-                  {req.status === "pending" && (
+                  {req.bazaarInfo ? (
                     <>
-                      <button onClick={() => handleVendorRequestStatus(req._id, "bazaar", "accepted")} style={verifyBtnStyle}>Accept</button>
-                      <button onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")} style={deleteBtnStyle}>Reject</button>
+                      <div style={{ fontWeight: 700 }}>{req.bazaarInfo.bazaarTitle}</div>
+                      <div style={{ fontSize: 12, color: "#6B7280" }}>{req.bazaarInfo.bazaarLocation}</div>
+                      <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+                        {req.bazaarInfo.bazaarStart ? new Date(req.bazaarInfo.bazaarStart).toLocaleString() : ""}{" "}
+                        -{" "}
+                        {req.bazaarInfo.bazaarEnd ? new Date(req.bazaarInfo.bazaarEnd).toLocaleString() : ""}
+                      </div>
                     </>
+                  ) : (
+                    <div>{String(req.bazaar || req.bazaarId || "—")}</div>
+                  )}
+                </td>
+                <td style={tdStyle}>{req.vendorName || (req.attendees && req.attendees[0] && req.attendees[0].name) || "—"}</td>
+                <td style={tdStyle}>{req.description || `Booth: ${req.boothSize || "N/A"}`}</td>
+                <td style={tdStyle}>{(req.status || "pending").toLowerCase()}</td>
+                <td style={tdStyle}>
+                  {req.status === "pending" ? (
+                    <>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "accepted")}
+                        style={verifyBtnStyle}
+                        disabled={processingId === req._id}
+                      >
+                        {processingId === req._id ? "Processing..." : "Accept"}
+                      </button>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")}
+                        style={deleteBtnStyle}
+                        disabled={processingId === req._id}
+                      >
+                        {processingId === req._id ? "Processing..." : "Reject"}
+                      </button>
+                    </>
+                  ) : (
+                    <span style={{ color: req.status === "accepted" ? "green" : "red", fontWeight: 600 }}>
+                      {req.status}
+                    </span>
                   )}
                 </td>
               </tr>
@@ -295,15 +473,31 @@ export default function Admin() {
             vendorBoothRequests.map((req) => (
               <tr key={req._id} style={trStyle}>
                 <td style={tdStyle}>{req.boothId}</td>
-                <td style={tdStyle}>{req.vendorName}</td>
+                <td style={tdStyle}>{req.vendorName || (req.attendees && req.attendees[0] && req.attendees[0].name) || "—"}</td>
                 <td style={tdStyle}>{req.description}</td>
-                <td style={tdStyle}>{req.status}</td>
+                <td style={tdStyle}>{(req.status || "pending").toLowerCase()}</td>
                 <td style={tdStyle}>
-                  {req.status === "pending" && (
+                  {req.status === "pending" ? (
                     <>
-                      <button onClick={() => handleVendorRequestStatus(req._id, "booth", "accepted")} style={verifyBtnStyle}>Accept</button>
-                      <button onClick={() => handleVendorRequestStatus(req._id, "booth", "rejected")} style={deleteBtnStyle}>Reject</button>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "booth", "accepted")}
+                        style={verifyBtnStyle}
+                        disabled={processingId === req._id}
+                      >
+                        {processingId === req._id ? "Processing..." : "Accept"}
+                      </button>
+                      <button
+                        onClick={() => handleVendorRequestStatus(req._id, "booth", "rejected")}
+                        style={deleteBtnStyle}
+                        disabled={processingId === req._id}
+                      >
+                        {processingId === req._id ? "Processing..." : "Reject"}
+                      </button>
                     </>
+                  ) : (
+                    <span style={{ color: req.status === "accepted" ? "green" : "red", fontWeight: 600 }}>
+                      {req.status}
+                    </span>
                   )}
                 </td>
               </tr>
@@ -368,3 +562,4 @@ const mailBodyStyle = { padding: "10px 0", fontSize: 14, color: "#111827" };
 const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: 10 };
 const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontWeight: 500 };
 const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer" };
+
