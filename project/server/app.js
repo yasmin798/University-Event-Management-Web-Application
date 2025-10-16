@@ -328,15 +328,18 @@ const BoothVendorRequest = require("./models/BoothVendorRequest");
 /* ---------------- Vendor Requests ---------------- */
 
 // Get all bazaar vendor requests
-app.get("/api/admin/bazaar-vendor-requests", adminOnly, async (_req, res) => {
+// Get vendor requests for a specific bazaar
+app.get("/api/bazaar-vendor-requests/:bazaarId", async (req, res) => {
   try {
-    const requests = await BazaarVendorRequest.find().sort({ createdAt: -1 });
+    const { bazaarId } = req.params;
+    const requests = await BazaarVendorRequest.find({ bazaarId }).sort({ createdAt: -1 });
     res.json({ requests });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch bazaar vendor requests" });
+    res.status(500).json({ error: "Failed to fetch vendor requests" });
   }
 });
+
 
 // Get all booth vendor requests
 app.get("/api/admin/booth-vendor-requests", adminOnly, async (_req, res) => {

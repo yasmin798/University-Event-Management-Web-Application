@@ -239,7 +239,7 @@ export default function Admin() {
           )}
         </tbody>
       </table>
-
+      
       {/* VENDOR REQUESTS - BAZAARS */}
       <h2 style={{ color: "#3B82F6", marginTop: 50 }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>

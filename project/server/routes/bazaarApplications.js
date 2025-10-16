@@ -32,4 +32,17 @@ router.get("/", async (req, res) => {
   res.json(list);
 });
 
+router.get("/:bazaarId", async (req, res) => {
+  try {
+    const { bazaarId } = req.params;
+    const applications = await BazaarApplication.find({ bazaar: bazaarId }).populate("bazaar");
+
+    res.status(200).json({ requests: applications });
+  } catch (err) {
+    console.error("Error fetching bazaar applications:", err);
+    res.status(500).json({ error: "Failed to fetch applications for this bazaar" });
+  }
+});
+
+
 module.exports = router;

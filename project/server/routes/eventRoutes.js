@@ -348,4 +348,7 @@ router.delete("/conferences/:id", async (req, res) => {
 router.post("/events/:eventId/register", protect, register); // protect requires token
 
 
+
+
+
 module.exports = router;
