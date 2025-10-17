@@ -18,6 +18,8 @@ const bazaarApplicationRoutes = require("./routes/bazaarApplications");
 const boothApplicationsRouter = require("./routes/boothApplications");
 const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
 const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
+const notificationRoutes = require('./routes/notificationRoutes');
+
 
 // Models
 const User = require("./models/User");
@@ -52,7 +54,7 @@ app.use((_, res, next) => {
 // auth / gym
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-
+app.use('/api/notifications', notificationRoutes);
 // mount feature routers
 app.use("/api", eventRoutes); // -> /api/bazaars, /api/trips, /api/conferences
 app.use("/api", userRoutes); // -> /api/users/... (or similar)

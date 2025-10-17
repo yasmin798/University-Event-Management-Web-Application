@@ -63,6 +63,42 @@ exports.getMyWorkshops = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// ... existing exports ...
+
+exports.requestEdits = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const workshop = await Workshop.findById(id);
+    if (!workshop) {
+      return res.status(404).json({ error: 'Workshop not found' });
+    }
+
+    // Create notification for professor
+    const notification = new Notification({
+      userId: workshop.createdBy,
+      message: `Edit request for workshop "${workshop.workshopName}": ${message}`,
+      type: 'edit_request',
+      workshopId: id,
+      unread: true
+    });
+    await notification.save();
+
+    // Update workshop status
+    workshop.status = 'edits_requested';
+    await workshop.save();
+
+    res.json({ success: true, message: 'Edit request sent successfully' });
+  } catch (err) {
+    console.error('Request edits error:', err);
+    res.status(500).json({ error: 'Failed to send edit request' });
+  }
+};
 
 // GET workshops NOT created by this professor
 exports.getOtherWorkshops = async (req, res) => {

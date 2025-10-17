@@ -374,10 +374,10 @@ router.get("/all", async (req, res) => {
   }
 });
 
-module.exports = router;
 
 
-router.get("/:id", async (req, res) => {
+
+router.get("/events/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { type } = req.query;
@@ -399,3 +399,4 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch event" });
   }
 });
+module.exports = router;

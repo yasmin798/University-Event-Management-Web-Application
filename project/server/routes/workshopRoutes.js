@@ -9,7 +9,11 @@ const {
   getMyWorkshops,
   getOtherWorkshops
 } = require("../controllers/workshopController");
+// ... existing routes ...
+const { requestEdits } = require('../controllers/workshopController');
+const { protect, adminOnly } = require('../middleware/auth'); // Assuming adminOnly exists
 
+router.post('/:id/request-edits', protect, adminOnly, requestEdits);
 // CRUD routes
 router.post("/", createWorkshop);
 router.get("/", getAllWorkshops);

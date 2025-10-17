@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Menu, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin } from 'lucide-react';
+import { Search, Menu, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin, Bell } from 'lucide-react';
 import workshopPlaceholder from "../images/workshop.png";
 import { workshopAPI } from '../api/workshopApi';
 
@@ -11,6 +11,8 @@ const ProfessorDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = useRef(null);
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -24,6 +26,22 @@ const ProfessorDashboard = () => {
     
     fetchWorkshops();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    if (isNotificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationsOpen]);
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -107,6 +125,30 @@ useEffect(() => {
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeModal = () => setSelectedWorkshop(null);
+
+  // Sample notifications data (replace with actual fetch if backend is implemented)
+  const notifications = [
+    {
+      id: 1,
+      message: 'Your workshop "AI Fundamentals" has been approved.',
+      time: '2 hours ago',
+      unread: true
+    },
+    {
+      id: 2,
+      message: 'New registration for "Machine Learning Basics".',
+      time: 'Yesterday',
+      unread: false
+    },
+    {
+      id: 3,
+      message: 'Reminder: Budget submission due for upcoming conference.',
+      time: '3 days ago',
+      unread: false
+    }
+  ];
+
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
@@ -331,6 +373,62 @@ useEffect(() => {
             
             <div className="flex items-center gap-2 md:gap-4">
               <span className="hidden md:block text-[#567c8d] text-sm">Today, {formatDate(currentDate)}</span>
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors relative"
+                >
+                  <Bell size={24} className="text-[#2f4156]" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 bg-[#c88585] text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem]">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {isNotificationsOpen && (
+                  <div 
+                    ref={notificationsRef}
+                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#c8d9e6] z-50 overflow-hidden"
+                  >
+                    <div className="p-4 border-b border-[#c8d9e6] flex items-center justify-between">
+                      <h3 className="font-semibold text-[#2f4156]">Notifications</h3>
+                      <button 
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className="text-[#567c8d] hover:text-[#2f4156]"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-[#567c8d]">
+                          No notifications yet
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div 
+                            key={notif.id}
+                            className={`p-4 border-b border-[#c8d9e6] hover:bg-[#f5efeb] transition-colors ${
+                              notif.unread ? 'bg-[#f5efeb]' : ''
+                            }`}
+                          >
+                            <p className="text-sm text-[#2f4156] mb-1">{notif.message}</p>
+                            <p className="text-xs text-[#567c8d]">{notif.time}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <button 
+                      className="w-full p-3 text-[#567c8d] hover:bg-[#f5efeb] text-sm font-medium transition-colors"
+                    >
+                      View all notifications
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
                 <User size={20} className="text-[#2f4156]" />
               </div>

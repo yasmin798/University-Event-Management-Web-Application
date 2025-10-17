@@ -18,7 +18,11 @@ const workshopSchema = new mongoose.Schema({
   registrationDeadline: { type: Date, required: true },
   registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // For registration
   createdBy: { type: String },
-  status: { type: String, default: "pending" },
+  status: { 
+  type: String, 
+  default: "pending",
+  enum: ['pending', 'published', 'rejected', 'edits_requested'] // Add this if using enum
+},
   image: { type: String },
 }, { timestamps: true });
 

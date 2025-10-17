@@ -1,5 +1,4 @@
-// client/src/pages/EventsHome.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../events.theme.css";
 import NavBar from "../components/NavBar";
@@ -9,7 +8,7 @@ import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
 import conference from "../images/conference.jpg";
 import { useServerEvents } from "../hooks/useServerEvents";
-
+import { workshopAPI } from "../api/workshopApi";  // Or wherever your API client is defined (e.g., ../api.js)
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -31,13 +30,13 @@ function formatMoney(n) {
     maximumFractionDigits: 0,
   }).format(num);
 }
-
 export default function EventsHome() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
-  const { events, loading, refresh } = useServerEvents({ refreshMs: 0 });
+  const { events: otherEvents, loading: otherLoading, refresh: refreshOthers } = useServerEvents({ refreshMs: 0 });
+  const [workshops, setWorkshops] = useState([]);
+  const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [toast, setToast] = useState({ open: false, text: "" });
-
   // Styled confirm modal state
   const [confirm, setConfirm] = useState({
     open: false,
@@ -47,7 +46,52 @@ export default function EventsHome() {
     confirmLabel: "Delete",
     cancelLabel: "Cancel",
   });
-
+  // Edit request modal state
+  const [editRequest, setEditRequest] = useState({
+    open: false,
+    workshopId: null,
+    message: "",
+  });
+  const fetchWorkshops = useCallback(async () => {
+  setWorkshopsLoading(true);
+  try {
+    const data = await workshopAPI.getAllWorkshops();
+    const normalizedWorkshops = data.map((w) => {
+      const startDatePart = w.startDate.split("T")[0];
+      const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
+      const endDatePart = w.endDate.split("T")[0];
+      const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
+      return {
+        ...w,
+        type: "WORKSHOP",
+        title: w.workshopName,
+        name: w.workshopName,
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString(),
+        description: w.shortDescription,
+        registrations: [], // Assuming no registrations field yet; update if added
+      };
+    });
+    setWorkshops(normalizedWorkshops);
+  } catch (error) {
+    console.error("Error fetching workshops:", error);
+    setToast({ open: true, text: "Failed to load workshops" });
+  } finally {
+    setWorkshopsLoading(false);
+  }
+}, []);
+  useEffect(() => {
+    fetchWorkshops();
+  }, [fetchWorkshops]);
+  const refresh = useCallback(() => {
+    refreshOthers();
+    fetchWorkshops();
+  }, [refreshOthers, fetchWorkshops]);
+  const events = [...otherEvents, ...workshops];
+  const loading = otherLoading || workshopsLoading;
+  const filteredEvents = filter === "all" 
+    ? events 
+    : events.filter(ev => ev.type.toLowerCase() === filter.slice(0, -1));
   // Feature cards
   const CARDS = useMemo(
     () => [
@@ -85,10 +129,8 @@ export default function EventsHome() {
     ],
     []
   );
-
   const visible =
     filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
-
   // Do the actual DELETE
   const doDelete = async (id, eventType) => {
     try {
@@ -105,8 +147,48 @@ export default function EventsHome() {
       setToast({ open: true, text: "Network error: Could not delete" });
     }
   };
-
-  // Open themed confirm dialog
+  // Do the actual status update
+  const doUpdateStatus = async (id, newStatus) => {
+    try {
+      const res = await fetch(`/api/workshops/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setToast({ open: true, text: err.error || "Failed to update" });
+        return;
+      }
+      setToast({ open: true, text: `Workshop ${newStatus} successfully!` });
+      refresh();
+    } catch (e) {
+      console.error("Update error:", e);
+      setToast({ open: true, text: "Network error: Could not update" });
+    }
+  };
+  // Do the actual edit request
+  const doRequestEdits = async () => {
+    try {
+      const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: editRequest.message }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setToast({ open: true, text: err.error || "Failed to send request" });
+        return;
+      }
+      setToast({ open: true, text: "Edit request sent successfully!" });
+      setEditRequest({ open: false, workshopId: null, message: "" });
+      refresh();
+    } catch (e) {
+      console.error("Edit request error:", e);
+      setToast({ open: true, text: "Network error: Could not send request" });
+    }
+  };
+  // Open themed confirm dialog for delete
   const handleDelete = (id, eventType) => {
     const typeLabel =
       eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g. "Bazaars" -> "Bazaar"
@@ -119,19 +201,46 @@ export default function EventsHome() {
       cancelLabel: "Cancel",
     });
   };
-
+  // Open themed confirm dialog for accept
+  const handleAccept = (id) => {
+    setConfirm({
+      open: true,
+      title: `Accept and Publish this workshop?`,
+      body: `Are you sure you want to accept and publish this workshop?`,
+      onConfirm: () => doUpdateStatus(id, "published"),
+      confirmLabel: "Accept & Publish",
+      cancelLabel: "Cancel",
+    });
+  };
+  // Open themed confirm dialog for reject
+  const handleReject = (id) => {
+    setConfirm({
+      open: true,
+      title: `Reject this workshop?`,
+      body: `Are you sure you want to reject this workshop? This action cannot be undone.`,
+      onConfirm: () => doUpdateStatus(id, "rejected"),
+      confirmLabel: "Reject",
+      cancelLabel: "Cancel",
+    });
+  };
+  // Open edit request modal
+  const handleRequestEdits = (id) => {
+    setEditRequest({
+      open: true,
+      workshopId: id,
+      message: "",
+    });
+  };
   return (
     <div className="events-theme events-home">
       <div className="container">
         <NavBar bleed />
-
         <header className="eo-pagehead-simple">
           <h1>Manage and organize all GUC events.</h1>
         </header>
-
         {/* Filter pills */}
         <div className="eo-filters">
-          {["all", "bazaars", "trips", "conferences"].map((f) => (
+          {["all", "bazaars", "trips", "conferences", "workshops"].map((f) => (
             <button
               key={f}
               className={`eo-pill ${filter === f ? "active" : ""}`}
@@ -141,14 +250,12 @@ export default function EventsHome() {
             </button>
           ))}
         </div>
-
         {/* Create cards */}
         <section className="eo-grid">
           {visible.map((c) => (
             <FeatureCard key={c.type} {...c} />
           ))}
         </section>
-
         {/* Vendor Requests Booth Button - Added above All Events list, shown when filter === "all" */}
         {filter === "all" && (
           <div style={{ margin: "24px 0" }}>
@@ -167,32 +274,33 @@ export default function EventsHome() {
             </button>
           </div>
         )}
-
-        <h1 className="eo-section-title">All Events</h1>
-
+        <h1 className="eo-section-title">
+          {filter === "all" ? "All Events" : `${filter[0].toUpperCase() + filter.slice(1)}`}
+        </h1>
         {loading ? (
           <div className="empty">Loading…</div>
         ) : (
           <div className="grid">
-            {events.length === 0 && (
-              <div className="empty">No events yet. Create one above.</div>
+            {filteredEvents.length === 0 && (
+              <div className="empty">
+                No {filter !== "all" ? filter : "events"} yet.
+                {filter !== "all" && CARDS.some((c) => c.type === filter) ? " Create one above." : ""}
+              </div>
             )}
-
-            {events.map((ev) => {
+            {filteredEvents.map((ev) => {
               const id = ev._id || ev.id;
               const typeRaw = String(ev.type || "").toUpperCase();
               const isBazaar = typeRaw === "BAZAAR";
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
+              const isWorkshop = typeRaw === "WORKSHOP";
               const title = ev.title || ev.name || "Untitled";
               const editable = isEditable(ev.startDateTime);
               const hasRegistrations =
                 Array.isArray(ev.registrations) && ev.registrations.length > 0;
-
               return (
                 <article key={id} className="card">
                   <div className="chip">{typeRaw}</div>
-
                   <div className="kv">
                     <span className="k">Name:</span>
                     <span className="v">{title}</span>
@@ -209,7 +317,6 @@ export default function EventsHome() {
                     <span className="k">Ends:</span>
                     <span className="v">{formatDate(ev.endDateTime)}</span>
                   </div>
-
                   {/* Bazaar-only: registration deadline */}
                   {isBazaar && ev.registrationDeadline && (
                     <div className="kv kv-date">
@@ -219,7 +326,6 @@ export default function EventsHome() {
                       </span>
                     </div>
                   )}
-
                   {/* Trip-only: price & capacity */}
                   {isTrip && (ev.price != null || ev.capacity != null) && (
                     <>
@@ -233,7 +339,6 @@ export default function EventsHome() {
                       </div>
                     </>
                   )}
-
                   {/* Conference-specific: Website */}
                   {isConference && ev.website && (
                     <div className="kv">
@@ -249,7 +354,33 @@ export default function EventsHome() {
                       </span>
                     </div>
                   )}
-
+                  {/* Workshop-specific fields */}
+                  {isWorkshop && ev.registrationDeadline && (
+                    <div className="kv kv-date">
+                      <span className="k">Registration Deadline:</span>
+                      <span className="v">
+                        {formatDate(ev.registrationDeadline)}
+                      </span>
+                    </div>
+                  )}
+                  {isWorkshop && (
+                    <div className="kv">
+                      <span className="k">Capacity:</span>
+                      <span className="v">{ev.capacity ?? "—"}</span>
+                    </div>
+                  )}
+                  {isWorkshop && (
+                    <div className="kv">
+                      <span className="k">Budget:</span>
+                      <span className="v">{formatMoney(ev.requiredBudget)}</span>
+                    </div>
+                  )}
+                  {isWorkshop && (
+                    <div className="kv">
+                      <span className="k">Status:</span>
+                      <span className="v">{ev.status}</span>
+                    </div>
+                  )}
                   {/* Optional: registration count */}
                   {hasRegistrations && (
                     <div className="kv">
@@ -259,13 +390,11 @@ export default function EventsHome() {
                       </span>
                     </div>
                   )}
-
                   {/* Description */}
                   {(ev?.shortDescription && ev.shortDescription.trim()) ||
                   (ev?.description && String(ev.description).trim()) ? (
                     <p>{ev.shortDescription || ev.description}</p>
                   ) : null}
-
                   <div
                     className="actions"
                     style={{ position: "relative", zIndex: 2 }}
@@ -355,6 +484,31 @@ export default function EventsHome() {
                           Delete
                         </button>
                       </>
+                    ) : isWorkshop ? (
+                      <>
+                        {ev.status === "pending" && (
+                          <>
+                            <button
+                              className="btn btn-success"
+                              onClick={() => handleAccept(id)}
+                            >
+                              Accept & Publish
+                            </button>
+                            <button
+                              className="btn btn-danger"
+                              onClick={() => handleReject(id)}
+                            >
+                              Reject
+                            </button>
+                            <button
+                              className="btn btn-warning"
+                              onClick={() => handleRequestEdits(id)}
+                            >
+                              Request Edits
+                            </button>
+                          </>
+                        )}
+                      </>
                     ) : null}
                   </div>
                 </article>
@@ -363,7 +517,6 @@ export default function EventsHome() {
           </div>
         )}
       </div>
-
       {/* Themed confirmation modal (same look as Save/Cancel modal) */}
       {confirm.open && (
         <div className="confirm-overlay" role="dialog" aria-modal="true">
@@ -386,6 +539,36 @@ export default function EventsHome() {
                 }}
               >
                 {confirm.confirmLabel || "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit request modal */}
+      {editRequest.open && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm">
+            <h2>Request Edits</h2>
+            <p>Enter your message for the professor:</p>
+            <textarea
+              value={editRequest.message}
+              onChange={(e) => setEditRequest({ ...editRequest, message: e.target.value })}
+              className="w-full h-32 p-2 border border-gray-300 rounded"
+              placeholder="Describe the required edits..."
+            />
+            <div className="confirm-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setEditRequest({ open: false, workshopId: null, message: "" })}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={doRequestEdits}
+                disabled={!editRequest.message.trim()}
+              >
+                Send
               </button>
             </div>
           </div>
