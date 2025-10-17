@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from 'axios'; // uncomment after testing ui
 //import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
@@ -15,11 +15,20 @@ const EventRegistrationForm = () => {
   });
   const navigate = useNavigate(); // newly added
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false); // newly added
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+   const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: "" });
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -30,6 +39,7 @@ const EventRegistrationForm = () => {
   };
   //const [currentStep, setCurrentStep] = useState(1);
   const [formErrors, setFormErrors] = useState({});
+
   const validateForm = () => {
     const errors = {};
     if (!formData.firstName.trim()) errors.firstName = "First name is required";
@@ -45,46 +55,56 @@ const EventRegistrationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-
     setIsLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found. Please log in.");
+    setError(null);
+    setSuccess(null);
 
-      const res = await axios.post(
-        `http://localhost:3000/api/events/${eventId}/register`,
-        { ...formData, type: eventDetails?.type || "workshop" }, // Include event type
-        { headers: { Authorization: `Bearer ${token}` } }
+    // Retrieve the token from localStorage (or wherever you store it)
+    const token = localStorage.getItem("token");
+    const apiUrl = `/api/events/${eventId}/register`;
+    // --- Start of Debugging Logs ---
+    console.log("Attempting registration...");
+    console.log("Event ID:", eventId);
+    console.log("Auth Token:", token ? "Token found" : "No token found!");
+    console.log("API URL:", apiUrl);
+    // --- End of Debugging Logs ---
+    if (!token) {
+      setError("You must be logged in to register.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // The backend expects a POST request to this specific endpoint
+      const response = await axios.post(
+        apiUrl,
+        {}, // No body is needed, user info comes from the token
+        {
+          headers: {
+            // The 'protect' middleware requires this header format
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      setMessage(res.data.message);
-      setError("");
-      setTimeout(() => navigate("/registered-events"), 2000); // Redirect after 2s
+
+      setSuccess("Registration successful! Redirecting...");
+      setTimeout(() => {
+        navigate("/my-events"); // Redirect to registered events page
+      }, 2000);
+
     } catch (err) {
-      setError(err.response?.data.error || "Registration failed. Please try again.");
-      setMessage("");
+      // Display the specific error message from the backend
+      const errorMessage = err.response?.data?.error || "Registraton failed. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }; // uncomment after testing ui
-  /* const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const res = await registerForEvent(); // Mock registration
-      setMessage(res.message);
-      setError("");
-      // Optionally clear form: setFormData({ name: '', email: '', roleSpecificId: '' });
-    } catch (err) {
-      setError("Registration failed. Using mock data.");
-      setMessage("");
-    }
-  }; */ // remove after testing ui
+  }; 
   const handleCancel = () => {
     navigate(-1); // Go back to previous page
   };
   // Fetch real event details
-  useEffect(() => {
+ /*  useEffect(() => {
     const fetchEventDetails = async () => {
       try {
         setIsLoading(true);
@@ -113,38 +133,42 @@ const EventRegistrationForm = () => {
       }
     };
     fetchEventDetails();
-  }, [eventId]);
+  }, [eventId]); */
+  const getRoleLabel = () => {
+    switch (formData.role) {
+      case "student": return "Student ID";
+      case "staff": return "Staff ID";
+      case "ta": return "TA ID";
+      case "professor": return "Professor ID";
+      default: return "ID";
+    }
+  };
 
   if (isLoading && !eventDetails) return <p style={{ textAlign: "center" }}>Loading event details...</p>;
 
   return (
-    <div className="event-reg-page">
-      {eventDetails && (
-        <div className="event-reg-header">
-          <h1>Register for {eventDetails.name}</h1>
-          <p>
-            {formatDate(eventDetails.startDateTime)} • {eventDetails.location} •
-            Capacity: {eventDetails.capacity}
-          </p>
-        </div>
-      )}
+     <div className="event-reg-page">
+      <div className="event-reg-header">
+        <h1>Event Registration</h1>
+        <p>Complete your registration details below</p>
+      </div>
 
       <div className="event-reg-container">
         <div className="event-reg-card">
           <div className="event-reg-form-header">
             <h2>Registration Form</h2>
-            <p>Please complete your information below</p>
+            <p>Please complete your information to secure your spot</p>
           </div>
 
           <form className="event-reg-form" onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="firstName" className="form-label">
-                  First Name
+                  First Name *
                 </label>
                 <input
                   id="firstName"
-                  className="event-reg-input"
+                  className={`event-reg-input ${formErrors.firstName ? 'error' : ''}`}
                   name="firstName"
                   placeholder="Enter your first name"
                   value={formData.firstName}
@@ -156,11 +180,11 @@ const EventRegistrationForm = () => {
 
               <div className="form-group">
                 <label htmlFor="lastName" className="form-label">
-                  Last Name
+                  Last Name *
                 </label>
                 <input
                   id="lastName"
-                  className="event-reg-input"
+                  className={`event-reg-input ${formErrors.lastName ? 'error' : ''}`}
                   name="lastName"
                   placeholder="Enter your last name"
                   value={formData.lastName}
@@ -173,11 +197,11 @@ const EventRegistrationForm = () => {
 
             <div className="form-group">
               <label htmlFor="email" className="form-label">
-                Email Address
+                Email Address *
               </label>
               <input
                 id="email"
-                className="event-reg-input"
+                className={`event-reg-input ${formErrors.email ? 'error' : ''}`}
                 name="email"
                 type="email"
                 placeholder="Enter your email address"
@@ -209,19 +233,13 @@ const EventRegistrationForm = () => {
 
             <div className="form-group">
               <label htmlFor="roleSpecificId" className="form-label">
-                {formData.role === "student"
-                  ? "Student ID"
-                  : formData.role === "staff"
-                  ? "Staff ID"
-                  : formData.role === "ta"
-                  ? "TA ID"
-                  : "Professor ID"}
+                {getRoleLabel()} *
               </label>
               <input
                 id="roleSpecificId"
-                className="event-reg-input"
+                className={`event-reg-input ${formErrors.roleSpecificId ? 'error' : ''}`}
                 name="roleSpecificId"
-                placeholder={`Enter your ${formData.role} ID`}
+                placeholder={`Enter your ${getRoleLabel().toLowerCase()}`}
                 value={formData.roleSpecificId}
                 onChange={handleChange}
                 required
@@ -241,7 +259,7 @@ const EventRegistrationForm = () => {
               <button
                 className="event-reg-button primary"
                 type="submit"
-                disabled={isLoading || Object.keys(formErrors).length > 0}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <>
@@ -255,11 +273,11 @@ const EventRegistrationForm = () => {
             </div>
           </form>
 
-          {message && (
+          {success && (
             <div className="event-reg-message">
-              <div className="message-icon success">✓</div>
+              <div className="message-icon">✓</div>
               <div>
-                <p>{message}</p>
+                <p style={{ fontWeight: "600", margin: "0 0 4px 0" }}>{success}</p>
                 <p className="redirect-notice">
                   You will be redirected shortly...
                 </p>
@@ -269,8 +287,10 @@ const EventRegistrationForm = () => {
 
           {error && (
             <div className="event-reg-error">
-              <div className="message-icon error">!</div>
-              <p>{error}</p>
+              <div className="message-icon">!</div>
+              <div>
+                <p style={{ fontWeight: "600", margin: 0 }}>{error}</p>
+              </div>
             </div>
           )}
         </div>

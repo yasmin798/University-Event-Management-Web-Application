@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // ✅ Pages
 import Home from "./pages/Home";
@@ -9,6 +9,7 @@ import StudentSignup from "./pages/StudentSignup";
 import StaffSignup from "./pages/StaffSignup";
 import VendorSignup from "./pages/VendorSignup";
 import Admin from "./pages/Admin";
+import UsersView from "./pages/UsersView"; // New admin page
 
 //gymSessions
 import GymSessions from "./pages/GymSessions";
@@ -25,6 +26,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import EventsHome from "./pages/EventsHome";
 import EventList from "./pages/EventList";
 import EventRegistrationForm from "./pages/EventRegistrationForm";
+import RegisteredEvents from "./pages/RegisteredEvents"; // New page
 
 // Bazaar/Trip/Conference forms
 import BazaarForm from "./pages/BazaarForm";
@@ -71,6 +73,12 @@ function App() {
 
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+        
+        {/* New Admin Users View Page */}
+        <Route
+          path="/admin/users"
+          element={<UsersView />}
+        />
 
         {/* Dashboards */}
         <Route path="/student/dashboard" element={<StudentDashboard />} />
@@ -87,7 +95,15 @@ function App() {
         {/* 🗓️ Events */}
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
-        <Route path="/events/register/:eventId" element={<EventRegistrationForm />} />
+        {/* Events - Registration */}
+        <Route path="/events/register/:eventId" element={<EventRegistrationForm />} /> {/* New route for testing registration */}
+
+        {/* New Registered Events Page */}
+        <Route
+          path="/events/registered"
+          element={<RegisteredEvents />}
+        />
+
 
         {/* Bazaar */}
         <Route path="/bazaars/:id/vendor-requests" element={<VendorRequests />} />

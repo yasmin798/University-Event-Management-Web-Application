@@ -1,4 +1,4 @@
-/* Enhanced EventRegistration.css */
+/* Enhanced EventRegistration.css - UI Improvements Only */
 .event-reg-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
@@ -62,80 +62,12 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Add progress indicator */
-.registration-progress {
-  display: flex;
-  padding: 30px 40px 0;
-  margin-bottom: 10px;
-}
-
-.progress-step {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-}
-
-.progress-step::after {
-  content: '';
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  right: -50%;
-  height: 2px;
-  background: #e2e8f0;
-  z-index: 1;
-}
-
-.progress-step:last-child::after {
-  display: none;
-}
-
-.progress-step.active::after {
-  background: #567c8d;
-}
-
-.step-number {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  border: 2px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 8px;
-  position: relative;
-  z-index: 2;
-  transition: all 0.3s ease;
-}
-
-.progress-step.active .step-number {
-  background: #567c8d;
-  border-color: #567c8d;
-  color: white;
-  transform: scale(1.1);
-}
-
-.step-label {
-  font-size: 0.8rem;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.progress-step.active .step-label {
-  color: #567c8d;
-  font-weight: 600;
-}
-
 /* Enhanced form styling */
 .event-reg-form-header {
   padding: 40px 40px 20px;
   text-align: center;
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .event-reg-form-header h2 {
@@ -154,6 +86,21 @@
 
 .event-reg-form {
   padding: 20px 40px 40px;
+}
+
+/* Form row for side-by-side inputs */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 
 /* Enhanced input styling */
@@ -181,6 +128,7 @@
   box-sizing: border-box;
   background: #f8fafc;
   font-weight: 500;
+  font-family: inherit;
 }
 
 .event-reg-input:focus, .event-reg-select:focus {
@@ -195,6 +143,49 @@
   border-color: #cbd5e1;
 }
 
+/* Input hints */
+.input-hint {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Error states */
+.error-text {
+  display: block;
+  margin-top: 8px;
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: slideInUp 0.3s ease;
+}
+
+.event-reg-input.error, .event-reg-select.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.event-reg-input.error:focus, .event-reg-select.error:focus {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Enhanced buttons */
 .form-actions {
   display: flex;
@@ -202,6 +193,12 @@
   margin-top: 40px;
   padding-top: 30px;
   border-top: 1px solid #f1f5f9;
+}
+
+@media (max-width: 480px) {
+  .form-actions {
+    flex-direction: column-reverse;
+  }
 }
 
 .event-reg-button {
@@ -219,6 +216,7 @@
   gap: 12px;
   position: relative;
   overflow: hidden;
+  font-family: inherit;
 }
 
 .event-reg-button::before {
@@ -247,6 +245,13 @@
   box-shadow: 0 8px 25px rgba(86, 124, 141, 0.4);
 }
 
+.event-reg-button.primary:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .event-reg-button.secondary {
   background: white;
   color: #64748b;
@@ -261,10 +266,15 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
+.event-reg-button.secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Enhanced success/error states */
 .event-reg-message, .event-reg-error {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 24px;
   margin: 30px 40px;
@@ -285,6 +295,33 @@
   border-left-color: #ef4444;
 }
 
+.message-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.event-reg-message .message-icon {
+  background: #22c55e;
+  color: white;
+}
+
+.event-reg-error .message-icon {
+  background: #ef4444;
+  color: white;
+}
+
+.redirect-notice {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
 @keyframes slideInUp {
   from {
     opacity: 0;
@@ -296,45 +333,49 @@
   }
 }
 
-/* Floating label alternative */
-.floating-label-group {
-  position: relative;
-  margin-bottom: 25px;
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .event-reg-header h1 {
+    font-size: 2rem;
+  }
+  
+  .event-reg-header p {
+    font-size: 1rem;
+  }
+  
+  .event-reg-form-header,
+  .event-reg-form {
+    padding: 30px 25px;
+  }
+  
+  .event-reg-message,
+  .event-reg-error {
+    margin: 20px 25px;
+  }
 }
 
-.floating-input {
-  width: 100%;
-  padding: 20px 16px 8px;
-  border: 2px solid #f1f5f9;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: #f8fafc;
-  transition: all 0.3s ease;
-}
-
-.floating-label {
-  position: absolute;
-  top: 50%;
-  left: 16px;
-  transform: translateY(-50%);
-  color: #64748b;
-  transition: all 0.3s ease;
-  pointer-events: none;
-  background: #f8fafc;
-  padding: 0 4px;
-}
-
-.floating-input:focus + .floating-label,
-.floating-input:not(:placeholder-shown) + .floating-label {
-  top: 8px;
-  transform: translateY(0);
-  font-size: 0.8rem;
-  color: #567c8d;
-  font-weight: 600;
-}
-
-.floating-input:focus {
-  border-color: #567c8d;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(86, 124, 141, 0.1);
+@media (max-width: 480px) {
+  .event-reg-header {
+    padding: 40px 20px 30px;
+  }
+  
+  .event-reg-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .event-reg-container {
+    padding: 0 15px 40px;
+    margin-top: -40px;
+  }
+  
+  .event-reg-form-header,
+  .event-reg-form {
+    padding: 25px 20px;
+  }
+  
+  .event-reg-message,
+  .event-reg-error {
+    margin: 15px 20px;
+    padding: 20px;
+  }
 }

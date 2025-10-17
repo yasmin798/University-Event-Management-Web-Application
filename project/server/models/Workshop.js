@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const workshopSchema = new mongoose.Schema({
+  type: { type: String, default: "workshop" },
   workshopName: { type: String, required: true },
   location: { type: String, required: true },
   startDateTime: { type: Date, required: true }, // Combine date/time

@@ -53,6 +53,7 @@ app.use("/api/gym", gymRouter);
 app.use("/api", eventRoutes); // -> /api/bazaars, /api/trips, /api/conferences
 app.use("/api", userRoutes); // -> /api/users/... (or similar)
 app.use("/api/workshops", workshopRoutes);
+app.use("/api/events", eventRoutes);
 
 /* ---------------- DB ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";

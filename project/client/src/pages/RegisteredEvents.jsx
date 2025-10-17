@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-//import axios from "axios"; // uncomment after testing ui
-import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
+import axios from "axios"; // uncomment after testing ui
+//import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
 import "./RegisteredEvents.css";
 import workshopImage from "../images/workshop.png";
 import tripImage from "../images/trip.jpeg";
@@ -14,10 +14,14 @@ const RegisteredEvents = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [activeEventType, setActiveEventType] = useState("all");
   
- /*  useEffect(() => {
+ useEffect(() => {
     const fetchEvents = async () => {
       try {
         const token = localStorage.getItem("token");
+        if (!token) {
+          setError("Please log in to view your registered events.");
+          return;
+        }
         const res = await axios.get(
           "http://localhost:3000/api/users/me/registered-events",
           {
@@ -26,12 +30,24 @@ const RegisteredEvents = () => {
         );
         setEvents(res.data);
       } catch (err) {
-        setError("Failed to load events. Ensure you are logged in.");
+        setError(err.response?.data.error || "Failed to load events. Ensure you are logged in.");
       }
     };
     fetchEvents();
-  }, []); */ // uncomment after testing ui
-   useEffect(() => {
+  }, []); // Uncommented backend call; removed mock
+
+  useEffect(() => {
+    if (selectedCategory) {
+      setActiveEventType(selectedCategory);
+    } else {
+      setActiveEventType("all");
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
+  }, [activeEventType]); // uncomment after testing ui
+   /* useEffect(() => {
     getMyRegisteredEvents()
       .then(setEvents)
       .catch(() => setError("Failed to load events. Using mock data."));
@@ -45,7 +61,7 @@ const RegisteredEvents = () => {
   }, [selectedCategory]);
   useEffect(() => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
-  }, [activeEventType]);
+  }, [activeEventType]); */
   if (error) return <p className="my-events-error">{error}</p>;
   const eventTypeImages = {
     all: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
@@ -66,7 +82,7 @@ const RegisteredEvents = () => {
 
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
-      const matchesSearch = event.name
+      const matchesSearch = event.title
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
@@ -82,7 +98,7 @@ const RegisteredEvents = () => {
 
   const EventCard = ({ event, isPast = false }) => {
     const eventImage = getEventImage(event.type);
-    console.log('Event:', event.name, 'Type:', event.type, 'Image URL:', eventImage);
+    console.log('Event:', event.title, 'Type:', event.type, 'Image URL:', eventImage);
     return (
       <div className="event-card">
         <div
@@ -99,14 +115,14 @@ const RegisteredEvents = () => {
         </div>
 
         <div className="event-content">
-          <h3 className="event-title">{event.name}</h3>
+          <h3 className="event-title">{event.title}</h3>
           <p className="event-organizer">Organized By: GUC Events</p>
 
           <div className="event-details">
             <div className="event-detail-item">
               <span className="detail-label">Date & Time:</span>
               <span className="detail-value">
-                {new Date(event.startDate).toLocaleString("en-US", {
+                {new Date(event.startDateTime).toLocaleString("en-US", {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}

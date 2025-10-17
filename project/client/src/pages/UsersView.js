@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-//import axios from 'axios'; // uncomment after testing ui
-import { getUsers } from "../testData/mockAPI"; // remove after ui testing
+import axios from 'axios'; // uncomment after testing ui
+//import { getUsers } from "../testData/mockAPI"; // remove after ui testing
 import "./UsersView.css";
 
 const UsersView = () => {
@@ -13,23 +13,29 @@ const UsersView = () => {
   const [roleFilter, setRoleFilter] = useState("all");
  
 
-  /* useEffect(() => {
+ useEffect(() => {
     const fetchUsers = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Please log in as admin to view users.');
+          return;
+        }
         const res = await axios.get('http://localhost:3000/api/admin/users', {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUsers(res.data);
       } catch (err) {
-        setError('Failed to load users. Ensure you are logged in as admin.');
+        setError(err.response?.data.error || 'Failed to load users. Ensure you are logged in as admin.');
+      } finally {
+        setLoading(false);
       }
     };
     fetchUsers();
-  }, []); */ // uncomment after testing ui
+  }, []); // uncomment after testing ui
 
 
-   useEffect(() => {
+  /*  useEffect(() => {
     setLoading(true);
     getUsers()
       .then((data) => {
@@ -38,7 +44,7 @@ const UsersView = () => {
       })
       .catch(() => setError("Failed to load users data"))
       .finally(() => setLoading(false));
-  }, []); // remove after testing ui
+  }, []); // remove after testing ui */
    const RoleDistribution = ({ users }) => {
     const roleCounts = users.reduce((acc, user) => {
       acc[user.role] = (acc[user.role] || 0) + 1;
