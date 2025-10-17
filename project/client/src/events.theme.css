@@ -1374,3 +1374,24 @@ body {
     transform: translate(-50%, 0);
   }
 }
+/* Group two action rows at the card bottom */
+.events-theme .actions-wrap {
+  margin-top: auto; /* keep the whole group at the bottom */
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* space between the two rows */
+}
+
+/* Each row lays out buttons horizontally */
+.events-theme .actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap; /* keep Edit + Delete on one line */
+}
+
+/* Allow wrapping on very small screens only */
+@media (max-width: 420px) {
+  .events-theme .actions-row {
+    flex-wrap: wrap;
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // ⟵ add this
 import "../events.theme.css";
 import NavBar from "../components/NavBar";
 import axios from "axios";
@@ -13,6 +14,7 @@ const sessionTypes = [
 ];
 
 export default function GymManager() {
+  const navigate = useNavigate(); // ⟵ add this
   const [sessions, setSessions] = useState([]);
   const [form, setForm] = useState({
     date: "",
@@ -22,9 +24,8 @@ export default function GymManager() {
     maxParticipants: "",
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
-  // Fetch sessions
   const fetchSessions = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/gym");
@@ -38,25 +39,20 @@ export default function GymManager() {
     fetchSessions();
   }, []);
 
-  // Handle input changes
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
-  // Create new session
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Additional validation
     if (parseInt(form.maxParticipants) < 1) {
       alert("❌ Max participants must be at least 1");
       return;
     }
-    if (new Date(form.date) < new Date()) {
+    if (new Date(form.date) < new Date(today)) {
       alert("❌ Date cannot be in the past");
       return;
     }
-    
+
     try {
       await axios.post("http://localhost:3000/api/gym", form);
       alert("✅ Session created successfully!");
@@ -67,16 +63,16 @@ export default function GymManager() {
         type: "",
         maxParticipants: "",
       });
-      fetchSessions(); // refresh table
+      fetchSessions();
     } catch (err) {
       console.error(err);
       alert("❌ Failed to create session");
     }
   };
 
-  // Delete a session
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this session?")) return;
+    if (!window.confirm("Are you sure you want to delete this session?"))
+      return;
     try {
       await axios.delete(`http://localhost:3000/api/gym/${id}`);
       alert("🗑️ Deleted successfully!");
@@ -95,16 +91,28 @@ export default function GymManager() {
     <div className="events-theme gym-manager">
       <div className="container">
         <NavBar bleed />
-        <header className="eo-pagehead-simple">
+
+        {/* Unified title + back row */}
+        <div className="eo-head-row">
           <h1>Manage and organize all Gym sessions.</h1>
-        </header>
+          <button
+            type="button"
+            className="btn btn-outline eo-back"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            Back
+          </button>
+        </div>
 
         <section className="eo-grid">
           <article className="card">
             <h2 style={{ margin: "0 0 16px" }}>Add a New Gym Session</h2>
             <form onSubmit={handleSubmit}>
               <div className="kv">
-                <label className="k" htmlFor="date">Date:</label>
+                <label className="k" htmlFor="date">
+                  Date:
+                </label>
                 <input
                   id="date"
                   type="date"
@@ -116,7 +124,9 @@ export default function GymManager() {
                 />
               </div>
               <div className="kv">
-                <label className="k" htmlFor="time">Time:</label>
+                <label className="k" htmlFor="time">
+                  Time:
+                </label>
                 <input
                   id="time"
                   type="time"
@@ -127,7 +137,9 @@ export default function GymManager() {
                 />
               </div>
               <div className="kv">
-                <label className="k" htmlFor="duration">Duration (minutes):</label>
+                <label className="k" htmlFor="duration">
+                  Duration (minutes):
+                </label>
                 <input
                   id="duration"
                   type="number"
@@ -139,7 +151,9 @@ export default function GymManager() {
                 />
               </div>
               <div className="kv">
-                <label className="k" htmlFor="type">Type:</label>
+                <label className="k" htmlFor="type">
+                  Type:
+                </label>
                 <select
                   id="type"
                   name="type"
@@ -156,7 +170,9 @@ export default function GymManager() {
                 </select>
               </div>
               <div className="kv">
-                <label className="k" htmlFor="maxParticipants">Max Participants:</label>
+                <label className="k" htmlFor="maxParticipants">
+                  Max Participants:
+                </label>
                 <input
                   id="maxParticipants"
                   type="number"
@@ -168,24 +184,28 @@ export default function GymManager() {
                 />
               </div>
               <div className="actions">
-                <button type="submit" className="btn">Create Session</button>
+                <button type="submit" className="btn">
+                  Create Session
+                </button>
               </div>
             </form>
           </article>
         </section>
 
-        <h2 style={{ margin: "24px 0 12px" }}>All Sessions</h2>
+        <h1 className="eo-section-title">All Sessions</h1>
+
         <div className="grid">
           {gymSessions.length === 0 && (
             <div className="empty">No sessions found.</div>
           )}
-
           {gymSessions.map((s) => (
             <article key={s._id} className="card">
               <div className="chip">{s.type}</div>
               <div className="kv kv-date">
                 <span className="k">Date:</span>
-                <span className="v">{new Date(s.date).toLocaleDateString()}</span>
+                <span className="v">
+                  {new Date(s.date).toLocaleDateString()}
+                </span>
               </div>
               <div className="kv">
                 <span className="k">Time:</span>
@@ -201,9 +221,8 @@ export default function GymManager() {
               </div>
               <div className="actions">
                 <button
-                  className="btn"
+                  className="btn btn-danger"
                   onClick={() => handleDelete(s._id)}
-                  style={{ backgroundColor: "#f44336", color: "white" }}
                 >
                   Delete
                 </button>
