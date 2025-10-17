@@ -56,22 +56,23 @@ export default function EventsHome() {
   setWorkshopsLoading(true);
   try {
     const data = await workshopAPI.getAllWorkshops();
+
     const normalizedWorkshops = data.map((w) => {
-      const startDatePart = w.startDate.split("T")[0];
-      const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
-      const endDatePart = w.endDate.split("T")[0];
-      const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
+      const start = new Date(w.startDateTime);
+      const end = new Date(w.endDateTime);
+
       return {
         ...w,
         type: "WORKSHOP",
         title: w.workshopName,
         name: w.workshopName,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString(),
+        startDateTime: start.toISOString(),
+        endDateTime: end.toISOString(),
         description: w.shortDescription,
-        registrations: [], // Assuming no registrations field yet; update if added
+        registrations: w.registeredUsers || [],
       };
     });
+
     setWorkshops(normalizedWorkshops);
   } catch (error) {
     console.error("Error fetching workshops:", error);
@@ -80,6 +81,7 @@ export default function EventsHome() {
     setWorkshopsLoading(false);
   }
 }, []);
+
   useEffect(() => {
     fetchWorkshops();
   }, [fetchWorkshops]);

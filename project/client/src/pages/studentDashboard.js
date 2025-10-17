@@ -19,39 +19,41 @@ const StudentDashboard = () => {
 
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
-    setWorkshopsLoading(true);
-    try {
-      const data = await workshopAPI.getAllWorkshops();
-      const normalizedWorkshops = data
-        .filter(w => w.status === "published") // Only published for students
-        .map((w) => {
-          const startDatePart = w.startDate.split("T")[0];
-          const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
-          const endDatePart = w.endDate.split("T")[0];
-          const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
-          return {
-            ...w,
-            _id: w._id,
-            type: "WORKSHOP",
-            title: w.workshopName,
-            name: w.workshopName,
-            startDateTime: startDateTime.toISOString(),
-            endDateTime: endDateTime.toISOString(),
-            startDate: startDateTime.toISOString(), // For compatibility
-            date: startDateTime.toISOString(), // For compatibility
-            image: w.image || workshopPlaceholder,
-            description: w.shortDescription,
-            professorsParticipating: w.professorsParticipating || "",
-          };
-        });
-      setWorkshops(normalizedWorkshops);
-    } catch (error) {
-      console.error("Error fetching workshops:", error);
-      setWorkshops([]);
-    } finally {
-      setWorkshopsLoading(false);
-    }
-  }, []);
+  setWorkshopsLoading(true);
+  try {
+    const data = await workshopAPI.getAllWorkshops();
+
+    const normalizedWorkshops = data
+      .filter((w) => w.status === "published")
+      .map((w) => {
+        const start = new Date(w.startDateTime);
+        const end = new Date(w.endDateTime);
+
+        return {
+          ...w,
+          _id: w._id,
+          type: "WORKSHOP",
+          title: w.workshopName,
+          name: w.workshopName,
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          startDate: start.toISOString(), // for compatibility
+          date: start.toISOString(),
+          image: w.image || workshopPlaceholder,
+          description: w.shortDescription,
+          professorsParticipating: w.professorsParticipating || "",
+        };
+      });
+
+    setWorkshops(normalizedWorkshops);
+  } catch (error) {
+    console.error("Error fetching workshops:", error);
+    setWorkshops([]);
+  } finally {
+    setWorkshopsLoading(false);
+  }
+}, []);
+
 
   useEffect(() => {
     fetchWorkshops();
