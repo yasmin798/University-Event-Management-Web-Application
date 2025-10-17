@@ -79,19 +79,19 @@ const RegisteredEvents = () => {
   };
   const getEventImage = (eventType) => {
     if (!eventType) return eventTypeImages.default;
-    const type = eventType.toLowerCase();
+    const type = (eventType||'').toLowerCase();
     return eventTypeImages[type] || eventTypeImages.default;
   };
-  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
+  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title || event.workshopName}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
-      const matchesSearch = event.title
+      const matchesSearch = (event.title||event.workshopName||"")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
       const matchesCategory = 
         activeEventType === "all" || 
-        (event.type && event.type.toLowerCase() === activeEventType);
+        (event.type && (event.type||'').toLowerCase() === activeEventType);
       
       return matchesSearch && matchesCategory;
     });
@@ -119,7 +119,7 @@ const RegisteredEvents = () => {
         </div>
 
         <div className="event-content">
-          <h3 className="event-title">{event.title}</h3>
+          <h3 className="event-title">{event.title || event.workshopName||'Untitled Event'}</h3>
           <p className="event-organizer">Organized By: GUC Events</p>
 
           <div className="event-details">
