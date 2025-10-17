@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 const EventTypeDropdown = ({ selected, onChange }) => {
-  const types = ["All", "Workshop", "Trip", "Bazaar", "Booth", "Conference"];
+  const types = ["All", "WORKSHOP", "TRIP", "BAZAAR", "BOOTH", "CONFERENCE"];
   const [isOpen, setIsOpen] = useState(false);
 
   return (

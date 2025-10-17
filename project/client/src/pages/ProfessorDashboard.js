@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin, Bell } from 'lucide-react';
 import workshopPlaceholder from "../images/workshop.png";
 import { workshopAPI } from '../api/workshopApi';
+import EventTypeDropdown from '../components/EventTypeDropdown';
+import { useServerEvents } from "../hooks/useServerEvents";
+
 
 const ProfessorDashboard = () => {
   const navigate = useNavigate();
@@ -13,6 +16,57 @@ const ProfessorDashboard = () => {
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
+const [eventTypeFilter, setEventTypeFilter] = useState('All');
+const [workshopsLoading, setWorkshopsLoading] = useState(true);
+
+// Use same hooks as EventsHome
+  const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
+
+  // Fetch workshops same way as EventsHome
+  const fetchWorkshops = useCallback(async () => {
+    setWorkshopsLoading(true);
+    try {
+      const data = await workshopAPI.getAllWorkshops();
+      const normalizedWorkshops = data
+        .filter(w => w.status === "published") // Only published for students
+        .map((w) => {
+          const startDatePart = w.startDate.split("T")[0];
+          const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
+          const endDatePart = w.endDate.split("T")[0];
+          const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
+          return {
+            ...w,
+            _id: w._id,
+            type: "WORKSHOP",
+            title: w.workshopName,
+            name: w.workshopName,
+            startDateTime: startDateTime.toISOString(),
+            endDateTime: endDateTime.toISOString(),
+            startDate: startDateTime.toISOString(), // For compatibility
+            date: startDateTime.toISOString(), // For compatibility
+            image: w.image || workshopPlaceholder,
+            description: w.shortDescription,
+            professorsParticipating: w.professorsParticipating || "",
+          };
+        });
+      setWorkshops(normalizedWorkshops);
+    } catch (error) {
+      console.error("Error fetching workshops:", error);
+      setWorkshops([]);
+    } finally {
+      setWorkshopsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWorkshops();
+  }, [fetchWorkshops]);
+
+  // Combine events like EventsHome
+  const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops];
+  const loading = otherLoading || workshopsLoading;
+
+
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -58,10 +112,50 @@ const ProfessorDashboard = () => {
       navigate('/');
     }
   };
+  // const allEvents = workshops
+  // .filter(w => w.status === 'published') // only published for professors too if needed
+  // .map((w) => {
+  //   const startDateTime = new Date(w.startDateTime || w.startDate);
+  //   const endDateTime = new Date(w.endDateTime || w.endDate);
+
+  //   return {
+  //     ...w,
+  //     _id: w._id,
+  //     type: 'WORKSHOP',
+  //     title: w.workshopName,
+  //     name: w.workshopName,
+  //     startDateTime: startDateTime.toISOString(),
+  //     endDateTime: endDateTime.toISOString(),
+  //     image: w.image || workshopPlaceholder,
+  //     description: w.shortDescription,
+  //     professorsParticipating: Array.isArray(w.professorsParticipating) ? w.professorsParticipating.join(', ') : w.professorsParticipating,
+  //     location: w.location,
+  //     registrationDeadline: w.registrationDeadline
+  //   };
+  // });
+
+ const filteredEvents = allEvents
+    .filter((e) => {
+      const now = new Date();
+      const eventDate = new Date(e.startDateTime || e.startDate || e.date);
+      return eventDate > now; // Only future events
+    })
+    .filter((e) => {
+      const name = e.title || e.name || e.workshopName || e.bazaarName;
+      const matchesSearch =
+        name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (e.professorsParticipating?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesType = eventTypeFilter === "All" || e.type === eventTypeFilter;
+      return matchesSearch && matchesType;
+    });
 
   const handleGymSessions = () => {
     navigate("/gym-sessions");
     closeSidebar(); // Close sidebar after navigation
+  };
+
+ const handleDetails = (event) => {
+    navigate(`/events/${event._id}`);
   };
 
   const formatDate = (date) => {
@@ -104,6 +198,15 @@ const ProfessorDashboard = () => {
   };
 
   const [filteredWorkshops, setFilteredWorkshops] = useState([]);
+const formatEventDate = (dateTimeStr) => {
+    if (!dateTimeStr) return "N/A";
+    const date = new Date(dateTimeStr);
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   useEffect(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -404,6 +507,8 @@ const ProfessorDashboard = () => {
                   className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
                 />
               </div>
+              <EventTypeDropdown selected={eventTypeFilter} onChange={setEventTypeFilter} />
+
             </div>
             
             <div className="flex items-center gap-2 md:gap-4">
@@ -534,6 +639,53 @@ const ProfessorDashboard = () => {
                   </div>
                 )}
               </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">Available Events</h2>
+                        {filteredEvents.length === 0 ? (
+                          <p className="text-[#567c8d]">No events found.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {filteredEvents.map((e) => (
+                              <div key={e._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+                                <div className="h-40 w-full bg-gray-200">
+                                  <img
+                                    src={e.image || workshopPlaceholder}
+                                    alt={e.title || e.name || e.workshopName}
+                                    className="h-full w-full object-cover"
+                                    onError={(target) => { target.target.src = workshopPlaceholder; }}
+                                  />
+                                </div>
+                                <div className="p-4">
+                                  <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+                                    {e.title || e.name || e.workshopName || "Untitled"}
+                                  </h3>
+                                  {e.professorsParticipating && (
+                                    <p className="text-sm text-[#567c8d] truncate">Professors: {e.professorsParticipating}</p>
+                                  )}
+                                  <p className="text-sm text-[#567c8d] truncate">Type: {e.type || "N/A"}</p>
+                                  <p className="text-sm text-[#567c8d] truncate">
+                                    Date: {formatEventDate(e.startDateTime || e.startDate || e.date)}
+                                  </p>
+                                  <div className="flex gap-2 mt-4">
+                                    <button
+                                      className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
+                                      onClick={() => handleDetails(e)}
+                                    >
+                                      Details
+                                    </button>
+                                    {(e.type === "TRIP" || e.type === "WORKSHOP") && (
+                                      <button
+                                        className="flex-1 bg-[#c88585] hover:bg-[#b87575] text-white py-2 px-3 rounded-lg transition-colors"
+                                        onClick={() => navigate(`/events/register/${e._id}`)}
+                                      >
+                                        Register
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
             </div>
 
             {/* Calendar & Upcoming Events */}
