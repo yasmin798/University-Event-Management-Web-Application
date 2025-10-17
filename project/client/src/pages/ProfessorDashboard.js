@@ -49,6 +49,11 @@ const ProfessorDashboard = () => {
     }
   };
 
+  const handleGymSessions = () => {
+    navigate("/gym-sessions");
+    closeSidebar(); // Close sidebar after navigation
+  };
+
   const formatDate = (date) => {
     const options = { day: 'numeric', month: 'long', year: 'numeric' };
     return date.toLocaleDateString('en-US', options);
@@ -322,6 +327,14 @@ useEffect(() => {
           >
             <Calendar size={20} />
             <span>My Workshops</span>
+          </button>
+
+          <button 
+            onClick={handleGymSessions}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
+          >
+            <Calendar size={20} />
+            <span>Gym Sessions</span>
           </button>
           
           <button 
