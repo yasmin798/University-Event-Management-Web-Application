@@ -46,8 +46,8 @@ const GymSessions = () => {
         <header className="eo-pagehead-simple">
           <h1>Manage and organize all Gym sessions.</h1>
         </header>
+        <h1 className="eo-section-title">All Sessions</h1>
 
-        <h2 style={{ margin: "24px 0 12px" }}>All Sessions</h2>
         <div className="grid">
           {gymSessions.length === 0 && (
             <div className="empty">No gym sessions found.</div>
@@ -58,7 +58,9 @@ const GymSessions = () => {
               <div className="chip">{s.type.toUpperCase()}</div>
               <div className="kv kv-date">
                 <span className="k">Date:</span>
-                <span className="v">{new Date(s.date).toLocaleDateString()}</span>
+                <span className="v">
+                  {new Date(s.date).toLocaleDateString()}
+                </span>
               </div>
               <div className="kv">
                 <span className="k">Time:</span>

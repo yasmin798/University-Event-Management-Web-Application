@@ -10,7 +10,7 @@ import StaffSignup from "./pages/StaffSignup";
 import VendorSignup from "./pages/VendorSignup";
 import Admin from "./pages/Admin";
 import UsersView from "./pages/UsersView"; // New admin page
-
+import EventDetails from "./pages/EventDetails";
 //gymSessions
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
@@ -38,6 +38,7 @@ import VendorRequests from "./pages/VendorRequests";
 import VendorRequestsBooth from "./pages/VendorRequestsBooth";
 import VendorsPage from "./pages/Vendorspage";
 
+
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
@@ -52,6 +53,9 @@ import BazaarApplicationForm from "./pages/BazaarApplicationForm";
 import BoothApplicationForm from "./pages/BoothApplicationForm";
 
 import MyApplications from "./pages/MyApplications";
+
+
+import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
 
 
 // Simple 404
@@ -84,6 +88,7 @@ function App() {
 
         {/* Dashboards */}
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/ta/dashboard" element={<TaDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -140,9 +145,8 @@ function App() {
         <Route path="/gym-manager" element={<GymManager />} />
 
 
-        <Route path="/my-applications" element={<MyApplications />} />
           
-
+        <Route path="/my-applications/:status" element={<MyApplicationsByStatus />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
