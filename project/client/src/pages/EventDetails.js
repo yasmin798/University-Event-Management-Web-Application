@@ -30,28 +30,25 @@ const EventDetails = () => {
       setWorkshopsLoading(true);
       try {
         const data = await workshopAPI.getAllWorkshops();
-        const normalizedWorkshops = data
-          .filter(w => w.status === "published")
-          .map((w) => {
-            const startDatePart = w.startDate.split("T")[0];
-            const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
-            const endDatePart = w.endDate.split("T")[0];
-            const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
-            return {
-              ...w,
-              _id: w._id,
-              type: "WORKSHOP",
-              title: w.workshopName,
-              name: w.workshopName,
-              startDateTime: startDateTime.toISOString(),
-              endDateTime: endDateTime.toISOString(),
-              startDate: startDateTime.toISOString(),
-              date: startDateTime.toISOString(),
-              image: w.image || workshopPlaceholder,
-              description: w.shortDescription,
-              professorsParticipating: w.professorsParticipating || "",
-            };
-          });
+        const normalizedWorkshops = data.map((w) => {
+  const start = w.startDateTime ? new Date(w.startDateTime) : new Date();
+  const end = w.endDateTime ? new Date(w.endDateTime) : start;
+  return {
+    ...w,
+    _id: w._id,
+    type: "WORKSHOP",
+    title: w.workshopName,
+    name: w.workshopName,
+    startDateTime: start.toISOString(),
+    endDateTime: end.toISOString(),
+    startDate: start.toISOString(),
+    date: start.toISOString(),
+    image: w.image || workshopPlaceholder,
+    description: w.shortDescription,
+    professorsParticipating: w.professorsParticipating || "",
+  };
+});
+
         setWorkshops(normalizedWorkshops);
       } catch (error) {
         console.error("Error fetching workshops:", error);
