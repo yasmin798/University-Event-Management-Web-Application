@@ -122,22 +122,26 @@ useEffect(() => {
 
   const foundEvent = allEvents.find(e => e._id === id);
 
-  if (foundEvent && foundEvent.type === "BAZAAR") {
-  const eventBooths = booths.filter(b => b.bazaarId === id && b.status === "accepted");
-  foundEvent.booths = eventBooths;
+  if (foundEvent) {
+    // attach booths only for Bazaar
+    if (foundEvent.type === "BAZAAR") {
+      const eventBooths = booths.filter(b => b.bazaarId === id && b.status === "accepted");
+      foundEvent.booths = eventBooths;
+    }
 
     setEvent(foundEvent);
     setError("");
   } else {
+    setEvent(null);
     setError("Event not found");
   }
 }, [id, otherEvents, workshops, booths, loading, boothsLoading]);
 
   // Set loading based on both data sources
  useEffect(() => {
-  const stillLoading = workshopsLoading || boothsLoading || (otherEvents.length === 0 && workshops.length === 0);
+  const stillLoading = workshopsLoading || (otherEvents.length === 0 && workshops.length === 0);
   setLoading(stillLoading);
-}, [otherEvents, workshopsLoading, boothsLoading, workshops.length]);
+}, [otherEvents, workshopsLoading,  workshops.length]);
 
 
   const formatDate = (iso) => {
