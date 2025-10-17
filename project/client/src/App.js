@@ -55,6 +55,9 @@ import BoothApplicationForm from "./pages/BoothApplicationForm";
 import MyApplications from "./pages/MyApplications";
 
 
+import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
+
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -142,9 +145,8 @@ function App() {
         <Route path="/gym-manager" element={<GymManager />} />
 
 
-        <Route path="/my-applications" element={<MyApplications />} />
           
-
+        <Route path="/my-applications/:status" element={<MyApplicationsByStatus />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

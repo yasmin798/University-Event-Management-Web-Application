@@ -31,15 +31,23 @@ const VendorsPage = () => {
         Vendors Portal
       </h1>
 
-      <div className="flex justify-center mb-8">
-        <button
-          onClick={fetchBazaars}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
-        >
-          Show Upcoming Bazaars
-        </button>
-      </div>
-      <Link to="/my-applications" className="...">My Applications</Link>
+      <div className="flex flex-col md:flex-row gap-4 justify-center mb-8">
+  <button
+    onClick={fetchBazaars}
+    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
+  >
+    Show Upcoming Bazaars
+  </button>
+
+  <Link
+    to="/my-applications/accepted"
+    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
+  >
+    View Applications
+  </Link>
+
+  
+</div>
 
 
       {loading && (
