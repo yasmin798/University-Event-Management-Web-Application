@@ -1,6 +1,17 @@
+// client/src/pages/Admin.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Menu, X, LogOut } from "lucide-react";
 
 export default function Admin() {
+  const navigate = useNavigate();
+
+  // ===== Sidebar UI state =====
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const closeSidebar = () => setIsSidebarOpen(false);
+  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+
+  // ===== Your existing state =====
   const [verifiedUsers, setVerifiedUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
   const [vendorBazaarRequests, setVendorBazaarRequests] = useState([]);
@@ -15,13 +26,11 @@ export default function Admin() {
   const [previewLink, setPreviewLink] = useState("");
   const [processingId, setProcessingId] = useState(null);
   const [eventFetchErrors, setEventFetchErrors] = useState([]);
-  const [popup, setPopup] = useState({
-  visible: false,
-  message: "",
-});
+  const [popup, setPopup] = useState({ visible: false, message: "" });
 
   const API_ORIGIN = "http://localhost:3001";
 
+  // ===== Same helper functions you already had =====
   const tryFetchJson = async (url) => {
     try {
       const r = await fetch(url);
@@ -32,7 +41,13 @@ export default function Admin() {
         return { ok: r.ok, data, status: r.status, url };
       } catch (err) {
         console.error(`Parse error for ${url}:`, txt, err);
-        return { ok: r.ok, data: txt, status: r.status, url, error: `Parse error: ${err.message}` };
+        return {
+          ok: r.ok,
+          data: txt,
+          status: r.status,
+          url,
+          error: `Parse error: ${err.message}`,
+        };
       }
     } catch (err) {
       console.error(`Network error for ${url}:`, err);
@@ -90,7 +105,9 @@ export default function Admin() {
       const attendeesList = Array.isArray(req.attendees)
         ? req.attendees.map((a) => `${a.name} <${a.email}>`).join(", ")
         : "";
-      const description = req.description || `Booth: ${req.boothSize || "N/A"}. Attendees: ${attendeesList}`;
+      const description =
+        req.description ||
+        `Booth: ${req.boothSize || "N/A"}. Attendees: ${attendeesList}`;
 
       const bazId =
         req.bazaar && typeof req.bazaar === "string"
@@ -144,7 +161,9 @@ export default function Admin() {
         setPendingUsers([]);
       }
 
-      const appsAttempt = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
+      const appsAttempt = await tryFetchJson(
+        `${API_ORIGIN}/api/bazaar-applications`
+      );
       let appsArr = [];
       if (appsAttempt.ok && appsAttempt.data) {
         if (Array.isArray(appsAttempt.data)) appsArr = appsAttempt.data;
@@ -152,24 +171,34 @@ export default function Admin() {
         else if (appsAttempt.data.items) appsArr = appsArr.data.items;
         else appsArr = appsAttempt.data;
       } else {
-        const adminApps = await tryFetchJson(`${API_ORIGIN}/api/admin/bazaar-vendor-requests`);
+        const adminApps = await tryFetchJson(
+          `${API_ORIGIN}/api/admin/bazaar-vendor-requests`
+        );
         console.log("Bazaar vendor requests response:", adminApps);
         if (adminApps.ok && adminApps.data) {
-          appsArr = Array.isArray(adminApps.data) ? adminApps.data : adminApps.data.requests || [];
+          appsArr = Array.isArray(adminApps.data)
+            ? adminApps.data
+            : adminApps.data.requests || [];
         }
       }
 
-      const enrichedApps = await enrichBazaarRequestsWithBazaarInfo(appsArr || []);
+      const enrichedApps = await enrichBazaarRequestsWithBazaarInfo(
+        appsArr || []
+      );
       setVendorBazaarRequests(enrichedApps);
 
-      const boothAdminAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
+      const boothAdminAttempt = await tryFetchJson(
+        `${API_ORIGIN}/api/booth-applications`
+      );
       let boothArr = [];
       if (boothAdminAttempt.ok && boothAdminAttempt.data) {
-        boothArr = Array.isArray(boothAdminAttempt.data) ? boothAdminAttempt.data : boothAdminAttempt.data.requests || [];
+        boothArr = Array.isArray(boothAdminAttempt.data)
+          ? boothAdminAttempt.data
+          : boothAdminAttempt.data.requests || [];
       }
       setVendorBoothRequests(boothArr || []);
 
-      // Fetch all events (Trips, Conferences, Bazaars)
+      // Fetch all events
       const eventEndpoints = [
         { path: "/api/trips", type: "trip", key: "items" },
         { path: "/api/conferences", type: "conference", key: "items" },
@@ -182,10 +211,18 @@ export default function Admin() {
       for (const endpoint of eventEndpoints) {
         const attempt = await tryFetchJson(`${API_ORIGIN}${endpoint.path}`);
         if (attempt.ok && attempt.data) {
-          const data = Array.isArray(attempt.data) ? attempt.data : attempt.data[endpoint.key] || [];
-          allEvents.push(...data.map((event) => ({ ...event, eventType: endpoint.type })));
+          const data = Array.isArray(attempt.data)
+            ? attempt.data
+            : attempt.data[endpoint.key] || [];
+          allEvents.push(
+            ...data.map((event) => ({ ...event, eventType: endpoint.type }))
+          );
         } else {
-          errors.push(`Failed to fetch ${endpoint.path}: ${attempt.status} ${attempt.error || attempt.data || "No data"}`);
+          errors.push(
+            `Failed to fetch ${endpoint.path}: ${attempt.status} ${
+              attempt.error || attempt.data || "No data"
+            }`
+          );
         }
       }
 
@@ -194,7 +231,9 @@ export default function Admin() {
       setEventFetchErrors(errors);
 
       if (allEvents.length === 0) {
-        setMessage("⚠️ No events found. Database collections (trips, conferences, bazaars) may be empty. Create events using POST /api/trips, /api/conferences, or /api/bazaars.");
+        setMessage(
+          "⚠️ No events found. Database collections (trips, conferences, bazaars) may be empty."
+        );
       }
 
       setLoading(false);
@@ -210,7 +249,7 @@ export default function Admin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-const handleDelete = async (userId) => {
+  const handleDelete = async (userId) => {
     if (!window.confirm("Are you sure you want to DELETE this user?")) return;
 
     try {
@@ -229,7 +268,6 @@ const handleDelete = async (userId) => {
       setMessage("❌ Server error during delete");
     }
   };
-
 
   const handleSendMail = async () => {
     if (!mailTarget) return;
@@ -260,7 +298,12 @@ const handleDelete = async (userId) => {
   };
 
   const handleVendorRequestStatus = async (requestId, type, newStatus) => {
-    if (!window.confirm(`Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`)) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`
+      )
+    )
+      return;
     setProcessingId(requestId);
     try {
       let url;
@@ -294,29 +337,28 @@ const handleDelete = async (userId) => {
 
   const handleDeleteEvent = async (eventId, eventType) => {
     const event = events.find((e) => e._id === eventId);
-    console.log(`Attempting to delete ${eventType} with ID ${eventId}:`, event);
-
     if (!event) {
       setMessage(`❌ Event not found for ID ${eventId}`);
       return;
     }
 
-    const hasRegistrations = Array.isArray(event.registrations) && event.registrations.length > 0;
-    console.log(`Registration check for ${eventType} '${event.title || event.name || "Untitled"}':`, {
-      hasRegistrations,
-      registrations: event.registrations,
-    });
-
+    const hasRegistrations =
+      Array.isArray(event.registrations) && event.registrations.length > 0;
     if (hasRegistrations) {
       const eventTitle = event.title || event.name || "Untitled";
       const registrationCount = event.registrations.length;
       setMessage(
-        `❌ Cannot delete ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} '${eventTitle}' because ${registrationCount} user${registrationCount === 1 ? "" : "s"} ha${registrationCount === 1 ? "s" : "ve"} registered.`
+        `❌ Cannot delete ${
+          eventType.charAt(0).toUpperCase() + eventType.slice(1)
+        } '${eventTitle}' because ${registrationCount} user${
+          registrationCount === 1 ? "" : "s"
+        } ha${registrationCount === 1 ? "s" : "ve"} registered.`
       );
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to DELETE this ${eventType}?`)) return;
+    if (!window.confirm(`Are you sure you want to DELETE this ${eventType}?`))
+      return;
 
     setProcessingId(eventId);
     try {
@@ -326,7 +368,11 @@ const handleDelete = async (userId) => {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`🗑️ ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} deleted successfully!`);
+        setMessage(
+          `🗑️ ${
+            eventType.charAt(0).toUpperCase() + eventType.slice(1)
+          } deleted successfully!`
+        );
         await fetchUsers();
       } else {
         setMessage(`❌ ${data.error || "Delete failed"}`);
@@ -344,32 +390,183 @@ const handleDelete = async (userId) => {
     setPreviewLink(`${API_ORIGIN}/api/verify/${token}-for-${userId}`);
   };
 
-  if (loading) return <p style={{ textAlign: "center" }}>Loading users, requests, and events...</p>;
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      navigate("/");
+    }
+  };
+
+  if (loading)
+    return (
+      <p style={{ textAlign: "center" }}>
+        Loading users, requests, and events...
+      </p>
+    );
 
   return (
-    <div style={{ padding: "30px", fontFamily: "Poppins, Arial, sans-serif" }}>
-      <h1 style={{ textAlign: "center", color: "#111827" }}>Admin Dashboard</h1>
-
-      {message && (
-        <p
-          style={{
-            textAlign: "center",
-            color: message.startsWith("✅") || message.startsWith("📧") ? "green" : "red",
-            fontWeight: 500,
-          }}
-        >
-          {message}
-        </p>
+    <div className="flex h-screen bg-[#f5efeb]">
+      {/* Overlay for Sidebar */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={closeSidebar}
+        />
       )}
 
-      {eventFetchErrors.length > 0 && (
-        <p style={{ color: "red", textAlign: "center", fontWeight: 500 }}>
-          Errors fetching events: {eventFetchErrors.join("; ")}
-        </p>
-      )}
+      {/* Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Top bar */}
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
+            <span className="text-xl font-bold">EventHub</span>
+          </div>
+          <button
+            onClick={closeSidebar}
+            className="p-2 hover:bg-[#567c8d] rounded-lg"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-      {/* VERIFIED USERS */}
-      <h2 style={{ color: "#10B981", marginTop: 40 }}>✅ Verified Users</h2>
+        {/* 🔼 Move Logout to the TOP (right under the brand) */}
+        <div className="px-4 pb-4">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
+        </div>
+
+        {/* Your nav (if any). Keep or remove. */}
+        <nav className="flex-1 px-4">
+          {/* …nav buttons if you have them… */}
+        </nav>
+
+        {/* ⛔️ Remove the old bottom logout + the spacer that pushed it down */}
+        {/* <div className="flex-1" />  ← delete this if present */}
+        {/* bottom logout block ← delete this */}
+      </div>
+
+      {/* Main Section */}
+      <div className="flex-1 overflow-auto">
+        {/* Minimal header with menu toggle (no notifications) */}
+        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={toggleSidebar}
+                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
+              >
+                <Menu size={24} className="text-[#2f4156]" />
+              </button>
+              <h1 className="text-xl font-bold text-[#2f4156]">
+                Admin Dashboard
+              </h1>
+            </div>
+            {/* (intentionally empty right side) */}
+            <div />
+          </div>
+        </header>
+
+        {/* Your original content */}
+        <main className="p-4 md:p-8">
+          <div
+            style={{
+              padding: "30px 0",
+              fontFamily: "Poppins, Arial, sans-serif",
+            }}
+          >
+            {/* message */}
+            {message && (
+              <p
+                style={{
+                  textAlign: "center",
+                  color:
+                    message.startsWith("✅") || message.startsWith("📧")
+                      ? "green"
+                      : "red",
+                  fontWeight: 500,
+                }}
+              >
+                {message}
+              </p>
+            )}
+
+            {eventFetchErrors.length > 0 && (
+              <p style={{ color: "red", textAlign: "center", fontWeight: 500 }}>
+                Errors fetching events: {eventFetchErrors.join("; ")}
+              </p>
+            )}
+
+            {/* VERIFIED USERS */}
+            <SectionVerified
+              verifiedUsers={verifiedUsers}
+              handleDelete={handleDelete}
+            />
+
+            {/* PENDING USERS */}
+            <SectionPending
+              pendingUsers={pendingUsers}
+              assignedRoles={assignedRoles}
+              setAssignedRoles={setAssignedRoles}
+              setMailTarget={setMailTarget}
+              generatePreviewLink={generatePreviewLink}
+              setShowMailPopup={setShowMailPopup}
+              handleDelete={handleDelete}
+            />
+
+            {/* VENDOR REQUESTS - BAZAARS */}
+            <SectionBazaarRequests
+              requests={vendorBazaarRequests}
+              processingId={processingId}
+              handleVendorRequestStatus={handleVendorRequestStatus}
+            />
+
+            {/* VENDOR REQUESTS - BOOTHS */}
+            <SectionBoothRequests
+              requests={vendorBoothRequests}
+              processingId={processingId}
+              handleVendorRequestStatus={handleVendorRequestStatus}
+            />
+
+            {/* EVENTS LIST */}
+            <SectionEvents
+              events={events}
+              eventFetchErrors={eventFetchErrors}
+              processingId={processingId}
+              handleDeleteEvent={handleDeleteEvent}
+            />
+          </div>
+
+          {/* MAIL POPUP */}
+          {showMailPopup && mailTarget && (
+            <MailPopup
+              onClose={() => setShowMailPopup(false)}
+              onSend={handleSendMail}
+              sending={sending}
+              mailTarget={mailTarget}
+              previewLink={previewLink}
+            />
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Small presentational sub-components to keep the main JSX tidy ===== */
+
+function SectionVerified({ verifiedUsers, handleDelete }) {
+  return (
+    <>
+      <h2 style={{ color: "#10B981", marginTop: 10 }}>✅ Verified Users</h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#10B981", color: "white" }}>
@@ -383,11 +580,16 @@ const handleDelete = async (userId) => {
           {verifiedUsers.length ? (
             verifiedUsers.map((user) => (
               <tr key={user._id} style={trStyle}>
-                <td style={tdStyle}>{user.firstName || user.companyName || "User"}</td>
+                <td style={tdStyle}>
+                  {user.firstName || user.companyName || "User"}
+                </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
                 <td style={tdStyle}>
-                  <button onClick={() => handleDelete(user._id)} style={deleteBtnStyle}>
+                  <button
+                    onClick={() => handleDelete(user._id)}
+                    style={deleteBtnStyle}
+                  >
                     Delete
                   </button>
                 </td>
@@ -395,14 +597,31 @@ const handleDelete = async (userId) => {
             ))
           ) : (
             <tr>
-              <td colSpan="4" style={tdEmptyStyle}>No verified users yet.</td>
+              <td colSpan="4" style={tdEmptyStyle}>
+                No verified users yet.
+              </td>
             </tr>
           )}
         </tbody>
       </table>
+    </>
+  );
+}
 
-      {/* PENDING USERS */}
-      <h2 style={{ color: "#F59E0B", marginTop: 50 }}>🕓 Pending Verification</h2>
+function SectionPending({
+  pendingUsers,
+  assignedRoles,
+  setAssignedRoles,
+  setMailTarget,
+  generatePreviewLink,
+  setShowMailPopup,
+  handleDelete,
+}) {
+  return (
+    <>
+      <h2 style={{ color: "#F59E0B", marginTop: 50 }}>
+        🕓 Pending Verification
+      </h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#F59E0B", color: "white" }}>
@@ -417,14 +636,21 @@ const handleDelete = async (userId) => {
           {pendingUsers.length ? (
             pendingUsers.map((user) => (
               <tr key={user._id} style={trStyle}>
-                <td style={tdStyle}>{user.firstName || user.companyName || "User"}</td>
+                <td style={tdStyle}>
+                  {user.firstName || user.companyName || "User"}
+                </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
                 <td style={tdStyle}>
                   <select
                     style={dropdownStyle}
                     value={assignedRoles[user._id] || ""}
-                    onChange={(e) => setAssignedRoles({ ...assignedRoles, [user._id]: e.target.value })}
+                    onChange={(e) =>
+                      setAssignedRoles({
+                        ...assignedRoles,
+                        [user._id]: e.target.value,
+                      })
+                    }
                   >
                     <option value="">Select Role</option>
                     <option value="staff">Staff</option>
@@ -443,7 +669,10 @@ const handleDelete = async (userId) => {
                   >
                     Send Mail
                   </button>
-                  <button onClick={() => handleDelete(user._id)} style={deleteBtnStyle}>
+                  <button
+                    onClick={() => handleDelete(user._id)}
+                    style={deleteBtnStyle}
+                  >
                     Delete
                   </button>
                 </td>
@@ -451,14 +680,27 @@ const handleDelete = async (userId) => {
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>No pending users.</td>
+              <td colSpan="5" style={tdEmptyStyle}>
+                No pending users.
+              </td>
             </tr>
           )}
         </tbody>
       </table>
+    </>
+  );
+}
 
-      {/* VENDOR REQUESTS - BAZAARS */}
-      <h2 style={{ color: "#3B82F6", marginTop: 50 }}>Vendor Requests - Bazaars</h2>
+function SectionBazaarRequests({
+  requests,
+  processingId,
+  handleVendorRequestStatus,
+}) {
+  return (
+    <>
+      <h2 style={{ color: "#3B82F6", marginTop: 50 }}>
+        Vendor Requests - Bazaars
+      </h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#3B82F6", color: "white" }}>
@@ -470,39 +712,71 @@ const handleDelete = async (userId) => {
           </tr>
         </thead>
         <tbody>
-          {vendorBazaarRequests.length ? (
-            vendorBazaarRequests.map((req) => (
+          {requests.length ? (
+            requests.map((req) => (
               <tr key={req._id} style={trStyle}>
                 <td style={tdStyle}>
                   {req.bazaarInfo ? (
                     <>
-                      <div style={{ fontWeight: 700 }}>{req.bazaarInfo.bazaarTitle}</div>
-                      <div style={{ fontSize: 12, color: "#6B7280" }}>{req.bazaarInfo.bazaarLocation}</div>
+                      <div style={{ fontWeight: 700 }}>
+                        {req.bazaarInfo.bazaarTitle}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#6B7280" }}>
+                        {req.bazaarInfo.bazaarLocation}
+                      </div>
                       <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                        {req.bazaarInfo.bazaarStart ? new Date(req.bazaarInfo.bazaarStart).toLocaleString() : ""}{" "}
+                        {req.bazaarInfo.bazaarStart
+                          ? new Date(
+                              req.bazaarInfo.bazaarStart
+                            ).toLocaleString()
+                          : ""}{" "}
                         -{" "}
-                        {req.bazaarInfo.bazaarEnd ? new Date(req.bazaarInfo.bazaarEnd).toLocaleString() : ""}
+                        {req.bazaarInfo.bazaarEnd
+                          ? new Date(req.bazaarInfo.bazaarEnd).toLocaleString()
+                          : ""}
                       </div>
                     </>
                   ) : (
                     <div>{String(req.bazaar || req.bazaarId || "—")}</div>
                   )}
                 </td>
-                <td style={tdStyle}>{req.vendorName || (req.attendees && req.attendees[0] && req.attendees[0].name) || "—"}</td>
-                <td style={tdStyle}>{req.description || `Booth: ${req.boothSize || "N/A"}`}</td>
-                <td style={tdStyle}>{(req.status || "pending").toLowerCase()}</td>
+                <td style={tdStyle}>
+                  {req.vendorName ||
+                    (req.attendees &&
+                      req.attendees[0] &&
+                      req.attendees[0].name) ||
+                    "—"}
+                </td>
+                <td style={tdStyle}>
+                  {req.description || `Booth: ${req.boothSize || "N/A"}`}
+                </td>
+                <td style={tdStyle}>
+                  {(req.status || "pending").toLowerCase()}
+                </td>
                 <td style={tdStyle}>
                   {req.status === "pending" ? (
                     <>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "accepted")}
+                        onClick={() =>
+                          handleVendorRequestStatus(
+                            req._id,
+                            "bazaar",
+                            "accepted"
+                          )
+                        }
                         style={verifyBtnStyle}
                         disabled={processingId === req._id}
                       >
                         {processingId === req._id ? "Processing..." : "Accept"}
                       </button>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")}
+                        onClick={() =>
+                          handleVendorRequestStatus(
+                            req._id,
+                            "bazaar",
+                            "rejected"
+                          )
+                        }
                         style={deleteBtnStyle}
                         disabled={processingId === req._id}
                       >
@@ -510,7 +784,12 @@ const handleDelete = async (userId) => {
                       </button>
                     </>
                   ) : (
-                    <span style={{ color: req.status === "accepted" ? "green" : "red", fontWeight: 600 }}>
+                    <span
+                      style={{
+                        color: req.status === "accepted" ? "green" : "red",
+                        fontWeight: 600,
+                      }}
+                    >
                       {req.status}
                     </span>
                   )}
@@ -519,14 +798,27 @@ const handleDelete = async (userId) => {
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>No bazaar requests.</td>
+              <td colSpan="5" style={tdEmptyStyle}>
+                No bazaar requests.
+              </td>
             </tr>
           )}
         </tbody>
       </table>
+    </>
+  );
+}
 
-      {/* VENDOR REQUESTS - BOOTHS */}
-      <h2 style={{ color: "#6366F1", marginTop: 50 }}>Vendor Requests - Booths</h2>
+function SectionBoothRequests({
+  requests,
+  processingId,
+  handleVendorRequestStatus,
+}) {
+  return (
+    <>
+      <h2 style={{ color: "#6366F1", marginTop: 50 }}>
+        Vendor Requests - Booths
+      </h2>
       <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#6366F1", color: "white" }}>
@@ -538,10 +830,16 @@ const handleDelete = async (userId) => {
           </tr>
         </thead>
         <tbody>
-          {vendorBoothRequests.length ? (
-            vendorBoothRequests.map((req) => {
-              const boothId = req.boothId || req.booth || req.id || req._id || "—";
-              const vendorName = req.vendorName || (Array.isArray(req.attendees) && req.attendees[0] && req.attendees[0].name) || "—";
+          {requests.length ? (
+            requests.map((req) => {
+              const boothId =
+                req.boothId || req.booth || req.id || req._id || "—";
+              const vendorName =
+                req.vendorName ||
+                (Array.isArray(req.attendees) &&
+                  req.attendees[0] &&
+                  req.attendees[0].name) ||
+                "—";
               const locationVal =
                 req.platformSlot ||
                 req.boothLocation ||
@@ -564,7 +862,10 @@ const handleDelete = async (userId) => {
               let durationVal = "";
               if (typeof rawDuration === "number") {
                 durationVal = `${rawDuration} weeks`;
-              } else if (typeof rawDuration === "string" && rawDuration.trim() !== "") {
+              } else if (
+                typeof rawDuration === "string" &&
+                rawDuration.trim() !== ""
+              ) {
                 const s = rawDuration.trim();
                 if (/\bweek(s)?\b/i.test(s)) {
                   durationVal = s;
@@ -600,22 +901,47 @@ const handleDelete = async (userId) => {
                     {status === "pending" ? (
                       <>
                         <button
-                          onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "accepted")}
+                          onClick={() =>
+                            handleVendorRequestStatus(
+                              req._id || req.id || boothId,
+                              "booth",
+                              "accepted"
+                            )
+                          }
                           style={verifyBtnStyle}
-                          disabled={processingId === (req._id || req.id || boothId)}
+                          disabled={
+                            processingId === (req._id || req.id || boothId)
+                          }
                         >
-                          {processingId === (req._id || req.id || boothId) ? "Processing..." : "Accept"}
+                          {processingId === (req._id || req.id || boothId)
+                            ? "Processing..."
+                            : "Accept"}
                         </button>
                         <button
-                          onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "rejected")}
+                          onClick={() =>
+                            handleVendorRequestStatus(
+                              req._id || req.id || boothId,
+                              "booth",
+                              "rejected"
+                            )
+                          }
                           style={deleteBtnStyle}
-                          disabled={processingId === (req._id || req.id || boothId)}
+                          disabled={
+                            processingId === (req._id || req.id || boothId)
+                          }
                         >
-                          {processingId === (req._id || req.id || boothId) ? "Processing..." : "Reject"}
+                          {processingId === (req._id || req.id || boothId)
+                            ? "Processing..."
+                            : "Reject"}
                         </button>
                       </>
                     ) : (
-                      <span style={{ color: status === "accepted" ? "green" : "red", fontWeight: 600 }}>
+                      <span
+                        style={{
+                          color: status === "accepted" ? "green" : "red",
+                          fontWeight: 600,
+                        }}
+                      >
                         {status}
                       </span>
                     )}
@@ -625,120 +951,255 @@ const handleDelete = async (userId) => {
             })
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>No booth requests.</td>
+              <td colSpan="5" style={tdEmptyStyle}>
+                No booth requests.
+              </td>
             </tr>
           )}
         </tbody>
       </table>
+    </>
+  );
+}
 
-      {/* EVENTS LIST */}
-<h2 style={{ color: "#8B5CF6", marginTop: 50 }}>📅 All Events</h2>
-{eventFetchErrors.length > 0 && (
-  <p style={{ color: "red", textAlign: "center", fontWeight: 500 }}>
-    Errors fetching events: {eventFetchErrors.join("; ")}
-  </p>
-)}
-<table style={tableStyle}>
-  <thead>
-    <tr style={{ background: "#8B5CF6", color: "white" }}>
-      <th style={thStyle}>Type</th>
-      <th style={thStyle}>Title</th>
-      <th style={thStyle}>Location</th>
-      <th style={thStyle}>Start Date</th>
-      <th style={thStyle}>End Date</th>
-      <th style={thStyle}>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {events.length ? (
-      events.map((event) => {
-        const hasRegistrations = Array.isArray(event.registrations) && event.registrations.length > 0;
-        return (
-          <tr key={event._id} style={trStyle}>
-            <td style={tdStyle}>{event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1)}</td>
-            <td style={tdStyle}>{event.title || event.name || "Untitled"}</td>
-            <td style={tdStyle}>{event.location || event.venue || "—"}</td>
-            <td style={tdStyle}>
-              {event.startDateTime ? new Date(event.startDateTime).toLocaleString() : "—"}
-            </td>
-            <td style={tdStyle}>
-              {event.endDateTime ? new Date(event.endDateTime).toLocaleString() : "—"}
-            </td>
-            <td style={tdStyle}>
-              <button
-                onClick={() => handleDeleteEvent(event._id, event.eventType)}
-                style={{
-                  ...deleteBtnStyle,
-                  ...(hasRegistrations ? { opacity: 0.6, cursor: "not-allowed" } : {}),
-                }}
-                disabled={processingId === event._id} // Only disable during processing
-                title={`Delete this ${event.eventType}`}
-              >
-                {processingId === event._id ? "Processing..." : "Delete"}
-              </button>
-            </td>
-          </tr>
-        );
-      })
-    ) : (
-      <tr>
-        <td colSpan="6" style={tdEmptyStyle}>
-          No events available. Database collections (trips, conferences, bazaars) may be empty. Create events using POST /api/trips, /api/conferences, or /api/bazaars.
-        </td>
-      </tr>
-    )}
-  </tbody>
-</table>
-
-      {/* MAIL POPUP */}
-      {showMailPopup && mailTarget && (
-        <div style={popupOverlayStyle}>
-          <div style={popupHeaderStyle}>
-            <div>
-              <h3 style={{ margin: 0 }}>New Message</h3>
-              <p style={{ color: "#E5E7EB", fontSize: 14 }}>Admin Compose</p>
-            </div>
-            <button onClick={() => setShowMailPopup(false)} style={closeBtnStyle}>✕</button>
-          </div>
-          <div style={popupContentStyle}>
-            <div style={mailRowStyle}><b>To:</b> {mailTarget.email}</div>
-            <div style={mailRowStyle}><b>Subject:</b> Account Verification - Admin Approval</div>
-            <div style={mailBodyStyle}>
-              <p>Dear {mailTarget.firstName || "User"},</p>
-              <p>Please click the link below to verify your account:</p>
-              <a href={previewLink} target="_blank" rel="noreferrer">{previewLink}</a>
-              <p>This link will expire once used.</p>
-              <p>— Admin Team</p>
-            </div>
-          </div>
-          <div style={popupFooterStyle}>
-            <button onClick={handleSendMail} style={sendBtnStyle} disabled={sending}>{sending ? "Sending..." : "Send"}</button>
-            <button onClick={() => setShowMailPopup(false)} style={cancelBtnStyle}>Cancel</button>
-          </div>
-        </div>
+function SectionEvents({
+  events,
+  eventFetchErrors,
+  processingId,
+  handleDeleteEvent,
+}) {
+  return (
+    <>
+      <h2 style={{ color: "#8B5CF6", marginTop: 50 }}>📅 All Events</h2>
+      {eventFetchErrors.length > 0 && (
+        <p style={{ color: "red", textAlign: "center", fontWeight: 500 }}>
+          Errors fetching events: {eventFetchErrors.join("; ")}
+        </p>
       )}
+      <table style={tableStyle}>
+        <thead>
+          <tr style={{ background: "#8B5CF6", color: "white" }}>
+            <th style={thStyle}>Type</th>
+            <th style={thStyle}>Title</th>
+            <th style={thStyle}>Location</th>
+            <th style={thStyle}>Start Date</th>
+            <th style={thStyle}>End Date</th>
+            <th style={thStyle}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.length ? (
+            events.map((event) => {
+              const hasRegistrations =
+                Array.isArray(event.registrations) &&
+                event.registrations.length > 0;
+              return (
+                <tr key={event._id} style={trStyle}>
+                  <td style={tdStyle}>
+                    {event.eventType.charAt(0).toUpperCase() +
+                      event.eventType.slice(1)}
+                  </td>
+                  <td style={tdStyle}>
+                    {event.title || event.name || "Untitled"}
+                  </td>
+                  <td style={tdStyle}>
+                    {event.location || event.venue || "—"}
+                  </td>
+                  <td style={tdStyle}>
+                    {event.startDateTime
+                      ? new Date(event.startDateTime).toLocaleString()
+                      : "—"}
+                  </td>
+                  <td style={tdStyle}>
+                    {event.endDateTime
+                      ? new Date(event.endDateTime).toLocaleString()
+                      : "—"}
+                  </td>
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() =>
+                        handleDeleteEvent(event._id, event.eventType)
+                      }
+                      style={{
+                        ...deleteBtnStyle,
+                        ...(hasRegistrations
+                          ? { opacity: 0.6, cursor: "not-allowed" }
+                          : {}),
+                      }}
+                      disabled={processingId === event._id}
+                      title={`Delete this ${event.eventType}`}
+                    >
+                      {processingId === event._id ? "Processing..." : "Delete"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan="6" style={tdEmptyStyle}>
+                No events available. Database collections (trips, conferences,
+                bazaars) may be empty.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function MailPopup({ onClose, onSend, sending, mailTarget, previewLink }) {
+  return (
+    <div style={popupOverlayStyle}>
+      <div style={popupHeaderStyle}>
+        <div>
+          <h3 style={{ margin: 0 }}>New Message</h3>
+          <p style={{ color: "#E5E7EB", fontSize: 14 }}>Admin Compose</p>
+        </div>
+        <button onClick={onClose} style={closeBtnStyle}>
+          ✕
+        </button>
+      </div>
+      <div style={popupContentStyle}>
+        <div style={mailRowStyle}>
+          <b>To:</b> {mailTarget.email}
+        </div>
+        <div style={mailRowStyle}>
+          <b>Subject:</b> Account Verification - Admin Approval
+        </div>
+        <div style={mailBodyStyle}>
+          <p>Dear {mailTarget.firstName || "User"},</p>
+          <p>Please click the link below to verify your account:</p>
+          <a href={previewLink} target="_blank" rel="noreferrer">
+            {previewLink}
+          </a>
+          <p>This link will expire once used.</p>
+          <p>— Admin Team</p>
+        </div>
+      </div>
+      <div style={popupFooterStyle}>
+        <button onClick={onSend} style={sendBtnStyle} disabled={sending}>
+          {sending ? "Sending..." : "Send"}
+        </button>
+        <button onClick={onClose} style={cancelBtnStyle}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
 
-/* ---------- Styles ---------- */
-const tableStyle = { width: "100%", borderCollapse: "collapse", marginTop: 10, backgroundColor: "white", borderRadius: 10, overflow: "hidden" };
+/* ---------- Styles (same as your originals) ---------- */
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+  marginTop: 10,
+  backgroundColor: "white",
+  borderRadius: 10,
+  overflow: "hidden",
+};
 const thStyle = { padding: 10, fontWeight: 600, textAlign: "center" };
-const tdStyle = { padding: 10, textAlign: "center", borderBottom: "1px solid #E5E7EB" };
+const tdStyle = {
+  padding: 10,
+  textAlign: "center",
+  borderBottom: "1px solid #E5E7EB",
+};
 const trStyle = { background: "#fff" };
 const tdEmptyStyle = { padding: 20, textAlign: "center", color: "#6B7280" };
-const verifyBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", marginRight: 5 };
-const deleteBtnStyle = { backgroundColor: "#EF4444", color: "white", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" };
-const mailBtnStyle = { backgroundColor: "#3B82F6", color: "white", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", marginRight: 5 };
-const dropdownStyle = { padding: 5, borderRadius: 6, border: "1px solid #D1D5DB", backgroundColor: "#F9FAFB" };
+const verifyBtnStyle = {
+  backgroundColor: "#10B981",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "6px 10px",
+  cursor: "pointer",
+  marginRight: 5,
+};
+const deleteBtnStyle = {
+  backgroundColor: "#EF4444",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "6px 10px",
+  cursor: "pointer",
+};
+const mailBtnStyle = {
+  backgroundColor: "#3B82F6",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "6px 10px",
+  cursor: "pointer",
+  marginRight: 5,
+};
+const dropdownStyle = {
+  padding: 5,
+  borderRadius: 6,
+  border: "1px solid #D1D5DB",
+  backgroundColor: "#F9FAFB",
+};
 
 /* Popup styles */
-const popupOverlayStyle = { position: "fixed", bottom: 0, right: 20, width: 400, backgroundColor: "white", borderRadius: "10px 10px 0 0", boxShadow: "0 -4px 15px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", zIndex: 999 };
-const popupHeaderStyle = { background: "#3B82F6", color: "white", padding: "10px 15px", display: "flex", justifyContent: "space-between", alignItems: "center" };
-const closeBtnStyle = { background: "transparent", border: "none", color: "white", fontSize: 18, cursor: "pointer" };
-const popupContentStyle = { padding: "10px 15px", flexGrow: 1, overflowY: "auto" };
-const mailRowStyle = { padding: "5px 0", borderBottom: "1px solid #E5E7EB", fontSize: 14 };
+const popupOverlayStyle = {
+  position: "fixed",
+  bottom: 0,
+  right: 20,
+  width: 400,
+  backgroundColor: "white",
+  borderRadius: "10px 10px 0 0",
+  boxShadow: "0 -4px 15px rgba(0,0,0,0.2)",
+  display: "flex",
+  flexDirection: "column",
+  zIndex: 999,
+};
+const popupHeaderStyle = {
+  background: "#3B82F6",
+  color: "white",
+  padding: "10px 15px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+const closeBtnStyle = {
+  background: "transparent",
+  border: "none",
+  color: "white",
+  fontSize: 18,
+  cursor: "pointer",
+};
+const popupContentStyle = {
+  padding: "10px 15px",
+  flexGrow: 1,
+  overflowY: "auto",
+};
+const mailRowStyle = {
+  padding: "5px 0",
+  borderBottom: "1px solid #E5E7EB",
+  fontSize: 14,
+};
 const mailBodyStyle = { padding: "10px 0", fontSize: 14, color: "#111827" };
-const popupFooterStyle = { padding: "10px 15px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "flex-end", gap: 10 };
-const sendBtnStyle = { backgroundColor: "#10B981", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontWeight: 500 };
-const cancelBtnStyle = { backgroundColor: "#9CA3AF", color: "white", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer" };
+const popupFooterStyle = {
+  padding: "10px 15px",
+  borderTop: "1px solid #E5E7EB",
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+};
+const sendBtnStyle = {
+  backgroundColor: "#10B981",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "8px 16px",
+  cursor: "pointer",
+  fontWeight: 500,
+};
+const cancelBtnStyle = {
+  backgroundColor: "#9CA3AF",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "8px 16px",
+  cursor: "pointer",
+};
