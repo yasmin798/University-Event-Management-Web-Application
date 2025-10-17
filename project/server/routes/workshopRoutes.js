@@ -13,16 +13,18 @@ const {
 const { requestEdits } = require('../controllers/workshopController');
 const { protect, adminOnly } = require('../middleware/auth'); // Assuming adminOnly exists
 
+// Protected actions
 router.post('/:id/request-edits', protect, adminOnly, requestEdits);
-// CRUD routes
-router.post("/", createWorkshop);
-router.get("/", getAllWorkshops);
-router.get("/:id", getWorkshopById);
-router.put("/:id", updateWorkshop);
-router.delete("/:id", deleteWorkshop);
 
-// Filter routes
-router.get("/mine/:professorId", getMyWorkshops);
-router.get("/others/:professorId", getOtherWorkshops);
+// ⚠️ IMPORTANT: specific/filter routes MUST come BEFORE parametric routes
+router.get('/mine/:professorId', getMyWorkshops);
+router.get('/others/:professorId', getOtherWorkshops);
+
+// CRUD routes (general paths)
+router.post('/', createWorkshop);
+router.get('/', getAllWorkshops);
+router.get('/:id', getWorkshopById); // This catches everything not matched above
+router.put('/:id', updateWorkshop);
+router.delete('/:id', deleteWorkshop);
 
 module.exports = router;

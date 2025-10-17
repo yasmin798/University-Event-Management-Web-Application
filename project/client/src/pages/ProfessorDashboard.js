@@ -17,16 +17,20 @@ const ProfessorDashboard = () => {
   useEffect(() => {
     const fetchWorkshops = async () => {
       try {
+        console.log('🔍 Fetching workshops...');
         const data = await workshopAPI.getAllWorkshops();
+        console.log('✅ Workshops fetched:', data);
+        console.log('📊 Number of workshops:', data.length);
         setWorkshops(data);
       } catch (error) {
-        console.error('Error fetching workshops:', error);
+        console.error('❌ Error fetching workshops:', error);
+        console.error('Error details:', error.response?.data);
       }
     };
     
     fetchWorkshops();
   }, []);
-
+  // Close notifications dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
@@ -42,6 +46,12 @@ const ProfessorDashboard = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isNotificationsOpen]);
+
+  // Navigate to registered events (used in sidebar)
+  const handleRegisteredEvents = () => {
+    navigate("/events/registered");
+    closeSidebar(); // close the sidebar after navigation
+  };
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -77,7 +87,7 @@ const ProfessorDashboard = () => {
       
       const dateString = date.toDateString();
       const hasWorkshop = workshops.some(workshop => {
-        const workshopDate = new Date(workshop.startDate);
+        const workshopDate = new Date(workshop.startDateTime);
         return workshopDate.toDateString() === dateString;
       });
       
@@ -93,39 +103,37 @@ const ProfessorDashboard = () => {
     return days;
   };
 
- const [filteredWorkshops, setFilteredWorkshops] = useState([]);
+  const [filteredWorkshops, setFilteredWorkshops] = useState([]);
 
-useEffect(() => {
-  const term = searchTerm.toLowerCase().trim();
+  useEffect(() => {
+    const term = searchTerm.toLowerCase().trim();
 
-  if (!term) {
-    setFilteredWorkshops(workshops);
-    return;
-  }
+    if (!term) {
+      setFilteredWorkshops(workshops);
+      return;
+    }
 
-  const results = workshops.filter((w) => {
-    const name = w.workshopName?.toLowerCase() || '';
-    const location = w.location?.toLowerCase() || '';
-    const description = w.shortDescription?.toLowerCase() || '';
-    const professors =
-      (Array.isArray(w.professorsParticipating)
-        ? w.professorsParticipating.join(' ').toLowerCase()
-        : w.professorsParticipating?.toLowerCase()) || '';
-    const faculty = w.facultyResponsible?.toLowerCase() || '';
+    const results = workshops.filter((w) => {
+      const name = w.workshopName?.toLowerCase() || '';
+      const location = w.location?.toLowerCase() || '';
+      const description = w.shortDescription?.toLowerCase() || '';
+      const professors =
+        (Array.isArray(w.professorsParticipating)
+          ? w.professorsParticipating.join(' ').toLowerCase()
+          : w.professorsParticipating?.toLowerCase()) || '';
+      const faculty = w.facultyResponsible?.toLowerCase() || '';
 
-    return (
-      name.includes(term) ||
-      location.includes(term) ||
-      description.includes(term) ||
-      professors.includes(term) ||
-      faculty.includes(term)
-    );
-  });
+      return (
+        name.includes(term) ||
+        location.includes(term) ||
+        description.includes(term) ||
+        professors.includes(term) ||
+        faculty.includes(term)
+      );
+    });
 
-  setFilteredWorkshops(results);
-}, [searchTerm, workshops]);
-
-
+    setFilteredWorkshops(results);
+  }, [searchTerm, workshops]);
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -193,7 +201,7 @@ useEffect(() => {
                   <div>
                     <p className="font-semibold text-[#2f4156]">Date & Time</p>
                     <p className="text-[#567c8d]">
-                      {new Date(selectedWorkshop.startDate).toLocaleDateString('en-US', { 
+                      {new Date(selectedWorkshop.startDateTime).toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         month: 'long', 
                         day: 'numeric', 
@@ -201,7 +209,13 @@ useEffect(() => {
                       })}
                     </p>
                     <p className="text-[#567c8d]">
-                      {selectedWorkshop.startTime} - {selectedWorkshop.endTime}
+                      {new Date(selectedWorkshop.startDateTime).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })} - {new Date(selectedWorkshop.endDateTime).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </p>
                   </div>
                 </div>
@@ -317,7 +331,7 @@ useEffect(() => {
             <Menu size={20} />
             <span>Dashboard</span>
           </button>
-          
+
           <button 
             onClick={() => {
               navigate('/professor/workshops');
@@ -326,7 +340,15 @@ useEffect(() => {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
           >
             <Calendar size={20} />
-            <span>My Workshops</span>
+            <span>Workshops</span>
+          </button>
+
+          <button 
+            onClick={handleRegisteredEvents}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
+          >
+            <Users size={20} />
+            <span>Registered Events</span>
           </button>
 
           <button 
@@ -336,7 +358,7 @@ useEffect(() => {
             <Calendar size={20} />
             <span>Gym Sessions</span>
           </button>
-          
+
           <button 
             onClick={() => {
               navigate('/professor/workshops/create');
@@ -486,7 +508,7 @@ useEffect(() => {
                           <div className="flex items-center text-sm text-[#567c8d] mt-2">
                             <Calendar size={16} className="mr-1" />
                             <span>
-                              {new Date(workshop.startDate).toLocaleDateString("en-US", {
+                              {new Date(workshop.startDateTime).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
@@ -547,8 +569,15 @@ useEffect(() => {
                       textColor = 'text-white font-bold';
                     }
                     else if (day.hasWorkshop && day.isCurrentMonth) {
-                      bgColor = 'bg-[#c8d9e6] hover:bg-[#b8c9d6]';
-                      textColor = 'text-[#2f4156] font-semibold';
+                      // Check if it's an upcoming workshop
+                      const isUpcoming = day.fullDate > new Date();
+                      if (isUpcoming) {
+                        bgColor = 'bg-[#c8d9e6] hover:bg-[#b8c9d6]'; // Highlight color for upcoming
+                        textColor = 'text-[#2f4156] font-semibold';
+                      } else {
+                        bgColor = 'bg-[#f5efeb] hover:bg-[#e5dfd8]'; // Lighter for past
+                        textColor = 'text-[#567c8d] font-semibold';
+                      }
                     }
                     
                     return (
@@ -557,11 +586,13 @@ useEffect(() => {
                         className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-colors relative
                           ${bgColor} ${textColor}
                         `}
-                        title={day.hasWorkshop ? 'Workshop scheduled' : ''}
+                        title={day.hasWorkshop ? (day.fullDate > new Date() ? 'Upcoming workshop' : 'Past workshop') : ''}
                       >
                         {day.date}
                         {day.hasWorkshop && day.isCurrentMonth && !day.isToday && (
-                          <span className="absolute bottom-1 w-1 h-1 bg-[#567c8d] rounded-full"></span>
+                          <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
+                            day.fullDate > new Date() ? 'bg-[#567c8d]' : 'bg-[#c8d9e6]'
+                          }`}></span>
                         )}
                       </button>
                     );
@@ -571,7 +602,7 @@ useEffect(() => {
 
               <div className="bg-white rounded-xl p-6 border border-[#c8d9e6]">
                 <h3 className="text-lg font-bold text-[#2f4156] mb-4">Upcoming Workshops</h3>
-                {workshops.filter(w => new Date(w.startDate) > new Date()).length === 0 ? (
+                {workshops.filter(w => new Date(w.startDateTime) > new Date()).length === 0 ? (
                   <div className="text-center py-8">
                     <div className="w-12 h-12 bg-[#c8d9e6] rounded-full flex items-center justify-center mx-auto mb-3">
                       <Clock size={24} className="text-[#567c8d]" />
@@ -581,8 +612,8 @@ useEffect(() => {
                 ) : (
                   <ul className="space-y-3">
                     {workshops
-                      .filter(w => new Date(w.startDate) > new Date())
-                      .sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+                      .filter(w => new Date(w.startDateTime) > new Date())
+                      .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime))
                       .slice(0, 3)
                       .map((w) => (
                         <li
@@ -593,7 +624,7 @@ useEffect(() => {
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-[#2f4156] truncate">{w.workshopName}</h4>
                             <p className="text-sm text-[#567c8d] truncate">
-                              {w.location} • {new Date(w.startDate).toLocaleDateString()}
+                              {w.location} • {new Date(w.startDateTime).toLocaleDateString()}
                             </p>
                           </div>
                           <Calendar size={18} className="text-[#567c8d] ml-2 flex-shrink-0" />

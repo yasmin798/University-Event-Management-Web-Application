@@ -11,7 +11,7 @@ const { protect, adminOnly } = require("./middleware/auth");
 // Routers
 const authRoutes = require("./routes/authRoutes");
 const gymRouter = require("./routes/gym");
-const eventRoutes = require("./routes/eventRoutes"); // exposes /bazaars, /trips, /conferences
+const eventRoutes = require("./routes/eventRoutes");
 const workshopRoutes = require("./routes/workshopRoutes");
 const userRoutes = require("./routes/userRoutes");
 const bazaarApplicationRoutes = require("./routes/bazaarApplications");
@@ -19,7 +19,7 @@ const boothApplicationsRouter = require("./routes/boothApplications");
 const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
 const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
 const notificationRoutes = require('./routes/notificationRoutes');
-
+const vendorApplicationsRoute = require("./routes/vendorApplications");
 
 // Models
 const User = require("./models/User");
@@ -51,19 +51,26 @@ app.use((_, res, next) => {
 });
 
 /* ---------------- Routes ---------------- */
-// auth / gym
+// ⚠️ IMPORTANT: Mount SPECIFIC routes BEFORE generic ones
+
+// Auth & Gym (specific paths)
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
+// Notifications
 app.use('/api/notifications', notificationRoutes);
-// mount feature routers
-app.use("/api", eventRoutes); // -> /api/bazaars, /api/trips, /api/conferences
-app.use("/api", userRoutes); // -> /api/users/... (or similar)
-app.use("/api/workshops", workshopRoutes);
-app.use("/api/events", eventRoutes);
+
+// Feature routers (specific routes first)
+app.use("/api/workshops", workshopRoutes); // Must come BEFORE /api/events
+app.use("/api/users", userRoutes);
 app.use("/api/bazaar-applications", bazaarApplicationRoutes);
-app.use("/api/booth-applications", boothApplicationsRouter);
 app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
+app.use("/api/booth-applications", boothApplicationsRouter);
 app.use("/api/booth-applications", adminBoothRequestsRoute);
+app.use("/api/vendor/applications", vendorApplicationsRoute);
+
+// Events routes (can handle /api/bazaars, /api/trips, /api/conferences, /api/events)
+app.use("/api/events", eventRoutes);
+app.use("/api", eventRoutes); // ⚠️ This should be LAST as it's generic
 
 /* ---------------- DB ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
@@ -235,7 +242,7 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
 });
 
 /* ---------------- Email Verification ---------------- */
-const verificationTokens = {}; // token -> { userId, role }
+const verificationTokens = {};
 
 app.post("/api/admin/send-verification", async (req, res) => {
   try {
@@ -243,23 +250,19 @@ app.post("/api/admin/send-verification", async (req, res) => {
     if (!email || !userId)
       return res.status(400).json({ error: "Missing email or userId" });
 
-    // Generate unique token for verification
     const token = crypto.randomBytes(32).toString("hex");
     verificationTokens[token] = { userId, role };
 
-    // Verification link — adjust localhost:3000 to your frontend URL
     const verifyUrl = `http://localhost:3000/api/verify/${token}`;
 
-    // ✅ Gmail transporter with App Password
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER, // e.g., youremail@gmail.com
-        pass: process.env.EMAIL_PASS, // your 16-character App Password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
-    // Email content (HTML)
     const mailOptions = {
       from: `"Eventity Admin" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -280,7 +283,6 @@ app.post("/api/admin/send-verification", async (req, res) => {
       `,
     };
 
-    // Send the email
     await transporter.sendMail(mailOptions);
 
     console.log(`📧 Verification email sent to ${email}`);
@@ -294,75 +296,10 @@ app.post("/api/admin/send-verification", async (req, res) => {
   }
 });
 
-/* ---------------- Vendor Requests ---------------- */
-app.get("/api/bazaar-vendor-requests/:bazaarId", async (req, res) => {
-  try {
-    const { bazaarId } = req.params;
-    const requests = await BazaarVendorRequest.find({ bazaarId }).sort({ createdAt: -1 });
-    res.json({ requests });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch vendor requests" });
-  }
-});
-
-app.get("/api/admin/booth-vendor-requests", adminOnly, async (_req, res) => {
-  try {
-    const requests = await BoothVendorRequest.find().sort({ createdAt: -1 });
-    res.json({ requests });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch booth vendor requests" });
-  }
-});
-
-app.patch("/api/admin/bazaar-vendor-requests/:id", adminOnly, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body; // expected: "accepted" or "rejected"
-
-    if (!["accepted", "rejected"].includes(status.toLowerCase())) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
-
-    const request = await BazaarVendorRequest.findById(id);
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    request.status = status.toUpperCase();
-    await request.save();
-
-    res.json({ success: true, message: `Bazaar request ${status} successfully`, request });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update bazaar request" });
-  }
-});
-
-app.patch("/api/admin/booth-vendor-requests/:id", adminOnly, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!["accepted", "rejected"].includes(status.toLowerCase())) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
-
-    const request = await BoothVendorRequest.findById(id);
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    request.status = status.toUpperCase();
-    await request.save();
-
-    res.json({ success: true, message: `Booth request ${status} successfully`, request });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update booth request" });
-  }
-});
-
 /* ---------------- Health & Errors ---------------- */
 app.get("/", (_req, res) => res.send("API OK"));
 
+// Global error handler
 app.use((err, _req, res, _next) => {
   if (err && err.message === "Not allowed by CORS") {
     return res.status(403).json({ error: "CORS blocked this origin" });
@@ -376,7 +313,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Backend running at http://localhost:${PORT}`)
 );
-
-
-const vendorApplicationsRoute = require("./routes/vendorApplications");
-app.use("/api/vendor/applications", vendorApplicationsRoute);

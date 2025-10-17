@@ -11,10 +11,8 @@ const EditWorkshopPage = () => {
   const [formData, setFormData] = useState({
     workshopName: '',
     location: '',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
+    startDateTime: '',
+    endDateTime: '',
     shortDescription: '',
     fullAgenda: '',
     facultyResponsible: '',
@@ -27,32 +25,53 @@ const EditWorkshopPage = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  const fetchWorkshop = async () => {
-    if (id) {
-      try {
-        const workshop = await workshopAPI.getWorkshopById(id);
-        
-        // Format dates for input fields (YYYY-MM-DD format)
-        const formattedWorkshop = {
-          ...workshop,
-          startDate: workshop.startDate ? new Date(workshop.startDate).toISOString().split('T')[0] : '',
-          endDate: workshop.endDate ? new Date(workshop.endDate).toISOString().split('T')[0] : '',
-          registrationDeadline: workshop.registrationDeadline ? new Date(workshop.registrationDeadline).toISOString().split('T')[0] : '',
-        };
-        
-        setFormData(formattedWorkshop);
-      } catch (error) {
-        console.error('Error fetching workshop:', error);
-        alert('Failed to load workshop');
-        navigate('/professor/workshops');
+    const fetchWorkshop = async () => {
+      if (id) {
+        try {
+          console.log('🔍 Fetching workshop with ID:', id);
+          const workshop = await workshopAPI.getWorkshopById(id);
+          console.log('✅ Workshop data received:', workshop);
+          
+          // Format datetime fields for datetime-local input (YYYY-MM-DDTHH:mm)
+          const formattedWorkshop = {
+            workshopName: workshop.workshopName || '',
+            location: workshop.location || '',
+            startDateTime: workshop.startDateTime 
+              ? new Date(workshop.startDateTime).toISOString().slice(0, 16) 
+              : '',
+            endDateTime: workshop.endDateTime 
+              ? new Date(workshop.endDateTime).toISOString().slice(0, 16) 
+              : '',
+            shortDescription: workshop.shortDescription || '',
+            fullAgenda: workshop.fullAgenda || '',
+            facultyResponsible: workshop.facultyResponsible || '',
+            professorsParticipating: workshop.professorsParticipating || '',
+            requiredBudget: workshop.requiredBudget || '',
+            fundingSource: workshop.fundingSource || '',
+            extraResources: workshop.extraResources || '',
+            capacity: workshop.capacity || '',
+            registrationDeadline: workshop.registrationDeadline 
+              ? new Date(workshop.registrationDeadline).toISOString().split('T')[0] 
+              : '',
+          };
+          
+          console.log('📝 Formatted data for form:', formattedWorkshop);
+          setFormData(formattedWorkshop);
+          setLoading(false);
+        } catch (error) {
+          console.error('❌ Error fetching workshop:', error);
+          alert('Failed to load workshop');
+          navigate('/professor/workshops');
+        }
       }
-    }
-  };
-  
-  fetchWorkshop();
-}, [id, navigate]);
+    };
+    
+    fetchWorkshop();
+  }, [id, navigate]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -72,10 +91,8 @@ const EditWorkshopPage = () => {
     
     if (!formData.workshopName.trim()) newErrors.workshopName = 'Workshop name is required';
     if (!formData.location) newErrors.location = 'Location is required';
-    if (!formData.startDate) newErrors.startDate = 'Start date is required';
-    if (!formData.startTime) newErrors.startTime = 'Start time is required';
-    if (!formData.endDate) newErrors.endDate = 'End date is required';
-    if (!formData.endTime) newErrors.endTime = 'End time is required';
+    if (!formData.startDateTime) newErrors.startDateTime = 'Start date and time is required';
+    if (!formData.endDateTime) newErrors.endDateTime = 'End date and time is required';
     if (!formData.shortDescription.trim()) newErrors.shortDescription = 'Short description is required';
     if (!formData.fullAgenda.trim()) newErrors.fullAgenda = 'Full agenda is required';
     if (!formData.facultyResponsible) newErrors.facultyResponsible = 'Faculty is required';
@@ -85,19 +102,19 @@ const EditWorkshopPage = () => {
     if (!formData.capacity) newErrors.capacity = 'Capacity is required';
     if (!formData.registrationDeadline) newErrors.registrationDeadline = 'Registration deadline is required';
 
-    if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
-      if (end < start) {
-        newErrors.endDate = 'End date cannot be before start date';
+    if (formData.startDateTime && formData.endDateTime) {
+      const start = new Date(formData.startDateTime);
+      const end = new Date(formData.endDateTime);
+      if (end <= start) {
+        newErrors.endDateTime = 'End date/time must be after start date/time';
       }
     }
 
-    if (formData.registrationDeadline && formData.startDate) {
+    if (formData.registrationDeadline && formData.startDateTime) {
       const deadline = new Date(formData.registrationDeadline);
-      const start = new Date(formData.startDate);
-      if (deadline > start) {
-        newErrors.registrationDeadline = 'Registration deadline must be before start date';
+      const start = new Date(formData.startDateTime);
+      if (deadline >= start) {
+        newErrors.registrationDeadline = 'Registration deadline must be before start date/time';
       }
     }
 
@@ -105,25 +122,31 @@ const EditWorkshopPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-
-  
-
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (validateForm()) {
-    try {
-      const updatedWorkshop = await workshopAPI.updateWorkshop(id, formData);
-      
-      console.log('Workshop updated:', updatedWorkshop);
-      alert('Workshop updated successfully!');
-      navigate('/professor/workshops');
-    } catch (error) {
-      console.error('Error updating workshop:', error);
-      alert('Failed to update workshop. Please try again.');
+    e.preventDefault();
+    
+    if (validateForm()) {
+      try {
+        console.log('📤 Updating workshop with data:', formData);
+        const updatedWorkshop = await workshopAPI.updateWorkshop(id, formData);
+        
+        console.log('✅ Workshop updated:', updatedWorkshop);
+        alert('Workshop updated successfully!');
+        navigate('/professor/workshops');
+      } catch (error) {
+        console.error('❌ Error updating workshop:', error);
+        alert('Failed to update workshop. Please try again.');
+      }
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5efeb] flex items-center justify-center">
+        <div className="text-[#567c8d] text-xl">Loading workshop...</div>
+      </div>
+    );
   }
-};
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -182,66 +205,33 @@ const EditWorkshopPage = () => {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-[#2f4156] font-semibold mb-2">
-                Start Date <span className="text-red-500">*</span>
+                Start Date & Time <span className="text-red-500">*</span>
               </label>
               <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
+                type="datetime-local"
+                name="startDateTime"
+                value={formData.startDateTime}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.startDate ? 'border-red-500' : 'border-[#c8d9e6]'
+                  errors.startDateTime ? 'border-red-500' : 'border-[#c8d9e6]'
                 }`}
               />
-              {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
+              {errors.startDateTime && <p className="text-red-500 text-sm mt-1">{errors.startDateTime}</p>}
             </div>
             <div>
               <label className="block text-[#2f4156] font-semibold mb-2">
-                Start Time <span className="text-red-500">*</span>
+                End Date & Time <span className="text-red-500">*</span>
               </label>
               <input
-                type="time"
-                name="startTime"
-                value={formData.startTime}
+                type="datetime-local"
+                name="endDateTime"
+                value={formData.endDateTime}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.startTime ? 'border-red-500' : 'border-[#c8d9e6]'
+                  errors.endDateTime ? 'border-red-500' : 'border-[#c8d9e6]'
                 }`}
               />
-              {errors.startTime && <p className="text-red-500 text-sm mt-1">{errors.startTime}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-[#2f4156] font-semibold mb-2">
-                End Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.endDate ? 'border-red-500' : 'border-[#c8d9e6]'
-                }`}
-              />
-              {errors.endDate && <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>}
-            </div>
-            <div>
-              <label className="block text-[#2f4156] font-semibold mb-2">
-                End Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                name="endTime"
-                value={formData.endTime}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.endTime ? 'border-red-500' : 'border-[#c8d9e6]'
-                }`}
-              />
-              {errors.endTime && <p className="text-red-500 text-sm mt-1">{errors.endTime}</p>}
+              {errors.endDateTime && <p className="text-red-500 text-sm mt-1">{errors.endDateTime}</p>}
             </div>
           </div>
 
@@ -300,7 +290,6 @@ const EditWorkshopPage = () => {
               <option value="ASA">ASA - Applied Sciences and Arts</option>
               <option value="DNT">DNT - Dentistry</option>
               <option value="LAW">LAW - Law and Legal Studies</option>
-
             </select>
             {errors.facultyResponsible && <p className="text-red-500 text-sm mt-1">{errors.facultyResponsible}</p>}
           </div>

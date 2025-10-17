@@ -41,8 +41,14 @@ const WorkshopsListPage = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const formatTime = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
   // 🔹 Unique locations from workshops
-  const uniqueLocations = ['all', ...new Set(workshops.map((w) => w.location))];
+ const uniqueLocations = ['all', 'GUC Cairo', 'GUC Berlin'];
+
 
   // 🔹 Static faculty options
   const faculties = [
@@ -216,11 +222,11 @@ const WorkshopsListPage = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                     <Calendar size={16} />
-                    <span>{formatDate(workshop.startDate)}</span>
+                    <span>{formatDate(workshop.startDateTime)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                     <Clock size={16} />
-                    <span>{workshop.startTime} - {workshop.endTime}</span>
+                    <span>{formatTime(workshop.startDateTime)} - {formatTime(workshop.endDateTime)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                     <Users size={16} />

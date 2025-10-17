@@ -3,10 +3,8 @@ const mongoose = require("mongoose");
 const workshopSchema = new mongoose.Schema({
   workshopName: { type: String, required: true },
   location: { type: String, required: true },
-  startDate: { type: Date, required: true },
-  startTime: { type: String, required: true },
-  endDate: { type: Date, required: true },
-  endTime: { type: String, required: true },
+  startDateTime: { type: Date, required: true },
+  endDateTime: { type: Date, required: true },
   shortDescription: { type: String, required: true },
   fullAgenda: { type: String, required: true },
   facultyResponsible: { type: String, required: true },
@@ -16,7 +14,7 @@ const workshopSchema = new mongoose.Schema({
   extraResources: { type: String },
   capacity: { type: Number, required: true },
   registrationDeadline: { type: Date, required: true },
-  registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // For registration
+  registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   createdBy: { type: String },
   status: { 
   type: String, 
