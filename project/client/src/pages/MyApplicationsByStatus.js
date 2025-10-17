@@ -1,11 +1,14 @@
 // client/src/pages/MyApplicationsByStatus.jsx
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import "../events.theme.css";
 
 const API_ORIGIN = "http://localhost:3001";
 
 export default function MyApplicationsByStatus() {
   const { status } = useParams(); // 'pending' or 'rejected'
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [bazaars, setBazaars] = useState([]);
   const [booths, setBooths] = useState([]);
@@ -15,7 +18,8 @@ export default function MyApplicationsByStatus() {
   // Detect logged-in user or use manual input
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("user") || localStorage.getItem("currentUser");
+      const raw =
+        localStorage.getItem("user") || localStorage.getItem("currentUser");
       if (raw) {
         const u = JSON.parse(raw);
         if (u && u.email) {
@@ -33,7 +37,9 @@ export default function MyApplicationsByStatus() {
       setError("");
       try {
         const res = await fetch(
-          `${API_ORIGIN}/api/vendor/applications?email=${encodeURIComponent(email)}&status=${status}`
+          `${API_ORIGIN}/api/vendor/applications?email=${encodeURIComponent(
+            email
+          )}&status=${status}`
         );
         if (!res.ok) throw new Error("Failed to fetch applications");
         const data = await res.json();
@@ -52,21 +58,39 @@ export default function MyApplicationsByStatus() {
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">
-          My {capitalize(status)} Applications
-        </h1>
+    <div className="events-theme">
+      <div className="container">
+        {/* Title + Back (same style as BazaarForm) */}
+        <div className="eo-head-row">
+          <h1>My {capitalize(status)} Applications</h1>
+          <button
+            type="button"
+            className="btn btn-outline eo-back"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            Back
+          </button>
+        </div>
 
+        {/* Status tabs (left as-is; you can restyle later if desired) */}
         <div className="mb-4 flex gap-3">
-          <Link to="/my-applications/accepted" className="bg-green-600 text-white px-4 py-2 rounded">
+          <Link
+            to="/my-applications/accepted"
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
             Accepted
           </Link>
-          <Link to="/my-applications/pending" className="bg-yellow-500 text-white px-4 py-2 rounded">
+          <Link
+            to="/my-applications/pending"
+            className="bg-yellow-500 text-white px-4 py-2 rounded"
+          >
             Pending
           </Link>
-          <Link to="/my-applications/rejected" className="bg-red-600 text-white px-4 py-2 rounded">
+          <Link
+            to="/my-applications/rejected"
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
             Rejected
           </Link>
         </div>
@@ -78,7 +102,9 @@ export default function MyApplicationsByStatus() {
         ) : (
           <>
             <section className="mb-8">
-              <h2 className="text-xl font-semibold mb-3">Bazaar Applications</h2>
+              <h2 className="text-xl font-semibold mb-3">
+                Bazaar Applications
+              </h2>
               {bazaars.length === 0 ? (
                 <p>No {status} bazaar applications found.</p>
               ) : (
@@ -108,10 +134,13 @@ export default function MyApplicationsByStatus() {
                 <ul className="space-y-3">
                   {booths.map((b) => (
                     <li key={b._id} className="bg-white p-4 rounded shadow">
-                      <div className="font-semibold">{b.vendorName || "Booth"}</div>
+                      <div className="font-semibold">
+                        {b.vendorName || "Booth"}
+                      </div>
                       <div className="text-sm text-gray-600">
                         <strong>Location:</strong> {b.platformSlot || "—"} •{" "}
-                        <strong>Duration:</strong> {b.durationWeeks || "—"} {" weeks"}
+                        <strong>Duration:</strong> {b.durationWeeks || "—"}{" "}
+                        {" weeks"}
                       </div>
                       <div className="mt-1 text-sm">
                         <strong>Status:</strong> {b.status}

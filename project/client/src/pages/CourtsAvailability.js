@@ -1,10 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 // Image imports (make sure these files exist in the correct path)
 import footballImg from "../images/football.webp";
 import basketballImg from "../images/basketball.webp";
 import tennisImg from "../images/tennis.webp";
-
 
 // Courts data
 const courtsData = [
@@ -61,8 +61,34 @@ const courtImages = {
 
 // Component
 export default function CourtsAvailability() {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    navigate("/student/dashboard");
+  };
+
   return (
     <div style={containerStyle}>
+      <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "20px" }}>
+        <button
+          onClick={handleBack}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#567c8d",
+            color: "white",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1rem",
+            fontWeight: "500",
+            transition: "background-color 0.2s",
+          }}
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#45687a")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = "#567c8d")}
+        >
+          Back to Dashboard
+        </button>
+      </div>
       <h1 style={headingStyle}>Campus Courts Availability</h1>
 
       {courtsData.map((court) => (
