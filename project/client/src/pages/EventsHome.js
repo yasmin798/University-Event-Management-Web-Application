@@ -191,7 +191,7 @@ export default function EventsHome() {
   // Open themed confirm dialog for delete
   const handleDelete = (id, eventType) => {
     const typeLabel =
-      eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // e.g. "Bazaars" -> "Bazaar"
+      eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // "bazaars" -> "Bazaar"
     setConfirm({
       open: true,
       title: `Delete this ${typeLabel.toLowerCase()}?`,
@@ -256,7 +256,7 @@ export default function EventsHome() {
             <FeatureCard key={c.type} {...c} />
           ))}
         </section>
-        {/* Vendor Requests Booth Button - Added above All Events list, shown when filter === "all" */}
+        {/* Quick links */}
         {filter === "all" && (
           <div style={{ margin: "24px 0" }}>
             <button
@@ -395,49 +395,60 @@ export default function EventsHome() {
                   (ev?.description && String(ev.description).trim()) ? (
                     <p>{ev.shortDescription || ev.description}</p>
                   ) : null}
+                  {/* ACTIONS */}
                   <div
                     className="actions"
                     style={{ position: "relative", zIndex: 2 }}
                   >
                     {isBazaar ? (
-                      <>
-                        {editable ? (
-                          <>
+                      <div
+                        className="actions-wrap"
+                        style={{ position: "relative", zIndex: 2 }}
+                      >
+                        {/* Row 1: Edit + Delete */}
+                        <div className="actions-row">
+                          {editable ? (
                             <Link className="btn" to={`/bazaars/${id}`}>
                               Edit
                             </Link>
+                          ) : (
+                            <button className="btn btn-disabled" disabled>
+                              Edit
+                            </button>
+                          )}
+
+                          <button
+                            className="btn btn-danger"
+                            onClick={() => handleDelete(id, "bazaars")}
+                            disabled={hasRegistrations}
+                            title={
+                              hasRegistrations
+                                ? "Cannot delete: participants registered"
+                                : "Delete this bazaar"
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
+
+                        {/* Row 2: Vendor Requests */}
+                        <div className="actions-row">
+                          {editable ? (
                             <Link
                               className="btn"
                               to={`/bazaars/${id}/vendor-requests`}
                             >
                               Vendor Requests
                             </Link>
-                          </>
-                        ) : (
-                          <>
-                            <button className="btn btn-disabled" disabled>
-                              Edit
-                            </button>
+                          ) : (
                             <button className="btn btn-disabled" disabled>
                               Vendor Requests
                             </button>
-                          </>
-                        )}
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(id, "bazaars")}
-                          disabled={hasRegistrations}
-                          title={
-                            hasRegistrations
-                              ? "Cannot delete: participants registered"
-                              : "Delete this bazaar"
-                          }
-                        >
-                          Delete
-                        </button>
-                      </>
+                          )}
+                        </div>
+                      </div>
                     ) : isTrip ? (
-                      <>
+                      <div className="actions-row">
                         {editable ? (
                           <Link className="btn" to={`/trips/${id}`}>
                             Edit
@@ -459,9 +470,9 @@ export default function EventsHome() {
                         >
                           Delete
                         </button>
-                      </>
+                      </div>
                     ) : isConference ? (
-                      <>
+                      <div className="actions-row">
                         {editable ? (
                           <Link className="btn" to={`/conferences/${id}`}>
                             Edit
@@ -483,7 +494,7 @@ export default function EventsHome() {
                         >
                           Delete
                         </button>
-                      </>
+                      </div>
                     ) : isWorkshop ? (
                       <>
                         {ev.status === "pending" && (
@@ -544,6 +555,7 @@ export default function EventsHome() {
           </div>
         </div>
       )}
+
       {/* Edit request modal */}
       {editRequest.open && (
         <div className="confirm-overlay" role="dialog" aria-modal="true">

@@ -138,36 +138,57 @@ const formatEventDate = (dateTimeStr) => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredEvents.map((e) => (
-                <div
-                  key={e._id}
-                  onClick={() => navigate(`/events/${e._id}?type=${e.type}`)}
-                  className="cursor-pointer bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
->
+             <div
+                key={e._id}
+                className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <div className="h-40 w-full bg-gray-200">
+                  <img
+                    src={e.image || workshopPlaceholder}
+                    alt={e.title || e.name || e.workshopName}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
 
-                  <div className="h-40 w-full bg-gray-200">
-                    <img
-                      src={e.image || workshopPlaceholder}
-                      alt={e.title || e.name || e.workshopName}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg text-[#2f4156] truncate">
-                      {e.title || e.name || e.workshopName || "Untitled"}
-                    </h3>
-                    {e.professorsParticipating && (
-                      <p className="text-sm text-[#567c8d] truncate">
-                        Professors: {e.professorsParticipating}
-                      </p>
-                    )}
+                <div className="p-4">
+                  <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+                    {e.title || e.name || e.workshopName || "Untitled"}
+                  </h3>
+                  {e.professorsParticipating && (
                     <p className="text-sm text-[#567c8d] truncate">
-                      Type: {e.type || "N/A"}
+                      Professors: {e.professorsParticipating}
                     </p>
-                    <p className="text-sm text-[#567c8d] truncate">
-                      Date: {formatEventDate(e.startDateTime || e.startDate || e.date)}
-                        </p>
+                  )}
+                  <p className="text-sm text-[#567c8d] truncate">
+                    Type: {e.type || "N/A"}
+                  </p>
+                  <p className="text-sm text-[#567c8d] truncate">
+                    Date: {new Date(e.startDate || e.date).toLocaleDateString()}
+                  </p>
+
+                  {/* Buttons */}
+                  <div className="flex gap-2 mt-4">
+                    {/* Details Button */}
+                    <button
+                      className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
+                      onClick={() => navigate(`/events/${e._id}?type=${e.type}`)}
+                    >
+                      Details
+                    </button>
+
+                    {/* Register Button (only for trips/workshops) */}
+                    {(e.type === "Trip" || e.type === "Workshop") && (
+                      <button
+                        className="flex-1 bg-[#c88585] hover:bg-[#b87575] text-white py-2 px-3 rounded-lg transition-colors"
+                        onClick={() => navigate(`/events/register/${e._id}`)}
+                      >
+                        Register
+                      </button>
+                    )}
                   </div>
                 </div>
+              </div>
+
               ))}
             </div>
           )}

@@ -1,7 +1,32 @@
-// client/src/pages/VendorRequestsBooth.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
+import "../events.theme.css"; // make sure the confirm modal styles are loaded
+
+function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
+  if (!open) return null;
+  return (
+    <div
+      className="confirm-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+    >
+      <div className="confirm">
+        <h2 id="confirm-title">{title}</h2>
+        <p>{body}</p>
+        <div className="confirm-actions">
+          <button className="btn btn-outline" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="btn" onClick={onConfirm}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function VendorRequestsBooth() {
   const { id: bazaarId } = useParams();
@@ -11,7 +36,16 @@ export default function VendorRequestsBooth() {
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState(null);
 
-  // <-- change this if your backend runs on a different host/port -->
+  // NEW: confirmation modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState({
+    requestId: null,
+    newStatus: null,
+    title: "",
+    body: "",
+  });
+
+  // change if your backend runs elsewhere
   const API_ORIGIN = "http://localhost:3001";
 
   useEffect(() => {
@@ -20,11 +54,10 @@ export default function VendorRequestsBooth() {
         setLoading(true);
         setError("");
 
-        // Try admin/public endpoints (choose the one your server exposes)
         const endpoints = [
-          `${API_ORIGIN}/api/booth-applications`, // common public list
-          `${API_ORIGIN}/api/admin/booth-vendor-requests`, // admin route
-          `${API_ORIGIN}/api/booth-vendor-requests`, // alternate
+          `${API_ORIGIN}/api/booth-applications`,
+          `${API_ORIGIN}/api/admin/booth-vendor-requests`,
+          `${API_ORIGIN}/api/booth-vendor-requests`,
         ];
 
         let data = null;
@@ -34,33 +67,39 @@ export default function VendorRequestsBooth() {
             if (!res.ok) continue;
             const text = await res.text();
             const parsed = text ? JSON.parse(text) : null;
-            // Accept either an array or object with .requests/.items
             if (Array.isArray(parsed)) {
               data = parsed;
               break;
-            } else if (parsed && Array.isArray(parsed.requests)) {
+            }
+            if (parsed && Array.isArray(parsed.requests)) {
               data = parsed.requests;
               break;
-            } else if (parsed && Array.isArray(parsed.items)) {
+            }
+            if (parsed && Array.isArray(parsed.items)) {
               data = parsed.items;
               break;
             }
           } catch (e) {
-            // try next
             console.warn("booth list fetch failed for", url, e);
           }
         }
 
-        if (!data) {
+        if (!data)
           throw new Error("Could not fetch booth requests from server");
-        }
 
-        // Normalize: ensure each request has _id (or id) and fields used below
         setRequests(
           data.map((r) => ({
             _id: r._id || r.id || null,
-            name: r.vendorName || (r.attendees && r.attendees[0] && r.attendees[0].name) || r.name || "",
-            email: r.vendorEmail || (r.attendees && r.attendees[0] && r.attendees[0].email) || r.email || "",
+            name:
+              r.vendorName ||
+              (r.attendees && r.attendees[0] && r.attendees[0].name) ||
+              r.name ||
+              "",
+            email:
+              r.vendorEmail ||
+              (r.attendees && r.attendees[0] && r.attendees[0].email) ||
+              r.email ||
+              "",
             duration:
               r.duration ||
               r.durationWeeks ||
@@ -79,7 +118,7 @@ export default function VendorRequestsBooth() {
               "",
             boothSize: r.boothSize || r.size || "",
             status: (r.status || r.state || "pending").toLowerCase(),
-            raw: r, // keep original for debugging if needed
+            raw: r,
           }))
         );
       } catch (err) {
@@ -92,11 +131,10 @@ export default function VendorRequestsBooth() {
     };
 
     fetchRequests();
-  }, [bazaarId]);
+  }, [bazaarId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateStatusOnServer = async (appId, newStatus) => {
     if (!appId) throw new Error("Missing application id");
-    // Try admin route first, fallback to generic application route
     const urlsToTry = [
       `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
       `${API_ORIGIN}/api/booth-applications/${appId}`,
@@ -112,65 +150,98 @@ export default function VendorRequestsBooth() {
         });
         const text = await res.text();
         let body;
-        try { body = text ? JSON.parse(text) : null; } catch (e) { body = text; }
+        try {
+          body = text ? JSON.parse(text) : null;
+        } catch {
+          body = text;
+        }
         if (res.ok) {
           console.log("Status updated on", url, body);
           return { ok: true, body };
         } else {
           console.warn("Patch returned not-ok from", url, res.status, body);
-          // try next
         }
       } catch (err) {
         console.warn("Patch error for", url, err);
       }
     }
-
-    throw new Error("Failed to update application on server (all endpoints tried)");
+    throw new Error(
+      "Failed to update application on server (all endpoints tried)"
+    );
   };
 
+  // Original action but without window.confirm; this is called after modal OK
   const handleDecision = async (requestId, newStatus) => {
-    if (!window.confirm(`Are you sure you want to ${newStatus.toUpperCase()} this booth request?`)) return;
-
     setProcessingId(requestId);
     setError("");
 
     try {
-      // send to server
       const result = await updateStatusOnServer(requestId, newStatus);
       if (result.ok) {
-        // update local state with confirmed status
         setRequests((prev) =>
-          prev.map((r) => (r._id === requestId ? { ...r, status: newStatus } : r))
+          prev.map((r) =>
+            r._id === requestId ? { ...r, status: newStatus } : r
+          )
         );
       } else {
         throw new Error("Server did not accept the update");
       }
     } catch (err) {
       console.error(`Failed to ${newStatus} booth request:`, err);
-      setError(`Failed to ${newStatus} booth request. Check console for details.`);
+      setError(
+        `Failed to ${newStatus} booth request. Check console for details.`
+      );
       alert(`Failed to ${newStatus} booth request. See console.`);
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleAccept = (requestId) => handleDecision(requestId, "accepted");
-  const handleReject = (requestId) => handleDecision(requestId, "rejected");
+  // Open the themed modal with the correct copy
+  const openConfirm = (requestId, newStatus) => {
+    const verb = newStatus === "accepted" ? "ACCEPT" : "REJECT";
+    setConfirmData({
+      requestId,
+      newStatus,
+      title:
+        newStatus === "accepted"
+          ? "Accept this booth request?"
+          : "Reject this booth request?",
+      body:
+        newStatus === "accepted"
+          ? "This will mark the application as accepted."
+          : "This will mark the application as rejected.",
+    });
+    setConfirmOpen(true);
+  };
+
+  // Button handlers now open the modal
+  const handleAccept = (requestId) => openConfirm(requestId, "accepted");
+  const handleReject = (requestId) => openConfirm(requestId, "rejected");
 
   return (
     <div className="events-theme">
       <div className="container">
         <NavBar bleed />
 
-        <h1>Booth Requests</h1>
-        <button onClick={() => navigate(-1)}>← Back</button>
+        <div className="eo-head-row">
+          <h1>Booth Requests</h1>
+          <button
+            type="button"
+            className="btn btn-outline eo-back"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            Back
+          </button>
+        </div>
 
         {loading ? (
-          <p>Loading...</p>
+          <p className="empty">Loading…</p>
         ) : error ? (
           <p style={{ color: "red" }}>{error}</p>
         ) : requests.length === 0 ? (
-          <p>No booth requests.</p>
+          <p className="empty">No booth requests.</p>
         ) : (
           <ul>
             {requests.map((req) => (
@@ -181,26 +252,44 @@ export default function VendorRequestsBooth() {
                   padding: "1rem",
                   border: "1px solid #ccc",
                   borderRadius: "6px",
+                  background: "#fff",
                 }}
               >
-                <div><strong>Application ID:</strong> {req._id || "—"}</div>
-                <div><strong>Name:</strong> {req.name || "—"}</div>
-                <div><strong>Email:</strong> {req.email || "—"}</div>
-                <div><strong>Duration:</strong> {req.duration || "—"}</div>
-                <div><strong>Booth Location:</strong> {req.location || "—"}</div>
-                <div><strong>Booth Size:</strong> {req.boothSize || "—"}</div>
-                <div><strong>Status:</strong> <span style={{ fontWeight: 700 }}>{req.status}</span></div>
+                <div>
+                  <strong>Application ID:</strong> {req._id || "—"}
+                </div>
+                <div>
+                  <strong>Name:</strong> {req.name || "—"}
+                </div>
+                <div>
+                  <strong>Email:</strong> {req.email || "—"}
+                </div>
+                <div>
+                  <strong>Duration:</strong> {req.duration || "—"}
+                </div>
+                <div>
+                  <strong>Booth Location:</strong> {req.location || "—"}
+                </div>
+                <div>
+                  <strong>Booth Size:</strong> {req.boothSize || "—"}
+                </div>
+                <div>
+                  <strong>Status:</strong>{" "}
+                  <span style={{ fontWeight: 700 }}>{req.status}</span>
+                </div>
                 <div style={{ marginTop: "0.5rem" }}>
                   <button
                     onClick={() => handleAccept(req._id)}
                     style={{ marginRight: "0.5rem" }}
                     disabled={processingId === req._id}
+                    className="btn"
                   >
                     {processingId === req._id ? "Processing..." : "Accept"}
                   </button>
                   <button
                     onClick={() => handleReject(req._id)}
                     disabled={processingId === req._id}
+                    className="btn btn-outline"
                   >
                     {processingId === req._id ? "Processing..." : "Reject"}
                   </button>
@@ -209,6 +298,18 @@ export default function VendorRequestsBooth() {
             ))}
           </ul>
         )}
+
+        {/* Themed confirmation modal (same look as Bazaar/Trip forms) */}
+        <ConfirmModal
+          open={confirmOpen}
+          title={confirmData.title}
+          body={confirmData.body}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            handleDecision(confirmData.requestId, confirmData.newStatus);
+          }}
+        />
       </div>
     </div>
   );
