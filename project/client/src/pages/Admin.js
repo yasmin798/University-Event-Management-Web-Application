@@ -1,4 +1,3 @@
-// client/src/pages/Admin.jsx
 import React, { useEffect, useState } from "react";
 
 export default function Admin() {
@@ -6,6 +5,7 @@ export default function Admin() {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [vendorBazaarRequests, setVendorBazaarRequests] = useState([]);
   const [vendorBoothRequests, setVendorBoothRequests] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [assignedRoles, setAssignedRoles] = useState({});
@@ -13,28 +13,33 @@ export default function Admin() {
   const [mailTarget, setMailTarget] = useState(null);
   const [sending, setSending] = useState(false);
   const [previewLink, setPreviewLink] = useState("");
-  const [processingId, setProcessingId] = useState(null); // id currently being processed
+  const [processingId, setProcessingId] = useState(null);
+  const [eventFetchErrors, setEventFetchErrors] = useState([]);
+  const [popup, setPopup] = useState({
+  visible: false,
+  message: "",
+});
 
-  // <-- change if your backend is on another host/port -->
-  const API_ORIGIN = "http://localhost:3001";
+  const API_ORIGIN = "http://localhost:3000";
 
-  // Generic safe fetch + JSON parse helper
   const tryFetchJson = async (url) => {
     try {
       const r = await fetch(url);
       const txt = await r.text();
       try {
         const data = txt ? JSON.parse(txt) : null;
+        console.log(`Fetch ${url}:`, { ok: r.ok, status: r.status, data });
         return { ok: r.ok, data, status: r.status, url };
-      } catch {
-        return { ok: r.ok, data: txt, status: r.status, url };
+      } catch (err) {
+        console.error(`Parse error for ${url}:`, txt, err);
+        return { ok: r.ok, data: txt, status: r.status, url, error: `Parse error: ${err.message}` };
       }
     } catch (err) {
-      return { ok: false, error: err.message, url };
+      console.error(`Network error for ${url}:`, err);
+      return { ok: false, error: `Network error: ${err.message}`, url };
     }
   };
 
-  // Enrich bazaar applications with bazaar details
   async function enrichBazaarRequestsWithBazaarInfo(requestsArr) {
     if (!Array.isArray(requestsArr) || requestsArr.length === 0) return [];
 
@@ -117,19 +122,18 @@ export default function Admin() {
     });
   }
 
-  // Main loader
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setMessage("");
+      setEventFetchErrors([]);
 
-      // Try users endpoint on backend origin, else fallback to 3000 debug
       const usersAttempt = await tryFetchJson(`${API_ORIGIN}/api/debug/users`);
       let usersData = null;
-      if (usersAttempt.ok && usersAttempt.data) usersData = usersAttempt.data;
-      else {
-        const fallback = await tryFetchJson(`http://localhost:3000/api/debug/users`);
-        if (fallback.ok && fallback.data) usersData = fallback.data;
+      if (usersAttempt.ok && usersAttempt.data) {
+        usersData = usersAttempt.data;
+      } else {
+        console.warn("Users endpoint returned no data:", usersAttempt);
       }
 
       if (usersData?.users) {
@@ -138,21 +142,18 @@ export default function Admin() {
       } else {
         setVerifiedUsers([]);
         setPendingUsers([]);
-        console.warn("Users endpoint returned no data.");
       }
 
-      // Fetch bazaar applications (admin or public endpoint)
       const appsAttempt = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
-      console.log("appsAttempt:", appsAttempt);
       let appsArr = [];
       if (appsAttempt.ok && appsAttempt.data) {
         if (Array.isArray(appsAttempt.data)) appsArr = appsAttempt.data;
         else if (appsAttempt.data.requests) appsArr = appsAttempt.data.requests;
-        else if (appsAttempt.data.items) appsArr = appsAttempt.data.items;
+        else if (appsAttempt.data.items) appsArr = appsArr.data.items;
         else appsArr = appsAttempt.data;
       } else {
-        // fallback to admin endpoint if available
         const adminApps = await tryFetchJson(`${API_ORIGIN}/api/admin/bazaar-vendor-requests`);
+        console.log("Bazaar vendor requests response:", adminApps);
         if (adminApps.ok && adminApps.data) {
           appsArr = Array.isArray(adminApps.data) ? adminApps.data : adminApps.data.requests || [];
         }
@@ -161,22 +162,45 @@ export default function Admin() {
       const enrichedApps = await enrichBazaarRequestsWithBazaarInfo(appsArr || []);
       setVendorBazaarRequests(enrichedApps);
 
-      // Booth requests (admin route or public fallback)
       const boothAdminAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
       let boothArr = [];
       if (boothAdminAttempt.ok && boothAdminAttempt.data) {
         boothArr = Array.isArray(boothAdminAttempt.data) ? boothAdminAttempt.data : boothAdminAttempt.data.requests || [];
-      } else {
-        const boothPublicAttempt = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
-        if (boothPublicAttempt.ok && boothPublicAttempt.data) {
-          boothArr = Array.isArray(boothPublicAttempt.data) ? boothPublicAttempt.data : boothPublicAttempt.data.requests || [];
-        }
       }
       setVendorBoothRequests(boothArr || []);
+
+      // Fetch all events (Trips, Conferences, Bazaars)
+      const eventEndpoints = [
+        { path: "/api/trips", type: "trip", key: "items" },
+        { path: "/api/conferences", type: "conference", key: "items" },
+        { path: "/api/bazaars", type: "bazaar", key: "items" },
+      ];
+
+      const allEvents = [];
+      const errors = [];
+
+      for (const endpoint of eventEndpoints) {
+        const attempt = await tryFetchJson(`${API_ORIGIN}${endpoint.path}`);
+        if (attempt.ok && attempt.data) {
+          const data = Array.isArray(attempt.data) ? attempt.data : attempt.data[endpoint.key] || [];
+          allEvents.push(...data.map((event) => ({ ...event, eventType: endpoint.type })));
+        } else {
+          errors.push(`Failed to fetch ${endpoint.path}: ${attempt.status} ${attempt.error || attempt.data || "No data"}`);
+        }
+      }
+
+      console.log("Combined events:", allEvents);
+      setEvents(allEvents);
+      setEventFetchErrors(errors);
+
+      if (allEvents.length === 0) {
+        setMessage("⚠️ No events found. Database collections (trips, conferences, bazaars) may be empty. Create events using POST /api/trips, /api/conferences, or /api/bazaars.");
+      }
+
       setLoading(false);
     } catch (err) {
       console.error("fetchUsers error:", err);
-      setMessage("❌ Could not load data.");
+      setMessage("❌ Could not load data. Check console for details.");
       setLoading(false);
     }
   };
@@ -186,28 +210,55 @@ export default function Admin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Delete user
-  const handleDelete = async (userId) => {
-    if (!window.confirm("Are you sure you want to DELETE this user?")) return;
+const handleDelete = async (eventId, eventType) => {
+  const event = events.find((e) => e._id === eventId);
+  console.log(`Attempting to delete ${eventType} with ID ${eventId}:`, event);
 
-    try {
-      const res = await fetch(`${API_ORIGIN}/api/admin/delete/${userId}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("🗑️ User deleted successfully!");
-        fetchUsers();
-      } else {
-        setMessage(`❌ ${data.error || "Delete failed"}`);
-      }
-    } catch (err) {
-      console.error(err);
-      setMessage("❌ Server error during delete");
+  if (!event) {
+    setPopup({ visible: true, message: `❌ Event not found for ID ${eventId}` });
+    return;
+  }
+
+  const hasRegistrations = Array.isArray(event.registrations) && event.registrations.length > 0;
+  console.log(`Registration check for ${eventType} '${event.title || event.name || "Untitled"}':`, {
+    hasRegistrations,
+    registrations: event.registrations,
+  });
+
+  if (hasRegistrations) {
+    const eventTitle = event.title || event.name || "Untitled";
+    const registrationCount = event.registrations.length;
+    setPopup({
+      visible: true,
+      message: `❌ Cannot delete ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} '${eventTitle}' because ${registrationCount} user${registrationCount === 1 ? "" : "s"} ha${registrationCount === 1 ? "s" : "ve"} registered.`,
+    });
+    return;
+  }
+
+  if (!window.confirm(`Are you sure you want to DELETE this ${eventType}?`)) return;
+
+  setProcessingId(eventId);
+  try {
+    const endpoint = `${API_ORIGIN}/api/${eventType}s/${eventId}`;
+    const res = await fetch(endpoint, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setPopup({ visible: true, message: `🗑️ ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} deleted successfully!` });
+      await fetchUsers();
+    } else {
+      setPopup({ visible: true, message: `❌ ${data.error || "Delete failed"}` });
     }
-  };
+  } catch (err) {
+    console.error(`Error deleting ${eventType}:`, err);
+    setPopup({ visible: true, message: `❌ Server error during ${eventType} deletion` });
+  } finally {
+    setProcessingId(null);
+  }
+};
 
-  // Send verification mail
+
   const handleSendMail = async () => {
     if (!mailTarget) return;
     setSending(true);
@@ -236,20 +287,15 @@ export default function Admin() {
     setSending(false);
   };
 
-  // Update vendor request status (bazaar -> application route; booth -> admin booth route)
   const handleVendorRequestStatus = async (requestId, type, newStatus) => {
     if (!window.confirm(`Are you sure you want to ${newStatus.toUpperCase()} this ${type} vendor request?`)) return;
     setProcessingId(requestId);
     try {
       let url;
       if (type === "bazaar") {
-        // This updates the application document status
-        url = `${API_ORIGIN}/api/bazaar-applications/${requestId}`;
+        url = `${API_ORIGIN}/api/admin/bazaar-vendor-requests/${requestId}`;
       } else if (type === "booth") {
-        // admin booth requests route
-        url = `${API_ORIGIN}/api/booth-applications/${requestId}`;
-      } else {
-        url = `${API_ORIGIN}/api/admin/${type}-vendor-requests/${requestId}`;
+        url = `${API_ORIGIN}/api/admin/booth-vendor-requests/${requestId}`;
       }
 
       const res = await fetch(url, {
@@ -261,7 +307,6 @@ export default function Admin() {
       const data = await res.json();
       if (res.ok) {
         setMessage(`✅ Vendor request ${newStatus} successfully!`);
-        // Refresh lists
         await fetchUsers();
       } else {
         setMessage(`❌ ${data.error || "Update failed"}`);
@@ -275,13 +320,59 @@ export default function Admin() {
     }
   };
 
-  // Generate preview link
+  const handleDeleteEvent = async (eventId, eventType) => {
+    const event = events.find((e) => e._id === eventId);
+    console.log(`Attempting to delete ${eventType} with ID ${eventId}:`, event);
+
+    if (!event) {
+      setMessage(`❌ Event not found for ID ${eventId}`);
+      return;
+    }
+
+    const hasRegistrations = Array.isArray(event.registrations) && event.registrations.length > 0;
+    console.log(`Registration check for ${eventType} '${event.title || event.name || "Untitled"}':`, {
+      hasRegistrations,
+      registrations: event.registrations,
+    });
+
+    if (hasRegistrations) {
+      const eventTitle = event.title || event.name || "Untitled";
+      const registrationCount = event.registrations.length;
+      setMessage(
+        `❌ Cannot delete ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} '${eventTitle}' because ${registrationCount} user${registrationCount === 1 ? "" : "s"} ha${registrationCount === 1 ? "s" : "ve"} registered.`
+      );
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to DELETE this ${eventType}?`)) return;
+
+    setProcessingId(eventId);
+    try {
+      const endpoint = `${API_ORIGIN}/api/${eventType}s/${eventId}`;
+      const res = await fetch(endpoint, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`🗑️ ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} deleted successfully!`);
+        await fetchUsers();
+      } else {
+        setMessage(`❌ ${data.error || "Delete failed"}`);
+      }
+    } catch (err) {
+      console.error(`Error deleting ${eventType}:`, err);
+      setMessage(`❌ Server error during ${eventType} deletion`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const generatePreviewLink = (userId) => {
     const token = Math.random().toString(36).substring(2, 15);
     setPreviewLink(`${API_ORIGIN}/api/verify/${token}-for-${userId}`);
   };
 
-  if (loading) return <p style={{ textAlign: "center" }}>Loading users and requests...</p>;
+  if (loading) return <p style={{ textAlign: "center" }}>Loading users, requests, and events...</p>;
 
   return (
     <div style={{ padding: "30px", fontFamily: "Poppins, Arial, sans-serif" }}>
@@ -296,6 +387,12 @@ export default function Admin() {
           }}
         >
           {message}
+        </p>
+      )}
+
+      {eventFetchErrors.length > 0 && (
+        <p style={{ color: "red", textAlign: "center", fontWeight: 500 }}>
+          Errors fetching events: {eventFetchErrors.join("; ")}
         </p>
       )}
 
@@ -387,7 +484,7 @@ export default function Admin() {
           )}
         </tbody>
       </table>
-      
+
       {/* VENDOR REQUESTS - BAZAARS */}
       <h2 style={{ color: "#3B82F6", marginTop: 50 }}>Vendor Requests - Bazaars</h2>
       <table style={tableStyle}>
@@ -433,7 +530,7 @@ export default function Admin() {
                         {processingId === req._id ? "Processing..." : "Accept"}
                       </button>
                       <button
-                        onClick={() => handleVendorRequestStatus(req._1d, "bazaar", "rejected")}
+                        onClick={() => handleVendorRequestStatus(req._id, "bazaar", "rejected")}
                         style={deleteBtnStyle}
                         disabled={processingId === req._id}
                       >
@@ -456,7 +553,7 @@ export default function Admin() {
         </tbody>
       </table>
 
-      {/* VENDOR REQUESTS - BOOTHS (UPDATED: show booth id + description with location & duration) */}
+      {/* VENDOR REQUESTS - BOOTHS */}
       <h2 style={{ color: "#6366F1", marginTop: 50 }}>Vendor Requests - Booths</h2>
       <table style={tableStyle}>
         <thead>
@@ -471,103 +568,89 @@ export default function Admin() {
         <tbody>
           {vendorBoothRequests.length ? (
             vendorBoothRequests.map((req) => {
-  // Booth ID: try several common places
-  const boothId = req.boothId || req.booth || req.id || req._id || "—";
+              const boothId = req.boothId || req.booth || req.id || req._id || "—";
+              const vendorName = req.vendorName || (Array.isArray(req.attendees) && req.attendees[0] && req.attendees[0].name) || "—";
+              const locationVal =
+                req.platformSlot ||
+                req.boothLocation ||
+                req.platformLocation ||
+                req.selectedLocation ||
+                req.locationSelected ||
+                req.locationName ||
+                req.slotLocation ||
+                (req.meta && (req.meta.location || req.meta.locationName)) ||
+                (req.details && req.details.location) ||
+                "";
+              let rawDuration =
+                req.duration ||
+                req.durationWeeks ||
+                req.setupDuration ||
+                req.weeks ||
+                (req.meta && req.meta.duration) ||
+                (req.details && req.details.duration) ||
+                "";
+              let durationVal = "";
+              if (typeof rawDuration === "number") {
+                durationVal = `${rawDuration} weeks`;
+              } else if (typeof rawDuration === "string" && rawDuration.trim() !== "") {
+                const s = rawDuration.trim();
+                if (/\bweek(s)?\b/i.test(s)) {
+                  durationVal = s;
+                } else if (/^\d+(\.\d+)?$/.test(s)) {
+                  durationVal = `${s} weeks`;
+                } else {
+                  durationVal = s;
+                }
+              }
+              let description = "";
+              if (req.description && String(req.description).trim() !== "") {
+                description = String(req.description);
+              } else {
+                const parts = [];
+                if (locationVal) parts.push(`Location: ${locationVal}`);
+                if (durationVal) parts.push(`Duration: ${durationVal}`);
+                if (parts.length === 0 && (req.details || req.info)) {
+                  description = String(req.details || req.info);
+                } else {
+                  description = parts.join(" • ");
+                }
+                if (!description) description = "No details provided.";
+              }
+              const status = (req.status || "pending").toLowerCase();
 
-  // Vendor: prefer vendorName, fallback to attendees array first item
-  const vendorName = req.vendorName || (Array.isArray(req.attendees) && req.attendees[0] && req.attendees[0].name) || "—";
-
-  // LOCATION: try many likely keys (add any other key your backend actually uses)
-  const locationVal =
-    req.platformSlot ||
-    req.boothLocation ||
-    req.platformLocation ||
-    req.selectedLocation ||
-    req.locationSelected ||
-    req.locationName ||
-    req.slotLocation ||
-    (req.meta && (req.meta.location || req.meta.locationName)) ||
-    (req.details && req.details.location) ||
-    "";
-
-  // DURATION: accept different shapes, normalize to a string and append "weeks" if numeric or short form
-  let rawDuration =
-    req.duration ||
-    req.durationWeeks ||
-    req.setupDuration ||
-    req.weeks ||
-    (req.meta && req.meta.duration) ||
-    (req.details && req.details.duration) ||
-    "";
-
-  // Normalize duration into a friendly string
-  let durationVal = "";
-  if (typeof rawDuration === "number") {
-    durationVal = `${rawDuration} weeks`;
-  } else if (typeof rawDuration === "string" && rawDuration.trim() !== "") {
-    const s = rawDuration.trim();
-    // If it already mentions 'week' or 'weeks', keep as-is; if it's a number-like string, append weeks
-    if (/\bweek(s)?\b/i.test(s)) {
-      durationVal = s;
-    } else if (/^\d+(\.\d+)?$/.test(s)) {
-      durationVal = `${s} weeks`;
-    } else {
-      durationVal = s; // free-text fallback
-    }
-  }
-
-  // Description: prefer explicit req.description, else build from location + duration, else fallback to details/raw
-  let description = "";
-  if (req.description && String(req.description).trim() !== "") {
-    description = String(req.description);
-  } else {
-    const parts = [];
-    if (locationVal) parts.push(`Location: ${locationVal}`);
-    if (durationVal) parts.push(`Duration: ${durationVal}`);
-    if (parts.length === 0 && (req.details || req.info)) {
-      // try to pull text from details/info if present
-      description = String(req.details || req.info);
-    } else {
-      description = parts.join(" • ");
-    }
-    if (!description) description = "No details provided.";
-  }
-
-  const status = (req.status || "pending").toLowerCase();
-
-  return (
-    <tr key={req._id || req.id || boothId} style={trStyle}>
-      <td style={tdStyle}>{boothId}</td>
-      <td style={tdStyle}>{vendorName}</td>
-      <td style={tdStyle}>{description}</td>
-      <td style={tdStyle}>{status}</td>
-      <td style={tdStyle}>
-        {status === "pending" ? (
-          <>
-            <button
-              onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "accepted")}
-              style={verifyBtnStyle}
-              disabled={processingId === (req._id || req.id || boothId)}
-            >
-              {processingId === (req._id || req.id || boothId) ? "Processing..." : "Accept"}
-            </button>
-            <button
-              onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "rejected")}
-              style={deleteBtnStyle}
-              disabled={processingId === (req._id || req.id || boothId)}
-            >
-              {processingId === (req._id || req.id || boothId) ? "Processing..." : "Reject"}
-            </button>
-          </>
-        ) : (
-          <span style={{ color: status === "accepted" ? "green" : "red", fontWeight: 600 }}>
-            {status}
-          </span>
-        )}
-      </td>
-    </tr>
-  );
-})
+              return (
+                <tr key={req._id || req.id || boothId} style={trStyle}>
+                  <td style={tdStyle}>{boothId}</td>
+                  <td style={tdStyle}>{vendorName}</td>
+                  <td style={tdStyle}>{description}</td>
+                  <td style={tdStyle}>{status}</td>
+                  <td style={tdStyle}>
+                    {status === "pending" ? (
+                      <>
+                        <button
+                          onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "accepted")}
+                          style={verifyBtnStyle}
+                          disabled={processingId === (req._id || req.id || boothId)}
+                        >
+                          {processingId === (req._id || req.id || boothId) ? "Processing..." : "Accept"}
+                        </button>
+                        <button
+                          onClick={() => handleVendorRequestStatus(req._id || req.id || boothId, "booth", "rejected")}
+                          style={deleteBtnStyle}
+                          disabled={processingId === (req._id || req.id || boothId)}
+                        >
+                          {processingId === (req._id || req.id || boothId) ? "Processing..." : "Reject"}
+                        </button>
+                      </>
+                    ) : (
+                      <span style={{ color: status === "accepted" ? "green" : "red", fontWeight: 600 }}>
+                        {status}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
               <td colSpan="5" style={tdEmptyStyle}>No booth requests.</td>
@@ -575,6 +658,65 @@ export default function Admin() {
           )}
         </tbody>
       </table>
+
+      {/* EVENTS LIST */}
+<h2 style={{ color: "#8B5CF6", marginTop: 50 }}>📅 All Events</h2>
+{eventFetchErrors.length > 0 && (
+  <p style={{ color: "red", textAlign: "center", fontWeight: 500 }}>
+    Errors fetching events: {eventFetchErrors.join("; ")}
+  </p>
+)}
+<table style={tableStyle}>
+  <thead>
+    <tr style={{ background: "#8B5CF6", color: "white" }}>
+      <th style={thStyle}>Type</th>
+      <th style={thStyle}>Title</th>
+      <th style={thStyle}>Location</th>
+      <th style={thStyle}>Start Date</th>
+      <th style={thStyle}>End Date</th>
+      <th style={thStyle}>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {events.length ? (
+      events.map((event) => {
+        const hasRegistrations = Array.isArray(event.registrations) && event.registrations.length > 0;
+        return (
+          <tr key={event._id} style={trStyle}>
+            <td style={tdStyle}>{event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1)}</td>
+            <td style={tdStyle}>{event.title || event.name || "Untitled"}</td>
+            <td style={tdStyle}>{event.location || event.venue || "—"}</td>
+            <td style={tdStyle}>
+              {event.startDateTime ? new Date(event.startDateTime).toLocaleString() : "—"}
+            </td>
+            <td style={tdStyle}>
+              {event.endDateTime ? new Date(event.endDateTime).toLocaleString() : "—"}
+            </td>
+            <td style={tdStyle}>
+              <button
+                onClick={() => handleDeleteEvent(event._id, event.eventType)}
+                style={{
+                  ...deleteBtnStyle,
+                  ...(hasRegistrations ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                }}
+                disabled={processingId === event._id} // Only disable during processing
+                title={`Delete this ${event.eventType}`}
+              >
+                {processingId === event._id ? "Processing..." : "Delete"}
+              </button>
+            </td>
+          </tr>
+        );
+      })
+    ) : (
+      <tr>
+        <td colSpan="6" style={tdEmptyStyle}>
+          No events available. Database collections (trips, conferences, bazaars) may be empty. Create events using POST /api/trips, /api/conferences, or /api/bazaars.
+        </td>
+      </tr>
+    )}
+  </tbody>
+</table>
 
       {/* MAIL POPUP */}
       {showMailPopup && mailTarget && (
