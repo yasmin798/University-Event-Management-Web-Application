@@ -2,59 +2,70 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, Bell, User, LogOut } from "lucide-react";
 import workshopPlaceholder from "../images/workshop.png";
-import { workshopAPI } from "../api/workshopApi";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 
 const TaDashboard = () => {
   const navigate = useNavigate();
-  const [workshops, setWorkshops] = useState([]);
+  const [events, setEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Fetch all events
   useEffect(() => {
-    const fetchWorkshops = async () => {
-      try {
-        const data = await workshopAPI.getAllWorkshops();
-        setWorkshops(data);
-      } catch (error) {
-        console.error("Error fetching workshops:", error);
-      }
-    };
-    fetchWorkshops();
-  }, []);
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/events/all"); // must match backend
+      if (!res.ok) throw new Error("Network response was not ok");
+      const data = await res.json();
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
+  fetchEvents();
+}, []);
+
+const formatEventDate = (dateTimeStr) => {
+  if (!dateTimeStr) return "N/A";
+  // Take only the first 10 characters: YYYY-MM-DD
+  const datePart = dateTimeStr.slice(0, 10);
+  return new Date(datePart).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
   };
-
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  // Filter workshops based on search and type
-  const filteredWorkshops = workshops.filter((w) => {
+  // Filter events based on search and type
+  const filteredEvents = events.filter((e) => {
+    const name = e.title || e.name || e.workshopName || e.bazaarName;
     const matchesSearch =
-      w.workshopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.professorsParticipating.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (w.type?.toLowerCase().includes(searchTerm.toLowerCase()));
+      name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (e.professorsParticipating?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
 
-    const matchesType =
-      eventTypeFilter === "All" || (w.type || "N/A") === eventTypeFilter;
+    const matchesType = eventTypeFilter === "All" || e.type === eventTypeFilter;
 
     return matchesSearch && matchesType;
   });
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Overlay for sidebar */}
+      {/* Sidebar */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={closeSidebar}
         ></div>
       )}
-
-      {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -72,7 +83,6 @@ const TaDashboard = () => {
             <Menu size={20} />
           </button>
         </div>
-
         <div className="flex-1 px-4 mt-4">
           <button
             onClick={handleLogout}
@@ -85,9 +95,7 @@ const TaDashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 overflow-auto">
-        {/* Top navigation */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          {/* Menu toggle */}
           <button
             onClick={toggleSidebar}
             className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
@@ -95,7 +103,6 @@ const TaDashboard = () => {
             <Menu size={24} className="text-[#2f4156]" />
           </button>
 
-          {/* Search + filter */}
           <div className="relative flex-1 max-w-md flex items-center">
             <Search
               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
@@ -103,19 +110,14 @@ const TaDashboard = () => {
             />
             <input
               type="text"
-              placeholder="Search by workshop or professor"
+              placeholder="Search by name or professor"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
             />
-
-            <EventTypeDropdown
-  selected={eventTypeFilter}
-  onChange={setEventTypeFilter}
-/>
+            <EventTypeDropdown selected={eventTypeFilter} onChange={setEventTypeFilter} />
           </div>
 
-          {/* Notification bell & user */}
           <div className="flex items-center gap-2 md:gap-4 ml-4">
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
               <Bell size={20} className="text-[#567c8d]" />
@@ -126,41 +128,44 @@ const TaDashboard = () => {
           </div>
         </header>
 
-        {/* Workshops grid */}
         <main className="p-4 md:p-8">
           <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
             Available Events
           </h1>
 
-          {filteredWorkshops.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <p className="text-[#567c8d]">No events found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredWorkshops.map((w) => (
+              {filteredEvents.map((e) => (
                 <div
-                  key={w._id}
-                  className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
-                >
+                  key={e._id}
+                  onClick={() => navigate(`/events/${e._id}?type=${e.type}`)}
+                  className="cursor-pointer bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+>
+
                   <div className="h-40 w-full bg-gray-200">
                     <img
-                      src={w.image || workshopPlaceholder}
-                      alt={w.workshopName}
+                      src={e.image || workshopPlaceholder}
+                      alt={e.title || e.name || e.workshopName}
                       className="h-full w-full object-cover"
                     />
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-lg text-[#2f4156] truncate">
-                      {w.workshopName}
+                      {e.title || e.name || e.workshopName || "Untitled"}
                     </h3>
+                    {e.professorsParticipating && (
+                      <p className="text-sm text-[#567c8d] truncate">
+                        Professors: {e.professorsParticipating}
+                      </p>
+                    )}
                     <p className="text-sm text-[#567c8d] truncate">
-                      Professors: {w.professorsParticipating}
+                      Type: {e.type || "N/A"}
                     </p>
                     <p className="text-sm text-[#567c8d] truncate">
-                      Type: {w.type || "N/A"}
-                    </p>
-                    <p className="text-sm text-[#567c8d] truncate">
-                      Date: {new Date(w.startDate).toLocaleDateString()}
-                    </p>
+                      Date: {formatEventDate(e.startDateTime || e.startDate || e.date)}
+                        </p>
                   </div>
                 </div>
               ))}

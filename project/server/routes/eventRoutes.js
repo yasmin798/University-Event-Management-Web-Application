@@ -6,6 +6,8 @@ const Conference = require("../models/Conference");
 const router = express.Router();
 const { register } = require("../controllers/registrationController");
 const { protect } = require("../middleware/auth"); // Import protect
+const Workshop = require("../models/Workshop"); // import your Workshop model
+
 // Helper: normalize title so UI can send either "name" or "title"
 const normTitle = (b = {}) => b.title || b.name || "";
 
@@ -347,8 +349,53 @@ router.delete("/conferences/:id", async (req, res) => {
 // Register for any event (generic)
 router.post("/events/:eventId/register", protect, register); // protect requires token
 
+// GET /api/events/all
+// GET /api/events/all
+// GET /api/events/all
+router.get("/all", async (req, res) => {
+  try {
+    // Fetch all event types
+    const workshops = await Workshop.find();
+    const bazaars = await Bazaar.find();
+    const trips = await Trip.find();
+    const conferences = await Conference.find();
 
+    const allEvents = [
+      ...workshops.map((w) => ({ ...w.toObject(), type: "Workshop" })),
+      ...bazaars.map((b) => ({ ...b.toObject(), type: "Bazaar" })),
+      ...trips.map((t) => ({ ...t.toObject(), type: "Trip" })),
+      ...conferences.map((c) => ({ ...c.toObject(), type: "Conference" })),
+    ];
 
-
+    res.json(allEvents);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
+});
 
 module.exports = router;
+
+
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type } = req.query;
+
+    if (!id || !type) return res.status(400).json({ error: "Missing id or type" });
+
+    let event;
+    if (type === "workshop") event = await Workshop.findById(id);
+    else if (type === "bazaar") event = await Bazaar.findById(id);
+    else if (type === "trip") event = await Trip.findById(id);
+    else if (type === "conference") event = await Conference.findById(id);
+    else return res.status(400).json({ error: "Invalid event type" });
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    res.json(event);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch event" });
+  }
+});
