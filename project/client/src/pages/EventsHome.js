@@ -37,6 +37,9 @@ export default function EventsHome() {
   const [workshops, setWorkshops] = useState([]);
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [toast, setToast] = useState({ open: false, text: "" });
+  const [searchTerm, setSearchTerm] = useState("");
+
+  
   // Styled confirm modal state
   const [confirm, setConfirm] = useState({
     open: false,
@@ -91,9 +94,23 @@ export default function EventsHome() {
   }, [refreshOthers, fetchWorkshops]);
   const events = [...otherEvents, ...workshops];
   const loading = otherLoading || workshopsLoading;
-  const filteredEvents = filter === "all" 
+const filteredEvents = useMemo(() => {
+  let evs = filter === "all" 
     ? events 
     : events.filter(ev => ev.type.toLowerCase() === filter.slice(0, -1));
+
+  if (searchTerm.trim() === "") return evs;
+
+  return evs.filter((ev) => {
+    const name = (ev.title || ev.name || "").toLowerCase();
+    const desc = (ev.shortDescription || ev.description || "").toLowerCase();
+    return (
+      name.includes(searchTerm.toLowerCase()) ||
+      desc.includes(searchTerm.toLowerCase())
+    );
+  });
+}, [events, filter, searchTerm]);
+
   // Feature cards
   const CARDS = useMemo(
     () => [
@@ -171,25 +188,32 @@ export default function EventsHome() {
   };
   // Do the actual edit request
   const doRequestEdits = async () => {
-    try {
-      const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: editRequest.message }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setToast({ open: true, text: err.error || "Failed to send request" });
-        return;
-      }
-      setToast({ open: true, text: "Edit request sent successfully!" });
-      setEditRequest({ open: false, workshopId: null, message: "" });
-      refresh();
-    } catch (e) {
-      console.error("Edit request error:", e);
-      setToast({ open: true, text: "Network error: Could not send request" });
+  try {
+    const token = localStorage.getItem("token"); // Or whatever key you used
+    const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ message: editRequest.message }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setToast({ open: true, text: err.error || "Failed to send request" });
+      return;
     }
-  };
+
+    setToast({ open: true, text: "Edit request sent successfully!" });
+    setEditRequest({ open: false, workshopId: null, message: "" });
+    refresh();
+  } catch (e) {
+    console.error("Edit request error:", e);
+    setToast({ open: true, text: "Network error: Could not send request" });
+  }
+};
+
   // Open themed confirm dialog for delete
   const handleDelete = (id, eventType) => {
     const typeLabel =
@@ -240,6 +264,16 @@ export default function EventsHome() {
         <header className="eo-pagehead-simple">
           <h1>Manage and organize all GUC events.</h1>
         </header>
+        <div className="eo-search" style={{ margin: "12px 0" }}>
+  <input
+    type="text"
+    placeholder="Search events..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="w-full md:w-1/3 p-2 border border-gray-300 rounded"
+  />
+</div>
+
         {/* Filter pills */}
         <div className="eo-filters">
           {["all", "bazaars", "trips", "conferences", "workshops"].map((f) => (
@@ -279,6 +313,7 @@ export default function EventsHome() {
         <h1 className="eo-section-title">
           {filter === "all" ? "All Events" : `${filter[0].toUpperCase() + filter.slice(1)}`}
         </h1>
+        
         {loading ? (
           <div className="empty">Loading…</div>
         ) : (

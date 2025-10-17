@@ -5,6 +5,7 @@ import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -13,10 +14,39 @@ const StudentDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workshops, setWorkshops] = useState([]);
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
+const [booths, setBooths] = useState([]);
+const [boothsLoading, setBoothsLoading] = useState(true);
 
   // Use same hooks as EventsHome
   const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
 
+
+const fetchBooths = useCallback(async () => {
+  setBoothsLoading(true);
+  try {
+    const data = await boothAPI.getAllBooths();
+
+    const normalizedBooths = data.map(b => ({
+      ...b,
+      _id: b._id,
+      type: "BOOTH",
+      title: `${b.bazaar?.title} Booth`,
+      startDateTime: b.bazaar?.startDateTime,
+      endDateTime: b.bazaar?.endDateTime,
+      date: b.bazaar?.startDateTime,
+      image: b.image || workshopPlaceholder,
+      description: b.bazaar?.shortDescription || "",
+    }));
+
+    setBooths(normalizedBooths);
+  } catch (err) {
+    console.error("Error fetching booths:", err);
+    setBooths([]);
+  } finally {
+    setBoothsLoading(false);
+  }
+}, []);
+  
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
   setWorkshopsLoading(true);
@@ -57,7 +87,8 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     fetchWorkshops();
-  }, [fetchWorkshops]);
+    fetchBooths();
+}, [fetchWorkshops, fetchBooths]);
 
   // Combine events like EventsHome
   const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops];

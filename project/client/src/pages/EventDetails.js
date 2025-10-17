@@ -7,6 +7,9 @@ import workshopPlaceholder from "../images/workshop.png";
 import tripImage from "../images/trip.jpeg";
 import bazaarImage from "../images/bazaar.jpeg";
 import conferenceImage from "../images/conference.jpg";
+import { boothAPI } from "../api/boothApi";
+
+
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -15,7 +18,9 @@ const EventDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+  const [booths, setBooths] = useState([]);
+const [boothsLoading, setBoothsLoading] = useState(true);
+
   // Use EXACTLY same hooks as StudentDashboard
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
   const [workshops, setWorkshops] = useState([]);
@@ -26,6 +31,39 @@ const EventDetails = () => {
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
   };
+  //fetch booths
+useEffect(() => {
+  const fetchBooths = async () => {
+    setBoothsLoading(true);
+    try {
+      const data = await boothAPI.getAllBooths(); // fetch all accepted booths
+
+      // Only keep the fields you want to display
+     const normalizedBooths = data.map(b => ({
+  _id: b._id,
+  type: "BOOTH",
+  bazaarId: b.bazaar?._id, // VERY IMPORTANT
+  title: `${b.bazaar?.title} Booth`,
+  boothSize: b.boothSize,
+  durationWeeks: b.durationWeeks,
+  platformSlot: b.platformSlot,
+  status: b.status,
+  description: b.description || "",
+  image: b.image || workshopPlaceholder,
+}));
+
+
+      setBooths(normalizedBooths);
+    } catch (err) {
+      console.error("Error fetching booths:", err);
+      setBooths([]);
+    } finally {
+      setBoothsLoading(false);
+    }
+  };
+  fetchBooths();
+}, []);
+
 
   // Fetch workshops EXACTLY like StudentDashboard
   useEffect(() => {
@@ -64,27 +102,47 @@ const EventDetails = () => {
     fetchWorkshops();
   }, []);
 
+
+
+
+
+
+
+
+
+  
   // Find event after data loads - EXACTLY like StudentDashboard logic
   useEffect(() => {
-    if (loading) return;
+  if (loading || boothsLoading) return; // wait until both loaded
 
-    const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops];
-    
-    const foundEvent = allEvents.find(e => e._id === id);
-    
-    if (foundEvent) {
-      setEvent(foundEvent);
-      setError("");
-    } else {
-      setError("Event not found");
+  const allEvents = [
+    ...otherEvents.filter(e => !e.status || e.status === "published"),
+    ...workshops
+  ];
+
+  const foundEvent = allEvents.find(e => e._id === id);
+
+  if (foundEvent) {
+    // attach booths only for Bazaar
+    if (foundEvent.type === "BAZAAR") {
+      const eventBooths = booths.filter(b => b.bazaarId === id && b.status === "accepted");
+      foundEvent.booths = eventBooths;
     }
-  }, [id, otherEvents, workshops, loading]);
+
+    setEvent(foundEvent);
+    setError("");
+  } else {
+    setEvent(null);
+    setError("Event not found");
+  }
+}, [id, otherEvents, workshops, booths, loading, boothsLoading]);
 
   // Set loading based on both data sources
-  useEffect(() => {
-    const stillLoading = otherEvents.length === 0 || workshopsLoading;
-    setLoading(stillLoading);
-  }, [otherEvents.length, workshopsLoading]);
+ useEffect(() => {
+  const stillLoading = workshopsLoading || (otherEvents.length === 0 && workshops.length === 0);
+  setLoading(stillLoading);
+}, [otherEvents, workshopsLoading,  workshops.length]);
+
 
   const formatDate = (iso) => {
     if (!iso) return "—";
@@ -142,6 +200,7 @@ const EventDetails = () => {
   const isWorkshop = type === "WORKSHOP";
   const isBazaar = type === "BAZAAR";
   const isConference = type === "CONFERENCE";
+  const isBooth=type ==="BOOTH";
   const hasPassed = new Date(event.startDateTime || event.startDate) < new Date();
 
 
@@ -266,6 +325,20 @@ if (!eventImage || eventImage === "") {
                       </a>
                     </p>
                   )}
+                                    {isBazaar && (
+                      <>
+                        <p><strong>Bazaar Type:</strong> {event.bazaarType}</p>
+                        <p><strong>Number of Booths:</strong> {event.booths?.length || 0}</p>
+                      </>
+                    )}
+                    {isBooth && (
+                      <>
+                        <p><strong>Booth Size:</strong> {event.boothSize}</p>
+                        <p><strong>Platform Slot:</strong> {event.platformSlot}</p>
+                        <p><strong>Duration:</strong> {event.durationWeeks} week(s)</p>
+                        <p><strong>Status:</strong> {event.status}</p>
+                      </>
+                    )}
                   {event.professorsParticipating && (
                     <p><strong>Professors:</strong> {event.professorsParticipating}</p>
                   )}
@@ -278,7 +351,22 @@ if (!eventImage || eventImage === "") {
                 <h2 className="text-xl font-semibold text-[#2f4156] mb-4">Description</h2>
                 <p className="text-[#567c8d] leading-relaxed">{event.description}</p>
               </div>
-            )}
+            )}{event.booths && event.booths.length > 0 && (
+  <div className="mb-8">
+    <h2 className="text-xl font-semibold text-[#2f4156] mb-4">Booths</h2>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {event.booths.map((b) => (
+        <div key={b._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl p-4">
+          <p className="text-[#567c8d] mb-2"><strong>Booth Size:</strong> {b.boothSize}</p>
+          <p className="text-[#567c8d] mb-2"><strong>Duration:</strong> {b.durationWeeks} week(s)</p>
+          <p className="text-[#567c8d] mb-2"><strong>Slot:</strong> {b.platformSlot}</p>
+          <p className="text-[#567c8d] mb-2"><strong>Status:</strong> {b.status}</p>
+          <p className="text-[#567c8d] mb-2"><strong>Attendees:</strong> {(b.attendees || []).join(", ")}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-[#c8d9e6]">
               {!hasPassed && (isTrip || isWorkshop) && (
