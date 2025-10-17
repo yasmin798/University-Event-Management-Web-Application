@@ -8,7 +8,24 @@ import workshopImage from "../images/workshop.png";
 import tripImage from "../images/trip.jpeg";
 import conferenceImage from "../images/conference.jpg";
 import bazaarImage from "../images/bazaar.jpeg";
+// top of RegisteredEvents.jsx
 
+const API =
+  process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
+
+// one axios instance for this page
+const http = axios.create({
+  baseURL: API,
+  withCredentials: true, // <-- enables cookie/session auth
+});
+
+// attach JWT if you have one
+http.interceptors.request.use((cfg) => {
+  const token =
+    localStorage.getItem("token") || localStorage.getItem("authToken") || "";
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  return cfg;
+});
 const RegisteredEvents = () => {
   const [events, setEvents] = useState({ upcoming: [], past: [] });
   const [error, setError] = useState("");
@@ -18,27 +35,38 @@ const RegisteredEvents = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState("");
- useEffect(() => {
+  useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError("Please log in to view your registered events.");
-          return;
-        }
-        const res = await axios.get(
-          "http://localhost:3000/api/users/me/registered-events",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = await http.get("/api/users/me/registered-events");
         setEvents(res.data);
+        setError("");
       } catch (err) {
-        setError(err.response?.data.error || "Failed to load events. Ensure you are logged in.");
+        const status = err?.response?.status;
+        const serverMsg = err?.response?.data?.error;
+        console.error("Registered events failed:", {
+          status,
+          serverMsg,
+          url: `${API}/api/users/me/registered-events`,
+        });
+
+        if (status === 401) {
+          setError("You’re not logged in. Please log in again.");
+          // optional: navigate("/login");
+        } else if (status === 404) {
+          setError("Endpoint not found at the API origin you’re using.");
+        } else {
+          setError(
+            serverMsg || "Failed to load events. Ensure you are logged in."
+          );
+        }
       }
     };
+
     fetchEvents();
-  }, []); // Uncommented backend call; removed mock
+  }, []);
+
+  // Uncommented backend call; removed mock
 
   useEffect(() => {
     if (selectedCategory) {
@@ -47,16 +75,16 @@ const RegisteredEvents = () => {
       setActiveEventType("all");
     }
   }, [selectedCategory]);
-   // Sidebar functions
+  // Sidebar functions
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
-   useEffect(() => {
+  useEffect(() => {
     const getUserRole = () => {
       try {
         const token = localStorage.getItem("token");
         if (token) {
           // Decode the token to get user role (if stored in token)
-          const payload = JSON.parse(atob(token.split('.')[1]));
+          const payload = JSON.parse(atob(token.split(".")[1]));
           return payload.role || "student"; // Default to student if no role found
         }
       } catch (error) {
@@ -94,7 +122,7 @@ const RegisteredEvents = () => {
   useEffect(() => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
   }, [activeEventType]); // uncomment after testing ui
-   /* useEffect(() => {
+  /* useEffect(() => {
     getMyRegisteredEvents()
       .then(setEvents)
       .catch(() => setError("Failed to load events. Using mock data."));
@@ -111,11 +139,11 @@ const RegisteredEvents = () => {
   }, [activeEventType]); */
   if (error) return <p className="my-events-error">{error}</p>;
   const getEventDate = (event) => {
-  return event.startDateTime || event.startDate || event.date || new Date();
-};
+    return event.startDateTime || event.startDate || event.date || new Date();
+  };
   const eventTypeImages = {
     all: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-     workshop: workshopImage,
+    workshop: workshopImage,
     trip: tripImage,
     conference: conferenceImage,
     bazaar: bazaarImage,
@@ -126,20 +154,26 @@ const RegisteredEvents = () => {
   };
   const getEventImage = (eventType) => {
     if (!eventType) return eventTypeImages.default;
-    const type = (eventType||'').toLowerCase();
+    const type = (eventType || "").toLowerCase();
     return eventTypeImages[type] || eventTypeImages.default;
   };
-  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title || event.workshopName}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
+  const handleViewDetails = (event) => {
+    alert(
+      `Event Details:\n\nTitle: ${
+        event.title || event.workshopName
+      }\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`
+    );
+  };
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
-      const matchesSearch = (event.title||event.workshopName||"")
+      const matchesSearch = (event.title || event.workshopName || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = 
-        activeEventType === "all" || 
-        (event.type && (event.type||'').toLowerCase() === activeEventType);
-      
+
+      const matchesCategory =
+        activeEventType === "all" ||
+        (event.type && (event.type || "").toLowerCase() === activeEventType);
+
       return matchesSearch && matchesCategory;
     });
   };
@@ -149,7 +183,14 @@ const RegisteredEvents = () => {
   const EventCard = ({ event, isPast = false }) => {
     const eventImage = getEventImage(event.type);
     const eventDate = getEventDate(event);
-    console.log('Event:', event.title, 'Type:', event.type, 'Image URL:', eventImage);
+    console.log(
+      "Event:",
+      event.title,
+      "Type:",
+      event.type,
+      "Image URL:",
+      eventImage
+    );
     return (
       <div className="event-card">
         <div
@@ -166,7 +207,9 @@ const RegisteredEvents = () => {
         </div>
 
         <div className="event-content">
-          <h3 className="event-title">{event.title || event.workshopName||'Untitled Event'}</h3>
+          <h3 className="event-title">
+            {event.title || event.workshopName || "Untitled Event"}
+          </h3>
           <p className="event-organizer">Organized By: GUC Events</p>
 
           <div className="event-details">
@@ -192,8 +235,12 @@ const RegisteredEvents = () => {
           </div>
 
           <div className="event-actions">
-            <button className="btn-primary" onClick={()=>handleViewDetails(event)}>View Details</button>
-            
+            <button
+              className="btn-primary"
+              onClick={() => handleViewDetails(event)}
+            >
+              View Details
+            </button>
           </div>
         </div>
       </div>
@@ -225,7 +272,7 @@ const RegisteredEvents = () => {
             <Menu size={20} />
           </button>
         </div>
-        
+
         {/* Navigation Links */}
         <div className="flex-1 px-4 mt-4 space-y-2">
           {/* Dashboard Button - shows role-specific dashboard */}
@@ -234,13 +281,15 @@ const RegisteredEvents = () => {
             className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
           >
             <Home size={18} />
-            {userRole ? `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} Dashboard` : 'Dashboard'}
+            {userRole
+              ? `${
+                  userRole.charAt(0).toUpperCase() + userRole.slice(1)
+                } Dashboard`
+              : "Dashboard"}
           </button>
 
           {/* Registered Events Button (current page) */}
-          <button
-            className="w-full flex items-center gap-3 bg-[#45687a] hover:bg-[#3a5a6d] text-white py-3 px-4 rounded-lg transition-colors text-left cursor-default"
-          >
+          <button className="w-full flex items-center gap-3 bg-[#45687a] hover:bg-[#3a5a6d] text-white py-3 px-4 rounded-lg transition-colors text-left cursor-default">
             <Calendar size={18} />
             Registered Events
           </button>
@@ -254,7 +303,7 @@ const RegisteredEvents = () => {
           </button>
         </div>
       </div>
-   {/* Main content */}
+      {/* Main content */}
       <div className="flex-1 overflow-auto">
         {/* Header with sidebar toggle */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
@@ -274,7 +323,7 @@ const RegisteredEvents = () => {
             </div>
           </div>
         </header>
-   {/* Registered Events Content */}
+        {/* Registered Events Content */}
         <div className="my-events-page">
           {/* Hero Section with Background */}
           <section className="events-hero">
@@ -359,14 +408,14 @@ const RegisteredEvents = () => {
                 {filteredUpcoming.length === 0 ? (
                   <div className="empty-state">
                     <p>No upcoming events registered.</p>
-                    <button 
+                    <button
                       className="btn-primary"
                       onClick={() => {
                         setSearchTerm("");
                         setActiveEventType("all");
                         setSelectedCategory("");
                       }}
-                    > 
+                    >
                       Clear Filters
                     </button>
                   </div>
