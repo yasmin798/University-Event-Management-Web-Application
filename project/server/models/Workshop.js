@@ -1,11 +1,12 @@
 const mongoose = require("mongoose");
 
 const workshopSchema = new mongoose.Schema({
-  type: { type: String, default: "workshop" },
   workshopName: { type: String, required: true },
   location: { type: String, required: true },
-  startDateTime: { type: Date, required: true }, // Combine date/time
-  endDateTime: { type: Date, required: true },
+  startDate: { type: Date, required: true },
+  startTime: { type: String, required: true },
+  endDate: { type: Date, required: true },
+  endTime: { type: String, required: true },
   shortDescription: { type: String, required: true },
   fullAgenda: { type: String, required: true },
   facultyResponsible: { type: String, required: true },
@@ -17,7 +18,6 @@ const workshopSchema = new mongoose.Schema({
   registrationDeadline: { type: Date, required: true },
   createdBy: { type: String },
   status: { type: String, default: "pending" },
-  registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // For registration
   image: { type: String },
 }, { timestamps: true });
 

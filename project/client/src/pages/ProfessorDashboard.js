@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Menu, Bell, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin } from 'lucide-react';
+import { Search, Menu, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin } from 'lucide-react';
 import workshopPlaceholder from "../images/workshop.png";
 import { workshopAPI } from '../api/workshopApi';
 
@@ -70,12 +70,39 @@ const ProfessorDashboard = () => {
     return days;
   };
 
-  const filteredWorkshops = workshops.filter((workshop) =>
-    Object.values(workshop)
-      .join(' ')
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
+ const [filteredWorkshops, setFilteredWorkshops] = useState([]);
+
+useEffect(() => {
+  const term = searchTerm.toLowerCase().trim();
+
+  if (!term) {
+    setFilteredWorkshops(workshops);
+    return;
+  }
+
+  const results = workshops.filter((w) => {
+    const name = w.workshopName?.toLowerCase() || '';
+    const location = w.location?.toLowerCase() || '';
+    const description = w.shortDescription?.toLowerCase() || '';
+    const professors =
+      (Array.isArray(w.professorsParticipating)
+        ? w.professorsParticipating.join(' ').toLowerCase()
+        : w.professorsParticipating?.toLowerCase()) || '';
+    const faculty = w.facultyResponsible?.toLowerCase() || '';
+
+    return (
+      name.includes(term) ||
+      location.includes(term) ||
+      description.includes(term) ||
+      professors.includes(term) ||
+      faculty.includes(term)
+    );
+  });
+
+  setFilteredWorkshops(results);
+}, [searchTerm, workshops]);
+
+
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -265,11 +292,6 @@ const ProfessorDashboard = () => {
             <FileText size={20} />
             <span>Create Workshop</span>
           </button>
-          
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors">
-            <Bell size={20} />
-            <span>Notifications</span>
-          </button>
         </nav>
 
         <div className="p-4 m-4 border-t border-[#567c8d]">
@@ -309,9 +331,6 @@ const ProfessorDashboard = () => {
             
             <div className="flex items-center gap-2 md:gap-4">
               <span className="hidden md:block text-[#567c8d] text-sm">Today, {formatDate(currentDate)}</span>
-              <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
-                <Bell size={20} className="text-[#567c8d]" />
-              </button>
               <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
                 <User size={20} className="text-[#2f4156]" />
               </div>
@@ -329,7 +348,7 @@ const ProfessorDashboard = () => {
               </div>
 
               <div className="bg-white rounded-xl p-4 md:p-6 border border-[#c8d9e6] mb-8">
-                <h2 className="text-xl font-bold text-[#2f4156] mb-6">My Workshops</h2>
+                <h2 className="text-xl font-bold text-[#2f4156] mb-6">Workshops</h2>
 
                 {filteredWorkshops.length === 0 ? (
                   <div className="text-center text-[#567c8d] py-6">No workshops found.</div>

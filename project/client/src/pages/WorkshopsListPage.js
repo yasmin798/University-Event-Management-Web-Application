@@ -7,62 +7,73 @@ const WorkshopsListPage = () => {
   const navigate = useNavigate();
   const [workshops, setWorkshops] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [facultyFilter, setFacultyFilter] = useState('all');
 
-  const currentProfessor = "Professor A"; // 🔹 Replace this with actual logged-in professor name later
+  const currentProfessor = "Professor A"; // Replace later with actual logged-in professor
 
   useEffect(() => {
-    loadWorkshops();
+    const fetchWorkshops = async () => {
+      try {
+        const data = await workshopAPI.getAllWorkshops();
+        setWorkshops(data);
+      } catch (error) {
+        console.error('Error fetching workshops:', error);
+      }
+    };
+    fetchWorkshops();
   }, []);
 
-  const loadWorkshops = () => {
-    const stored = localStorage.getItem('workshops');
-    if (stored) {
-      setWorkshops(JSON.parse(stored));
-    }
-  };
-
-useEffect(() => {
-  const fetchWorkshops = async () => {
-    try {
-      const data = await workshopAPI.getAllWorkshops();
-      setWorkshops(data);
-    } catch (error) {
-      console.error('Error fetching workshops:', error);
-    }
-  };
-  
-  fetchWorkshops();
-}, []);
-
-
-
-
   const handleDelete = async (id) => {
-  if (window.confirm('Are you sure you want to delete this workshop?')) {
-    try {
-      await workshopAPI.deleteWorkshop(id);
-      // Refresh the list
-      const updated = workshops.filter(w => w._id !== id);
-      setWorkshops(updated);
-    } catch (error) {
-      console.error('Error deleting workshop:', error);
-      alert('Failed to delete workshop');
+    if (window.confirm('Are you sure you want to delete this workshop?')) {
+      try {
+        await workshopAPI.deleteWorkshop(id);
+        setWorkshops(workshops.filter((w) => w._id !== id));
+      } catch (error) {
+        console.error('Error deleting workshop:', error);
+        alert('Failed to delete workshop');
+      }
     }
-  }
-};
+  };
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  // 🔹 Filtering logic
-  const filteredWorkshops =
-    filter === 'all'
-      ? workshops
-      : filter === 'mine'
-      ? workshops.filter((w) => w.createdBy === currentProfessor)
-      : workshops.filter((w) => w.createdBy !== currentProfessor);
+  // 🔹 Unique locations from workshops
+  const uniqueLocations = ['all', ...new Set(workshops.map((w) => w.location))];
+
+  // 🔹 Static faculty options
+  const faculties = [
+    { value: 'all', label: 'All Faculties' },
+    { value: 'MET', label: 'MET - Media Engineering and Technology' },
+    { value: 'IET', label: 'IET - Information Engineering and Technology' },
+    { value: 'PBT', label: 'PBT - Pharmacy and Biotechnology' },
+    { value: 'EMS', label: 'EMS - Engineering and Materials Science' },
+    { value: 'MNGT', label: 'MNGT - Management Technology' },
+    { value: 'ASA', label: 'ASA - Applied Sciences and Arts' },
+    { value: 'DNT', label: 'DNT - Dentistry' },
+    { value: 'LAW', label: 'LAW - Law and Legal Studies' },
+  ];
+
+  // 🔹 Combined filtering logic
+  const filteredWorkshops = workshops.filter((w) => {
+    const baseFilter =
+      filter === 'all'
+        ? true
+        : filter === 'mine'
+        ? w.createdBy === currentProfessor
+        : w.createdBy !== currentProfessor;
+
+    const locationMatch =
+      locationFilter === 'all' ? true : w.location === locationFilter;
+
+    const facultyMatch =
+      facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
+
+    return baseFilter && locationMatch && facultyMatch;
+  });
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -88,8 +99,9 @@ useEffect(() => {
       </div>
 
       <div className="max-w-6xl mx-auto p-8">
-        {/* 🔹 New filter buttons */}
-        <div className="flex gap-4 mb-6">
+        {/* 🔹 Filter controls */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          {/* All / Mine / Others */}
           <button
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg transition-colors ${
@@ -100,7 +112,6 @@ useEffect(() => {
           >
             All ({workshops.length})
           </button>
-
           <button
             onClick={() => setFilter('mine')}
             className={`px-4 py-2 rounded-lg transition-colors ${
@@ -111,7 +122,6 @@ useEffect(() => {
           >
             My Workshops ({workshops.filter((w) => w.createdBy === currentProfessor).length})
           </button>
-
           <button
             onClick={() => setFilter('others')}
             className={`px-4 py-2 rounded-lg transition-colors ${
@@ -122,15 +132,44 @@ useEffect(() => {
           >
             Other Professors ({workshops.filter((w) => w.createdBy !== currentProfessor).length})
           </button>
+
+          {/* 🔹 Location dropdown */}
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+          >
+            {uniqueLocations.map((loc) => (
+              <option key={loc} value={loc}>
+                {loc === 'all' ? 'All Locations' : loc}
+              </option>
+            ))}
+          </select>
+
+          {/* 🔹 Faculty dropdown */}
+          <select
+            value={facultyFilter}
+            onChange={(e) => setFacultyFilter(e.target.value)}
+            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+          >
+            {faculties.map((fac) => (
+              <option key={fac.value} value={fac.value}>
+                {fac.label}
+              </option>
+            ))}
+          </select>
         </div>
 
+        {/* 🔹 Workshop Cards */}
         {filteredWorkshops.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center border border-[#c8d9e6]">
             <div className="w-16 h-16 bg-[#c8d9e6] rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar size={32} className="text-[#567c8d]" />
             </div>
             <h3 className="text-lg font-semibold text-[#2f4156] mb-2">No workshops found</h3>
-            <p className="text-[#567c8d] mb-4">Create your first workshop to get started</p>
+            <p className="text-[#567c8d] mb-4">
+              Try adjusting your filters or create a new workshop
+            </p>
             <button
               onClick={() => navigate('/professor/workshops/create')}
               className="px-6 py-3 bg-[#567c8d] text-white rounded-lg hover:bg-[#2f4156] transition-colors"
@@ -141,34 +180,35 @@ useEffect(() => {
         ) : (
           <div className="grid gap-6">
             {filteredWorkshops.map((workshop) => (
-  <div
-    key={workshop._id} // Changed from workshop.id
-    className="bg-white rounded-xl p-6 border border-[#c8d9e6] hover:shadow-lg transition-shadow"
-  >
-    <div className="flex justify-between items-start mb-4">
-      <div className="flex-1">
-        <h3 className="text-xl font-bold text-[#2f4156]">{workshop.workshopName}</h3>
-        <p className="text-[#567c8d] mb-4">{workshop.shortDescription}</p>
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)} // Changed from workshop.id
-          className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
-          title="Edit"
-        >
-          <Edit size={18} className="text-[#567c8d]" />
-        </button>
-        <button
-          onClick={() => handleDelete(workshop._id)} // Changed from workshop.id
-          className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-          title="Delete"
-        >
-          <Trash2 size={18} className="text-red-500" />
-        </button>
-      </div>
-    </div>
-    
-    
+              <div
+                key={workshop._id}
+                className="bg-white rounded-xl p-6 border border-[#c8d9e6] hover:shadow-lg transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-[#2f4156]">
+                      {workshop.workshopName}
+                    </h3>
+                    <p className="text-[#567c8d] mb-4">{workshop.shortDescription}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
+                      className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Edit size={18} className="text-[#567c8d]" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(workshop._id)}
+                      className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 size={18} className="text-red-500" />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                     <MapPin size={16} />
