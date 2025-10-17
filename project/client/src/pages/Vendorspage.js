@@ -39,6 +39,8 @@ const VendorsPage = () => {
           Show Upcoming Bazaars
         </button>
       </div>
+      <Link to="/my-applications" className="...">My Applications</Link>
+
 
       {loading && (
         <p className="text-center text-gray-500 font-medium">Loading...</p>

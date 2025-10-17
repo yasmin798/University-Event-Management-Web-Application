@@ -51,6 +51,8 @@ import CourtsAvailability from "./pages/CourtsAvailability";
 import BazaarApplicationForm from "./pages/BazaarApplicationForm";
 import BoothApplicationForm from "./pages/BoothApplicationForm";
 
+import MyApplications from "./pages/MyApplications";
+
 
 // Simple 404
 function NotFound() {
@@ -137,6 +139,9 @@ function App() {
         <Route path="/gym-sessions" element={<GymSessions />} />
         <Route path="/gym-manager" element={<GymManager />} />
 
+
+        <Route path="/my-applications" element={<MyApplications />} />
+          
 
 
         {/* 404 */}
