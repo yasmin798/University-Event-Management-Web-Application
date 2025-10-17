@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, Bell, User, LogOut, Calendar } from "lucide-react";
+import { Search, Menu, Bell, User, LogOut, Calendar , Map} from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
 
 const TaDashboard = () => {
   const navigate = useNavigate();
@@ -13,49 +14,81 @@ const TaDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workshops, setWorkshops] = useState([]);
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
+const [booths, setBooths] = useState([]);
+const [boothsLoading, setBoothsLoading] = useState(true);
 
   // Use same hooks as EventsHome
   const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
 
+
+const fetchBooths = useCallback(async () => {
+  setBoothsLoading(true);
+  try {
+    const data = await boothAPI.getAllBooths();
+
+    const normalizedBooths = data.map(b => ({
+      ...b,
+      _id: b._id,
+      type: "BOOTH",
+      title: `${b.bazaar?.title} Booth`,
+      startDateTime: b.bazaar?.startDateTime,
+      endDateTime: b.bazaar?.endDateTime,
+      date: b.bazaar?.startDateTime,
+      image: b.image || workshopPlaceholder,
+      description: b.bazaar?.shortDescription || "",
+    }));
+
+    setBooths(normalizedBooths);
+  } catch (err) {
+    console.error("Error fetching booths:", err);
+    setBooths([]);
+  } finally {
+    setBoothsLoading(false);
+  }
+}, []);
+  
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
-    setWorkshopsLoading(true);
-    try {
-      const data = await workshopAPI.getAllWorkshops();
-      const normalizedWorkshops = data
-        .filter(w => w.status === "published") // Only published for students
-        .map((w) => {
-          const startDatePart = w.startDate.split("T")[0];
-          const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
-          const endDatePart = w.endDate.split("T")[0];
-          const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
-          return {
-            ...w,
-            _id: w._id,
-            type: "WORKSHOP",
-            title: w.workshopName,
-            name: w.workshopName,
-            startDateTime: startDateTime.toISOString(),
-            endDateTime: endDateTime.toISOString(),
-            startDate: startDateTime.toISOString(), // For compatibility
-            date: startDateTime.toISOString(), // For compatibility
-            image: w.image || workshopPlaceholder,
-            description: w.shortDescription,
-            professorsParticipating: w.professorsParticipating || "",
-          };
-        });
-      setWorkshops(normalizedWorkshops);
-    } catch (error) {
-      console.error("Error fetching workshops:", error);
-      setWorkshops([]);
-    } finally {
-      setWorkshopsLoading(false);
-    }
-  }, []);
+  setWorkshopsLoading(true);
+  try {
+    const data = await workshopAPI.getAllWorkshops();
+
+    const normalizedWorkshops = data
+      .filter((w) => w.status === "published")
+      .map((w) => {
+        const start = new Date(w.startDateTime);
+        const end = new Date(w.endDateTime);
+
+        return {
+          ...w,
+          _id: w._id,
+          type: "WORKSHOP",
+          title: w.workshopName,
+          name: w.workshopName,
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          startDate: start.toISOString(), // for compatibility
+          date: start.toISOString(),
+          image: w.image || workshopPlaceholder,
+          description: w.shortDescription,
+          professorsParticipating: w.professorsParticipating || "",
+        };
+      });
+
+    setWorkshops(normalizedWorkshops);
+  } catch (error) {
+    console.error("Error fetching workshops:", error);
+    setWorkshops([]);
+  } finally {
+    setWorkshopsLoading(false);
+  }
+}, []);
+
 
   useEffect(() => {
     fetchWorkshops();
-  }, [fetchWorkshops]);
+    fetchBooths();
+}, [fetchWorkshops, fetchBooths]);
 
   // Combine events like EventsHome
   const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops];
@@ -91,6 +124,12 @@ const TaDashboard = () => {
     navigate("/events/registered");
     closeSidebar();
   };
+
+// Update this function
+const handleCourtsAvailability = () => {
+  navigate("/courts-availability"); // Change this line from "/courts/availability" to "/courts-availability"
+  closeSidebar();
+};
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
@@ -136,6 +175,13 @@ const TaDashboard = () => {
             <Calendar size={18} />
             Registered Events
           </button>
+          <button
+  onClick={handleCourtsAvailability}
+  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+>
+  <Map size={18} />
+  Courts Availability
+</button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"

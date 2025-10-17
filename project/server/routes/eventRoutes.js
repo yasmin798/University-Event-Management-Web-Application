@@ -7,6 +7,7 @@ const router = express.Router();
 const { register } = require("../controllers/registrationController");
 const { protect } = require("../middleware/auth"); // Import protect
 const Workshop = require("../models/Workshop"); // import your Workshop model
+const BoothApplication = require("../models/BoothApplication");
 
 // Helper: normalize title so UI can send either "name" or "title"
 const normTitle = (b = {}) => b.title || b.name || "";
@@ -359,12 +360,28 @@ router.get("/all", async (req, res) => {
     const bazaars = await Bazaar.find();
     const trips = await Trip.find();
     const conferences = await Conference.find();
+    const booths = await BoothApplication.find({ status: "accepted" })
+      .populate("bazaar")
+      .sort({ createdAt: -1 });
+
+    // Normalize booths
+    const normalizedBooths = booths.map((b) => ({
+      ...b.toObject(),
+      type: "Booth",
+      title: b.bazaar?.title || b.bazaar?.name || "Booth",
+      name: b.bazaar?.title || b.bazaar?.name || "Booth",
+      startDateTime: b.bazaar?.startDateTime,
+      endDateTime: b.bazaar?.endDateTime,
+      image: b.image || "", // optionally add placeholder
+      description: b.description || b.shortDescription || "",
+    }));
 
     const allEvents = [
       ...workshops.map((w) => ({ ...w.toObject(), type: "Workshop" })),
       ...bazaars.map((b) => ({ ...b.toObject(), type: "Bazaar" })),
       ...trips.map((t) => ({ ...t.toObject(), type: "Trip" })),
       ...conferences.map((c) => ({ ...c.toObject(), type: "Conference" })),
+      ...normalizedBooths,
     ];
 
     res.json(allEvents);
@@ -373,6 +390,7 @@ router.get("/all", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch events" });
   }
 });
+
 
 
 
@@ -389,6 +407,7 @@ router.get("/events/:id", async (req, res) => {
     else if (type === "bazaar") event = await Bazaar.findById(id);
     else if (type === "trip") event = await Trip.findById(id);
     else if (type === "conference") event = await Conference.findById(id);
+     else if (type === "booth") event = await Booth.findById(id)
     else return res.status(400).json({ error: "Invalid event type" });
 
     if (!event) return res.status(404).json({ error: "Event not found" });
