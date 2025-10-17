@@ -374,3 +374,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Backend running at http://localhost:${PORT}`)
 );
+
+
+const vendorApplicationsRoute = require("./routes/vendorApplications");
+app.use("/api/vendor/applications", vendorApplicationsRoute);
