@@ -82,7 +82,7 @@ const RegisteredEvents = () => {
     const type = eventType.toLowerCase();
     return eventTypeImages[type] || eventTypeImages.default;
   };
-  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title}\nDate: ${new Date(event.startDateTime).toLocaleString()}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
+  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
       const matchesSearch = event.title
