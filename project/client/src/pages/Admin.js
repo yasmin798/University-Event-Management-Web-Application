@@ -210,53 +210,25 @@ export default function Admin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-const handleDelete = async (eventId, eventType) => {
-  const event = events.find((e) => e._id === eventId);
-  console.log(`Attempting to delete ${eventType} with ID ${eventId}:`, event);
+const handleDelete = async (userId) => {
+    if (!window.confirm("Are you sure you want to DELETE this user?")) return;
 
-  if (!event) {
-    setPopup({ visible: true, message: `❌ Event not found for ID ${eventId}` });
-    return;
-  }
-
-  const hasRegistrations = Array.isArray(event.registrations) && event.registrations.length > 0;
-  console.log(`Registration check for ${eventType} '${event.title || event.name || "Untitled"}':`, {
-    hasRegistrations,
-    registrations: event.registrations,
-  });
-
-  if (hasRegistrations) {
-    const eventTitle = event.title || event.name || "Untitled";
-    const registrationCount = event.registrations.length;
-    setPopup({
-      visible: true,
-      message: `❌ Cannot delete ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} '${eventTitle}' because ${registrationCount} user${registrationCount === 1 ? "" : "s"} ha${registrationCount === 1 ? "s" : "ve"} registered.`,
-    });
-    return;
-  }
-
-  if (!window.confirm(`Are you sure you want to DELETE this ${eventType}?`)) return;
-
-  setProcessingId(eventId);
-  try {
-    const endpoint = `${API_ORIGIN}/api/${eventType}s/${eventId}`;
-    const res = await fetch(endpoint, {
-      method: "DELETE",
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setPopup({ visible: true, message: `🗑️ ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} deleted successfully!` });
-      await fetchUsers();
-    } else {
-      setPopup({ visible: true, message: `❌ ${data.error || "Delete failed"}` });
+    try {
+      const res = await fetch(`${API_ORIGIN}/api/admin/delete/${userId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("🗑️ User deleted successfully!");
+        fetchUsers();
+      } else {
+        setMessage(`❌ ${data.error || "Delete failed"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Server error during delete");
     }
-  } catch (err) {
-    console.error(`Error deleting ${eventType}:`, err);
-    setPopup({ visible: true, message: `❌ Server error during ${eventType} deletion` });
-  } finally {
-    setProcessingId(null);
-  }
-};
+  };
 
 
   const handleSendMail = async () => {
