@@ -89,7 +89,7 @@ const EventRegistrationForm = () => {
 
       setSuccess("Registration successful! Redirecting...");
       setTimeout(() => {
-        navigate("/my-events"); // Redirect to registered events page
+        navigate("/events/registered"); // Redirect to registered events page
       }, 2000);
 
     } catch (err) {

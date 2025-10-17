@@ -291,19 +291,11 @@
 .event-actions {
   display: flex;
   gap: 10px;
-  justify-content: space-between;
+  justify-content: center;
 }
 
-.btn-secondary {
-  background-color: transparent;
-  color: #567c8d;
-  border: 1px solid #567c8d;
-}
 
-.btn-secondary:hover {
-  background-color: #567c8d;
-  color: #ffffff;
-}
+
 
 .empty-state {
   text-align: center;
