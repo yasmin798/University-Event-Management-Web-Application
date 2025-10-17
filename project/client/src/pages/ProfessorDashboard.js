@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, User, ChevronLeft, ChevronRight, Calendar, Clock, Users, FileText, LogOut, X, MapPin, Bell } from 'lucide-react';
 import workshopPlaceholder from "../images/workshop.png";
+import tripPlaceholder from "../images/trip.jpeg";
+import bazaarPlaceholder from "../images/bazaar.jpeg";
+import conferencePlaceholder from "../images/conference.jpg";
 import { workshopAPI } from '../api/workshopApi';
 import EventTypeDropdown from '../components/EventTypeDropdown';
 import { useServerEvents } from "../hooks/useServerEvents";
@@ -647,12 +650,28 @@ const formatEventDate = (dateTimeStr) => {
                             {filteredEvents.map((e) => (
                               <div key={e._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                                 <div className="h-40 w-full bg-gray-200">
-                                  <img
-                                    src={e.image || workshopPlaceholder}
-                                    alt={e.title || e.name || e.workshopName}
-                                    className="h-full w-full object-cover"
-                                    onError={(target) => { target.target.src = workshopPlaceholder; }}
-                                  />
+                                 <img
+  src={
+    e.image ||
+    (e.type === "TRIP" ? tripPlaceholder :
+     e.type === "BAZAAR" ? bazaarPlaceholder :
+     e.type === "CONFERENCE" ? conferencePlaceholder :
+     workshopPlaceholder)
+  }
+  alt={e.title || e.name || e.workshopName || e.bazaarName || e.tripName || e.conferenceName}
+  className="h-full w-full object-cover"
+  onError={(target) => {
+    target.target.src =
+      e.type === "TRIP"
+        ? tripPlaceholder
+        : e.type === "BAZAAR"
+        ? bazaarPlaceholder
+        : e.type === "CONFERENCE"
+        ? conferencePlaceholder
+        : workshopPlaceholder;
+  }}
+/>
+
                                 </div>
                                 <div className="p-4">
                                   <h3 className="font-semibold text-lg text-[#2f4156] truncate">

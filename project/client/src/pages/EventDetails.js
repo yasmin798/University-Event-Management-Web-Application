@@ -4,6 +4,9 @@ import { Menu, Bell, User, LogOut } from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import workshopPlaceholder from "../images/workshop.png";
+import tripImage from "../images/trip.jpeg";
+import bazaarImage from "../images/bazaar.jpeg";
+import conferenceImage from "../images/conference.jpg";
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -141,6 +144,27 @@ const EventDetails = () => {
   const isConference = type === "CONFERENCE";
   const hasPassed = new Date(event.startDateTime || event.startDate) < new Date();
 
+
+let eventImage = event.image;
+
+if (!eventImage || eventImage === "") {
+  switch (type) {
+    case "TRIP":
+      eventImage = tripImage;
+      break;
+    case "WORKSHOP":
+      eventImage = workshopPlaceholder;
+      break;
+    case "BAZAAR":
+      eventImage = bazaarImage;
+      break;
+    case "CONFERENCE":
+      eventImage = conferenceImage;
+      break;
+  }
+}
+
+
   return (
     <div className="flex h-screen bg-[#f5efeb]">
       {/* Sidebar */}
@@ -204,12 +228,19 @@ const EventDetails = () => {
             </div>
 
             <div className="h-64 w-full bg-gray-200 rounded-lg mb-6 overflow-hidden">
-              <img 
-                src={event.image || workshopPlaceholder} 
-                alt={title} 
-                className="h-full w-full object-cover"
-                onError={(e) => { e.target.src = workshopPlaceholder; }}
-              />
+             <img 
+  src={eventImage} 
+  alt={title} 
+  className="h-full w-full object-cover"
+  onError={(e) => {
+    if (isTrip) e.target.src = tripImage;
+    else if (isWorkshop) e.target.src = workshopPlaceholder;
+    else if (isBazaar) e.target.src = bazaarImage;
+    else if (isConference) e.target.src = conferenceImage;
+  }}
+/>
+
+
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
