@@ -131,6 +131,83 @@ const AdminDashboard = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
             Available Events
           </h1>
+          <main className="p-4 md:p-8">
+  <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
+    Available Events
+  </h1>
+
+  {/* Search and Type Filter */}
+  <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+    <input
+      type="text"
+      placeholder="Search by name, professor, or type"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 border border-[#c8d9e6] rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+    />
+
+    <div className="flex gap-2 flex-wrap">
+      {["All", "Workshop", "Trip", "Bazaar", "Conference"].map((type) => (
+        <button
+          key={type}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            eventTypeFilter === type
+              ? "bg-[#567c8d] text-white"
+              : "bg-[#f5efeb] text-[#567c8d] border border-[#c8d9e6]"
+          }`}
+          onClick={() => setEventTypeFilter(type)}
+        >
+          {type}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {/* Filtered events grid */}
+  {filteredWorkshops.length === 0 ? (
+    <p className="text-[#567c8d]">No events found.</p>
+  ) : (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+      {filteredWorkshops.map((w) => (
+        <div
+          key={w._id}
+          className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+        >
+          <div className="h-40 w-full bg-gray-200">
+            <img
+              src={w.image || workshopPlaceholder}
+              alt={w.workshopName}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="p-4">
+            <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+              {w.workshopName}
+            </h3>
+            <p className="text-sm text-[#567c8d] truncate">
+              Professors: {w.professorsParticipating}
+            </p>
+            <p className="text-sm text-[#567c8d] truncate">
+              Type: {w.type || "N/A"}
+            </p>
+            <p className="text-sm text-[#567c8d] truncate">
+              Date: {new Date(w.startDate).toLocaleDateString()}
+            </p>
+
+            {/* Details Button */}
+            <button
+              onClick={() => navigate(`/events/${w._id}`)}
+              className="mt-2 w-full bg-[#c88585] hover:bg-[#b87575] text-white py-2 rounded-lg font-medium transition-colors"
+            >
+              Details
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</main>
+
 
           {filteredWorkshops.length === 0 ? (
             <p className="text-[#567c8d]">No events found.</p>

@@ -27,6 +27,8 @@ export default function Admin() {
   const [processingId, setProcessingId] = useState(null);
   const [eventFetchErrors, setEventFetchErrors] = useState([]);
   const [popup, setPopup] = useState({ visible: false, message: "" });
+const [searchQuery, setSearchQuery] = useState("");
+const [eventFilter, setEventFilter] = useState(""); // valu
 
   const API_ORIGIN = "http://localhost:3001";
 
@@ -342,6 +344,15 @@ export default function Admin() {
       setMessage(`❌ Event not found for ID ${eventId}`);
       return;
     }
+    const filteredEvents = events
+  .filter((event) =>
+    eventFilter ? event.eventType === eventFilter : true
+  )
+  .filter((event) => {
+    const title = event.title || event.name || "";
+    return title.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
 
     const hasRegistrations =
       Array.isArray(event.registrations) && event.registrations.length > 0;
@@ -536,10 +547,38 @@ export default function Admin() {
               processingId={processingId}
               handleVendorRequestStatus={handleVendorRequestStatus}
             />
+            
+
+
+<div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+  {/* Search */}
+  <input
+    type="text"
+    placeholder="Search by title, company, or name..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="px-3 py-2 border rounded-md w-full md:w-1/3"
+  />
+
+  {/* Event type filter */}
+  <select
+    value={eventFilter}
+    onChange={(e) => setEventFilter(e.target.value)}
+    className="px-3 py-2 border rounded-md w-full md:w-1/4"
+  >
+    <option value="">All Types</option>
+    <option value="trip">Trip</option>
+    <option value="conference">Conference</option>
+    <option value="bazaar">Bazaar</option>
+    <option value="workshop">Workshop</option>
+  </select>
+</div>
 
             {/* EVENTS LIST */}
             <SectionEvents
               events={events}
+              searchQuery={searchQuery}
+               eventFilter={eventFilter}
               eventFetchErrors={eventFetchErrors}
               processingId={processingId}
               handleDeleteEvent={handleDeleteEvent}
@@ -965,11 +1004,24 @@ function SectionBoothRequests({
 
 function SectionEvents({
   events,
+  searchQuery,
+  eventFilter,
   eventFetchErrors,
   processingId,
   handleDeleteEvent,
 }) {
+  const navigate = useNavigate();
+  // 1️⃣ Filter & search
+  const filteredEvents = events
+    .filter((event) => (eventFilter ? event.eventType === eventFilter : true))
+    .filter((event) => {
+      const title = event.title || event.name || "";
+      return title.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+    
+
   return (
+    
     <>
       <h2 style={{ color: "#8B5CF6", marginTop: 50 }}>📅 All Events</h2>
       {eventFetchErrors.length > 0 && (
@@ -989,8 +1041,8 @@ function SectionEvents({
           </tr>
         </thead>
         <tbody>
-          {events.length ? (
-            events.map((event) => {
+          {filteredEvents.length ? (
+            filteredEvents.map((event) => {
               const hasRegistrations =
                 Array.isArray(event.registrations) &&
                 event.registrations.length > 0;
@@ -1000,12 +1052,8 @@ function SectionEvents({
                     {event.eventType.charAt(0).toUpperCase() +
                       event.eventType.slice(1)}
                   </td>
-                  <td style={tdStyle}>
-                    {event.title || event.name || "Untitled"}
-                  </td>
-                  <td style={tdStyle}>
-                    {event.location || event.venue || "—"}
-                  </td>
+                  <td style={tdStyle}>{event.title || event.name || "Untitled"}</td>
+                  <td style={tdStyle}>{event.location || event.venue || "—"}</td>
                   <td style={tdStyle}>
                     {event.startDateTime
                       ? new Date(event.startDateTime).toLocaleString()
@@ -1018,17 +1066,22 @@ function SectionEvents({
                   </td>
                   <td style={tdStyle}>
                     <button
-                      onClick={() =>
-                        handleDeleteEvent(event._id, event.eventType)
-                      }
+                      onClick={() => navigate(`/events/${event._id}`,{ state: { fromAdmin: true } })}
+                      style={{
+                        ...verifyBtnStyle,
+                        backgroundColor: "#3B82F6",
+                        marginRight: 5,
+                      }}
+                    >
+                      Details
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(event._id, event.eventType)}
                       style={{
                         ...deleteBtnStyle,
-                        ...(hasRegistrations
-                          ? { opacity: 0.6, cursor: "not-allowed" }
-                          : {}),
+                        ...(hasRegistrations ? { opacity: 0.6, cursor: "not-allowed" } : {}),
                       }}
                       disabled={processingId === event._id}
-                      title={`Delete this ${event.eventType}`}
                     >
                       {processingId === event._id ? "Processing..." : "Delete"}
                     </button>
@@ -1039,8 +1092,7 @@ function SectionEvents({
           ) : (
             <tr>
               <td colSpan="6" style={tdEmptyStyle}>
-                No events available. Database collections (trips, conferences,
-                bazaars) may be empty.
+                No events match your search/filter.
               </td>
             </tr>
           )}
@@ -1049,6 +1101,7 @@ function SectionEvents({
     </>
   );
 }
+
 
 function MailPopup({ onClose, onSend, sending, mailTarget, previewLink }) {
   return (

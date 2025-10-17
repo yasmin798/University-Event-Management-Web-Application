@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Menu, Bell, User, LogOut } from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
@@ -20,6 +20,8 @@ const EventDetails = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [booths, setBooths] = useState([]);
 const [boothsLoading, setBoothsLoading] = useState(true);
+ const location = useLocation();
+const fromAdmin = location.state?.fromAdmin || false;
 
   // Use EXACTLY same hooks as StudentDashboard
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
@@ -369,7 +371,7 @@ if (!eventImage || eventImage === "") {
 )}
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-[#c8d9e6]">
-              {!hasPassed && (isTrip || isWorkshop) && (
+              {!hasPassed&& !fromAdmin  && (isTrip || isWorkshop) && (
                 <button
                   className="flex-1 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-6 rounded-lg font-medium transition-colors"
                   onClick={() => navigate(`/events/register/${id}`)}
