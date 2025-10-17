@@ -38,7 +38,7 @@ export default function Login() {
         navigate("/EvenetsHome");
         break;
       default:
-        navigate("/dashboard"); // fallback
+        navigate("/vendors"); // fallback
         break;}
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
