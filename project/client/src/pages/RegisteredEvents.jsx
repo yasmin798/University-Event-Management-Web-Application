@@ -63,6 +63,7 @@ const RegisteredEvents = () => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
   }, [activeEventType]); */
   if (error) return <p className="my-events-error">{error}</p>;
+  
   const eventTypeImages = {
     all: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
      workshop: workshopImage,
@@ -79,7 +80,7 @@ const RegisteredEvents = () => {
     const type = eventType.toLowerCase();
     return eventTypeImages[type] || eventTypeImages.default;
   };
-
+  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title}\nDate: ${new Date(event.startDateTime).toLocaleString()}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
       const matchesSearch = event.title
@@ -107,7 +108,7 @@ const RegisteredEvents = () => {
         >
           <div className="event-category">{event.type || "Event"}</div>
           <div className="event-date">
-            {new Date(event.startDate).toLocaleDateString("en-US", {
+            {new Date(event.startDateTime).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })}
@@ -141,10 +142,8 @@ const RegisteredEvents = () => {
           </div>
 
           <div className="event-actions">
-            <button className="btn-primary">View Details</button>
-            {!isPast && (
-              <button className="btn-secondary">Cancel Registration</button>
-            )}
+            <button className="btn-primary" onClick={()=>handleViewDetails(event)}>View Details</button>
+            
           </div>
         </div>
       </div>
