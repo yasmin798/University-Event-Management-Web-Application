@@ -1,6 +1,6 @@
-import React, { useState} from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from 'axios'; // uncomment after testing ui
+import axios from "axios"; // uncomment after testing ui
 //import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
 import "./EventRegistrationForm.css";
 
@@ -19,10 +19,10 @@ const EventRegistrationForm = () => {
   const [success, setSuccess] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false); // newly added
-   const handleChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
+
     // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors({ ...formErrors, [name]: "" });
@@ -89,22 +89,22 @@ const EventRegistrationForm = () => {
 
       setSuccess("Registration successful! Redirecting...");
       setTimeout(() => {
-        navigate("/events/registered"); // Redirect to registered events page
+        navigate(-1); // Redirect to registered events page
       }, 2000);
-
     } catch (err) {
       // Display the specific error message from the backend
-      const errorMessage = err.response?.data?.error || "Registraton failed. Please try again.";
+      const errorMessage =
+        err.response?.data?.error || "Registraton failed. Please try again.";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }; 
+  };
   const handleCancel = () => {
     navigate(-1); // Go back to previous page
   };
   // Fetch real event details
- /*  useEffect(() => {
+  /*  useEffect(() => {
     const fetchEventDetails = async () => {
       try {
         setIsLoading(true);
@@ -136,18 +136,24 @@ const EventRegistrationForm = () => {
   }, [eventId]); */
   const getRoleLabel = () => {
     switch (formData.role) {
-      case "student": return "Student ID";
-      case "staff": return "Staff ID";
-      case "ta": return "TA ID";
-      case "professor": return "Professor ID";
-      default: return "ID";
+      case "student":
+        return "Student ID";
+      case "staff":
+        return "Staff ID";
+      case "ta":
+        return "TA ID";
+      case "professor":
+        return "Professor ID";
+      default:
+        return "ID";
     }
   };
 
-  if (isLoading && !eventDetails) return <p style={{ textAlign: "center" }}>Loading event details...</p>;
+  if (isLoading && !eventDetails)
+    return <p style={{ textAlign: "center" }}>Loading event details...</p>;
 
   return (
-     <div className="event-reg-page">
+    <div className="event-reg-page">
       <div className="event-reg-header">
         <h1>Event Registration</h1>
         <p>Complete your registration details below</p>
@@ -168,14 +174,18 @@ const EventRegistrationForm = () => {
                 </label>
                 <input
                   id="firstName"
-                  className={`event-reg-input ${formErrors.firstName ? 'error' : ''}`}
+                  className={`event-reg-input ${
+                    formErrors.firstName ? "error" : ""
+                  }`}
                   name="firstName"
                   placeholder="Enter your first name"
                   value={formData.firstName}
                   onChange={handleChange}
                   required
                 />
-                {formErrors.firstName && <span className="error-text">{formErrors.firstName}</span>}
+                {formErrors.firstName && (
+                  <span className="error-text">{formErrors.firstName}</span>
+                )}
               </div>
 
               <div className="form-group">
@@ -184,14 +194,18 @@ const EventRegistrationForm = () => {
                 </label>
                 <input
                   id="lastName"
-                  className={`event-reg-input ${formErrors.lastName ? 'error' : ''}`}
+                  className={`event-reg-input ${
+                    formErrors.lastName ? "error" : ""
+                  }`}
                   name="lastName"
                   placeholder="Enter your last name"
                   value={formData.lastName}
                   onChange={handleChange}
                   required
                 />
-                {formErrors.lastName && <span className="error-text">{formErrors.lastName}</span>}
+                {formErrors.lastName && (
+                  <span className="error-text">{formErrors.lastName}</span>
+                )}
               </div>
             </div>
 
@@ -201,7 +215,7 @@ const EventRegistrationForm = () => {
               </label>
               <input
                 id="email"
-                className={`event-reg-input ${formErrors.email ? 'error' : ''}`}
+                className={`event-reg-input ${formErrors.email ? "error" : ""}`}
                 name="email"
                 type="email"
                 placeholder="Enter your email address"
@@ -210,7 +224,9 @@ const EventRegistrationForm = () => {
                 required
               />
               <small className="input-hint">Use your GUC email address</small>
-              {formErrors.email && <span className="error-text">{formErrors.email}</span>}
+              {formErrors.email && (
+                <span className="error-text">{formErrors.email}</span>
+              )}
             </div>
 
             <div className="form-group">
@@ -237,14 +253,18 @@ const EventRegistrationForm = () => {
               </label>
               <input
                 id="roleSpecificId"
-                className={`event-reg-input ${formErrors.roleSpecificId ? 'error' : ''}`}
+                className={`event-reg-input ${
+                  formErrors.roleSpecificId ? "error" : ""
+                }`}
                 name="roleSpecificId"
                 placeholder={`Enter your ${getRoleLabel().toLowerCase()}`}
                 value={formData.roleSpecificId}
                 onChange={handleChange}
                 required
               />
-              {formErrors.roleSpecificId && <span className="error-text">{formErrors.roleSpecificId}</span>}
+              {formErrors.roleSpecificId && (
+                <span className="error-text">{formErrors.roleSpecificId}</span>
+              )}
             </div>
 
             <div className="form-actions">
@@ -277,7 +297,9 @@ const EventRegistrationForm = () => {
             <div className="event-reg-message">
               <div className="message-icon">✓</div>
               <div>
-                <p style={{ fontWeight: "600", margin: "0 0 4px 0" }}>{success}</p>
+                <p style={{ fontWeight: "600", margin: "0 0 4px 0" }}>
+                  {success}
+                </p>
                 <p className="redirect-notice">
                   You will be redirected shortly...
                 </p>
