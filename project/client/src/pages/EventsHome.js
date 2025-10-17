@@ -171,25 +171,32 @@ export default function EventsHome() {
   };
   // Do the actual edit request
   const doRequestEdits = async () => {
-    try {
-      const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: editRequest.message }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setToast({ open: true, text: err.error || "Failed to send request" });
-        return;
-      }
-      setToast({ open: true, text: "Edit request sent successfully!" });
-      setEditRequest({ open: false, workshopId: null, message: "" });
-      refresh();
-    } catch (e) {
-      console.error("Edit request error:", e);
-      setToast({ open: true, text: "Network error: Could not send request" });
+  try {
+    const token = localStorage.getItem("token"); // Or whatever key you used
+    const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ message: editRequest.message }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setToast({ open: true, text: err.error || "Failed to send request" });
+      return;
     }
-  };
+
+    setToast({ open: true, text: "Edit request sent successfully!" });
+    setEditRequest({ open: false, workshopId: null, message: "" });
+    refresh();
+  } catch (e) {
+    console.error("Edit request error:", e);
+    setToast({ open: true, text: "Network error: Could not send request" });
+  }
+};
+
   // Open themed confirm dialog for delete
   const handleDelete = (id, eventType) => {
     const typeLabel =

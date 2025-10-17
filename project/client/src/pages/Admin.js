@@ -203,6 +203,7 @@ export default function Admin() {
         { path: "/api/trips", type: "trip", key: "items" },
         { path: "/api/conferences", type: "conference", key: "items" },
         { path: "/api/bazaars", type: "bazaar", key: "items" },
+        { path: "/api/workshops", type: "workshop", key: "items" },
       ];
 
       const allEvents = [];

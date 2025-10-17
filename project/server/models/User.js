@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ["student", "staff", "professor", "ta", "vendor"],
+      enum: ["student", "staff", "professor", "ta", "vendor", "admin", "events_office"],
       required: true,
     },
     isVerified: { type: Boolean, default: false },
