@@ -224,6 +224,7 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
 });
 
 /* ---------------- Email Verification ---------------- */
+/* ---------------- Email Verification ---------------- */
 const verificationTokens = {}; // token -> { userId, role }
 
 app.post("/api/admin/send-verification", async (req, res) => {
@@ -232,100 +233,57 @@ app.post("/api/admin/send-verification", async (req, res) => {
     if (!email || !userId)
       return res.status(400).json({ error: "Missing email or userId" });
 
+    // Generate unique token for verification
     const token = crypto.randomBytes(32).toString("hex");
     verificationTokens[token] = { userId, role };
 
+    // Verification link — adjust localhost:3000 to your frontend URL
     const verifyUrl = `http://localhost:3000/api/verify/${token}`;
 
+    // ✅ Gmail transporter with App Password
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      auth: {
+        user: process.env.EMAIL_USER, // e.g., youremail@gmail.com
+        pass: process.env.EMAIL_PASS, // your 16-character App Password
+      },
     });
 
+    // Email content (HTML)
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Eventity Admin" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Account Verification - Admin Approval",
+      subject: "Account Verification - Eventity",
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;">
-          <h2 style="color:#10B981;">Account Verification</h2>
+          <h2 style="color:#10B981;">Eventity - Account Verification</h2>
           <p>Hello,</p>
-          <p>Your account has been reviewed. Please click the button below to verify your account:</p>
+          <p>Your account has been approved by an admin. Please click the button below to verify your account:</p>
           <a href="${verifyUrl}" target="_blank"
-             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">
+             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:10px;">
             Verify My Account
           </a>
-          <p style="margin-top:20px;color:#555;">This link will expire once used.</p>
+          <p style="margin-top:20px;color:#555;">If you did not request this, you can safely ignore this email.</p>
           <hr/>
-          <small>© 2025 Your App Team</small>
+          <small>© 2025 Eventity Team</small>
         </div>
       `,
     };
 
+    // Send the email
     await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: `Verification mail sent to ${email}` });
+
+    console.log(`📧 Verification email sent to ${email}`);
+    res.json({ success: true, message: `Verification email sent to ${email}` });
+
   } catch (err) {
     console.error("❌ Mail error:", err);
-    res
-      .status(500)
-      .json({
-        error: "Failed to send verification mail",
-        details: err.message,
-      });
+    res.status(500).json({
+      error: "Failed to send verification email",
+      details: err.message,
+    });
   }
 });
-
-app.get("/api/verify/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-    const data = verificationTokens[token];
-    if (!data) {
-      return res
-        .status(400)
-        .send(
-          "<h2 style='color:red;text-align:center;'>❌ Invalid or expired verification link.</h2>"
-        );
-    }
-
-    const { userId, role } = data;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res
-        .status(404)
-        .send("<h2 style='color:red;text-align:center;'>User not found.</h2>");
-    }
-
-    user.isVerified = true;
-    if (role) user.role = role;
-    await user.save();
-
-    delete verificationTokens[token];
-
-    res.send(`
-      <html>
-        <head>
-          <meta http-equiv="refresh" content="4;url=http://localhost:3001/login" />
-          <style>
-            body { font-family: Arial, sans-serif; background-color: #f0fdf4; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; color:#10B981; text-align:center; }
-            h1 { font-size: 24px; margin-bottom: 10px; }
-            p { color: #065f46; font-size: 16px; }
-          </style>
-        </head>
-        <body>
-          <h1>✅ Verified Successfully!</h1>
-          <p>You’re being redirected to the login page...</p>
-        </body>
-      </html>
-    `);
-  } catch (err) {
-    console.error("❌ Verification error:", err);
-    res.status(500).send("<h2>Server error during verification.</h2>");
-  }
-});
-// Models
-const BazaarVendorRequest = require("./models/BazaarVendorRequest");
-const BoothVendorRequest = require("./models/BoothVendorRequest");
-
 /* ---------------- Vendor Requests ---------------- */
 
 // Get all bazaar vendor requests
