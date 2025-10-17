@@ -14,6 +14,10 @@ const gymRouter = require("./routes/gym");
 const eventRoutes = require("./routes/eventRoutes"); // exposes /bazaars, /trips, /conferences
 const workshopRoutes = require("./routes/workshopRoutes");
 const userRoutes = require("./routes/userRoutes");
+const bazaarApplicationRoutes = require("./routes/bazaarApplications");
+const boothApplicationsRouter = require("./routes/boothApplications");
+const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
+const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
 
 // Models
 const User = require("./models/User");
@@ -54,6 +58,10 @@ app.use("/api", eventRoutes); // -> /api/bazaars, /api/trips, /api/conferences
 app.use("/api", userRoutes); // -> /api/users/... (or similar)
 app.use("/api/workshops", workshopRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/bazaar-applications", bazaarApplicationRoutes);
+app.use("/api/booth-applications", boothApplicationsRouter);
+app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
+app.use("/api/booth-applications", adminBoothRequestsRoute);
 
 /* ---------------- DB ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
@@ -74,15 +82,16 @@ app.post("/api/register", async (req, res) => {
       roleSpecificId,
       companyName,
     } = req.body;
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !password ||
-      !role ||
-      !roleSpecificId
-    ) {
-      return res.status(400).json({ error: "Missing required fields" });
+
+    // Validation based on role
+    if (role === "vendor") {
+      if (!companyName || !email || !password) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+    } else {
+      if (!firstName || !lastName || !email || !password || !roleSpecificId) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
     }
 
     const validRoles = ["student", "professor", "staff", "ta", "vendor"];
@@ -97,12 +106,12 @@ app.post("/api/register", async (req, res) => {
     const isVerified = !needsApproval;
 
     const newUser = new User({
-      firstName,
-      lastName,
+      firstName: role !== "vendor" ? firstName : undefined,
+      lastName: role !== "vendor" ? lastName : undefined,
       email,
       password,
       role,
-      roleSpecificId,
+      roleSpecificId: role !== "vendor" ? roleSpecificId : undefined,
       companyName: companyName || "",
       isVerified,
     });
@@ -153,7 +162,7 @@ app.post("/api/login", async (req, res) => {
       token,
       user: {
         id: user._id,
-        firstName: user.firstName,
+        name: user.role === "vendor" ? user.companyName : `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: user.role,
       },
@@ -215,7 +224,7 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
     const deleted = await User.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
 
-    res.status(200).json({ message: "🗑️  User deleted successfully." });
+    res.status(200).json({ success: true, message: "🗑️ User deleted successfully." });
   } catch (err) {
     res
       .status(500)
@@ -223,7 +232,6 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
   }
 });
 
-/* ---------------- Email Verification ---------------- */
 /* ---------------- Email Verification ---------------- */
 const verificationTokens = {}; // token -> { userId, role }
 
@@ -275,7 +283,6 @@ app.post("/api/admin/send-verification", async (req, res) => {
 
     console.log(`📧 Verification email sent to ${email}`);
     res.json({ success: true, message: `Verification email sent to ${email}` });
-
   } catch (err) {
     console.error("❌ Mail error:", err);
     res.status(500).json({
@@ -284,10 +291,8 @@ app.post("/api/admin/send-verification", async (req, res) => {
     });
   }
 });
-/* ---------------- Vendor Requests ---------------- */
 
-// Get all bazaar vendor requests
-// Get vendor requests for a specific bazaar
+/* ---------------- Vendor Requests ---------------- */
 app.get("/api/bazaar-vendor-requests/:bazaarId", async (req, res) => {
   try {
     const { bazaarId } = req.params;
@@ -299,8 +304,6 @@ app.get("/api/bazaar-vendor-requests/:bazaarId", async (req, res) => {
   }
 });
 
-
-// Get all booth vendor requests
 app.get("/api/admin/booth-vendor-requests", adminOnly, async (_req, res) => {
   try {
     const requests = await BoothVendorRequest.find().sort({ createdAt: -1 });
@@ -311,7 +314,6 @@ app.get("/api/admin/booth-vendor-requests", adminOnly, async (_req, res) => {
   }
 });
 
-// Accept/Reject a bazaar vendor request
 app.patch("/api/admin/bazaar-vendor-requests/:id", adminOnly, async (req, res) => {
   try {
     const { id } = req.params;
@@ -334,7 +336,6 @@ app.patch("/api/admin/bazaar-vendor-requests/:id", adminOnly, async (req, res) =
   }
 });
 
-// Accept/Reject a booth vendor request
 app.patch("/api/admin/booth-vendor-requests/:id", adminOnly, async (req, res) => {
   try {
     const { id } = req.params;
@@ -373,17 +374,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Backend running at http://localhost:${PORT}`)
 );
-
-const bazaarApplicationRoutes = require("./routes/bazaarApplications");
-
-app.use("/api/bazaar-applications", bazaarApplicationRoutes);
-
-
-const boothApplicationsRouter = require("./routes/boothApplications");
-app.use("/api/booth-applications", boothApplicationsRouter);
-
-const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
-app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
-
-const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
-app.use("/api/booth-applications", adminBoothRequestsRoute);

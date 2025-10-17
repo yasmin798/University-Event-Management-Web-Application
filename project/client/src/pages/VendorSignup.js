@@ -4,12 +4,9 @@ import { useNavigate } from "react-router-dom";
 export default function VendorSignup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
     companyName: "",
     email: "",
     password: "",
-    roleSpecificId: "",
   });
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
@@ -22,14 +19,7 @@ export default function VendorSignup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.companyName ||
-      !formData.email ||
-      !formData.password ||
-      !formData.roleSpecificId
-    ) {
+    if (!formData.companyName || !formData.email || !formData.password) {
       setMessage("⚠️ Please fill in all fields correctly.");
       setIsError(true);
       return;
@@ -42,12 +32,9 @@ export default function VendorSignup() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          companyName: formData.companyName,
+          companyName: formData.companyName, // ✅ send companyName
           email: formData.email,
           password: formData.password,
-          roleSpecificId: formData.roleSpecificId,
           role: "vendor",
         }),
       });
@@ -84,18 +71,10 @@ export default function VendorSignup() {
 
       setMessage("✅ Signup successful! Redirecting to login page...");
       setIsError(false);
-      setFormData({
-        firstName: "",
-        lastName: "",
-        companyName: "",
-        email: "",
-        password: "",
-        roleSpecificId: "",
-      });
+      setFormData({ companyName: "", email: "", password: "" });
 
       setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
-      console.error("Signup error:", error);
       setMessage(`⚠️ Error: ${error.message}`);
       setIsError(true);
     }
@@ -109,28 +88,13 @@ export default function VendorSignup() {
         <form onSubmit={handleSubmit} style={formStyle}>
           <input
             type="text"
-            name="firstName"
-            placeholder="First Name"
-            value={formData.firstName}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-          <input
-            type="text"
-            name="lastName"
-            placeholder="Last Name"
-            value={formData.lastName}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-          <input
-            type="text"
             name="companyName"
             placeholder="Company Name"
             value={formData.companyName}
             onChange={handleChange}
             style={inputStyle}
           />
+
           <input
             type="email"
             name="email"
@@ -139,6 +103,7 @@ export default function VendorSignup() {
             onChange={handleChange}
             style={inputStyle}
           />
+
           <input
             type="password"
             name="password"
@@ -147,14 +112,7 @@ export default function VendorSignup() {
             onChange={handleChange}
             style={inputStyle}
           />
-          <input
-            type="text"
-            name="roleSpecificId"
-            placeholder="Vendor ID"
-            value={formData.roleSpecificId}
-            onChange={handleChange}
-            style={inputStyle}
-          />
+
           <button type="submit" style={buttonStyle}>
             Sign Up
           </button>
