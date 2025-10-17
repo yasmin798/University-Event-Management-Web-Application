@@ -63,7 +63,9 @@ const RegisteredEvents = () => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
   }, [activeEventType]); */
   if (error) return <p className="my-events-error">{error}</p>;
-  
+  const getEventDate = (event) => {
+  return event.startDateTime || event.startDate || event.date || new Date();
+};
   const eventTypeImages = {
     all: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
      workshop: workshopImage,
@@ -80,7 +82,7 @@ const RegisteredEvents = () => {
     const type = eventType.toLowerCase();
     return eventTypeImages[type] || eventTypeImages.default;
   };
-  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title}\nDate: ${new Date(event.startDateTime).toLocaleString()}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
+  const handleViewDetails = (event) => {alert(`Event Details:\n\nTitle: ${event.title}\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`);};
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
       const matchesSearch = event.title
@@ -99,6 +101,7 @@ const RegisteredEvents = () => {
 
   const EventCard = ({ event, isPast = false }) => {
     const eventImage = getEventImage(event.type);
+    const eventDate = getEventDate(event);
     console.log('Event:', event.title, 'Type:', event.type, 'Image URL:', eventImage);
     return (
       <div className="event-card">
@@ -108,7 +111,7 @@ const RegisteredEvents = () => {
         >
           <div className="event-category">{event.type || "Event"}</div>
           <div className="event-date">
-            {new Date(event.startDateTime).toLocaleDateString("en-US", {
+            {new Date(eventDate).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })}
@@ -123,7 +126,7 @@ const RegisteredEvents = () => {
             <div className="event-detail-item">
               <span className="detail-label">Date & Time:</span>
               <span className="detail-value">
-                {new Date(event.startDateTime).toLocaleString("en-US", {
+                {new Date(eventDate).toLocaleString("en-US", {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}
