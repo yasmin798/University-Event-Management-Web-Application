@@ -20,7 +20,7 @@ export default function Admin() {
   message: "",
 });
 
-  const API_ORIGIN = "http://localhost:3000";
+  const API_ORIGIN = "http://localhost:3001";
 
   const tryFetchJson = async (url) => {
     try {
@@ -293,9 +293,9 @@ const handleDelete = async (eventId, eventType) => {
     try {
       let url;
       if (type === "bazaar") {
-        url = `${API_ORIGIN}/api/admin/bazaar-vendor-requests/${requestId}`;
+        url = `${API_ORIGIN}/api/bazaar-applications/${requestId}`;
       } else if (type === "booth") {
-        url = `${API_ORIGIN}/api/admin/booth-vendor-requests/${requestId}`;
+        url = `${API_ORIGIN}/api/booth-applications/${requestId}`;
       }
 
       const res = await fetch(url, {
