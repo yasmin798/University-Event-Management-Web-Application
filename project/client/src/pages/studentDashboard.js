@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, Bell, User, LogOut, Calendar } from "lucide-react";
+import { Search, Menu, Bell, User, LogOut, Calendar , Map} from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import workshopPlaceholder from "../images/workshop.png";
@@ -94,6 +94,12 @@ const StudentDashboard = () => {
     closeSidebar();
   };
 
+// Update this function
+const handleCourtsAvailability = () => {
+  navigate("/courts-availability"); // Change this line from "/courts/availability" to "/courts-availability"
+  closeSidebar();
+};
+
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
   };
@@ -138,6 +144,13 @@ const StudentDashboard = () => {
             <Calendar size={18} />
             Registered Events
           </button>
+          <button
+  onClick={handleCourtsAvailability}
+  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+>
+  <Map size={18} />
+  Courts Availability
+</button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
