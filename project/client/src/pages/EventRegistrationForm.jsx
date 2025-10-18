@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios"; // uncomment after testing ui
 //import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
 import "./EventRegistrationForm.css";
+import { ArrowLeft } from "lucide-react";
+
 import { Menu, Bell, User, LogOut, Home, Calendar } from "lucide-react";
 const EventRegistrationForm = () => {
   const { eventId } = useParams();
@@ -277,6 +279,15 @@ const EventRegistrationForm = () => {
             </div>
           </div>
         </header>
+<div className="flex items-center gap-2 mb-4">
+  <button
+    onClick={() => navigate(-1)}
+    className="flex items-center gap-2 text-[#2f4156] hover:text-[#45687a] font-medium"
+  >
+    <ArrowLeft size={18} />
+    Back
+  </button>
+</div>
 
         {/* Registration Form Content */}
         <div className="event-reg-page">
