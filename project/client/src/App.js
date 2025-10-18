@@ -138,7 +138,7 @@ function App() {
 
         {/* Courts */}
         <Route path="/courts-availability" element={<CourtsAvailability />} />
-        <Route path="/apply-booth/:bazaarId" element={<BoothApplicationForm />} />
+        <Route path="/apply-booth" element={<BoothApplicationForm />} />
 
 
         <Route path="/gym-sessions" element={<GymSessions />} />

@@ -181,7 +181,12 @@ const VendorsPage = () => {
             >
               Show Upcoming Bazaars
             </button>
-
+             <Link
+                to="/apply-booth"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
+              >
+                Apply for Booth in Platform
+              </Link>
             <Link
               to="/my-applications/accepted"
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
@@ -236,12 +241,12 @@ const VendorsPage = () => {
                       Apply (General)
                     </Link>
 
-                    <Link
+                    {/* <Link
                       to={`/apply-booth/${bazaar._id}`}
                       className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium shadow-md"
                     >
                       Apply for Booth
-                    </Link>
+                    </Link> */}
                   </div>
                 </div>
               ))}

@@ -1,16 +1,15 @@
 // client/src/pages/BoothApplicationForm.js
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import {  useNavigate } from "react-router-dom";
 
 const emptyAttendee = { name: "", email: "" };
 const PLATFORM_SLOTS = ["B1", "B2", "B3", "B4", "B5"];
 
 export default function BoothApplicationForm() {
-  const { bazaarId } = useParams();
+ 
   const navigate = useNavigate();
 
-  const [bazaar, setBazaar] = useState(null);
-  const [loadingBazaar, setLoadingBazaar] = useState(true);
+  
 
   const [attendees, setAttendees] = useState([{ ...emptyAttendee }]);
   const [durationWeeks, setDurationWeeks] = useState(1);
@@ -20,22 +19,7 @@ export default function BoothApplicationForm() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  useEffect(() => {
-    const fetchBazaar = async () => {
-      try {
-        const res = await fetch(`http://localhost:3001/api/bazaars/${bazaarId}`);
-        if (!res.ok) throw new Error("Failed to load bazaar");
-        const json = await res.json();
-        setBazaar(json);
-      } catch (err) {
-        console.error(err);
-        setError("Could not load bazaar details.");
-      } finally {
-        setLoadingBazaar(false);
-      }
-    };
-    fetchBazaar();
-  }, [bazaarId]);
+  
 
   const addAttendee = () => {
     if (attendees.length >= 5) return;
@@ -70,7 +54,7 @@ export default function BoothApplicationForm() {
     setSubmitting(true);
     try {
       const payload = {
-        bazaar: bazaarId,
+    
         attendees,
         boothSize,
         durationWeeks: Number(durationWeeks),
@@ -107,19 +91,7 @@ export default function BoothApplicationForm() {
       <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow">
         <h1 className="text-2xl font-bold mb-4">Booth Application</h1>
 
-        {loadingBazaar ? (
-          <p>Loading bazaar details...</p>
-        ) : bazaar ? (
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold">{bazaar.title}</h2>
-            <p className="text-sm text-gray-600">{bazaar.location}</p>
-            <p className="text-sm text-gray-600">
-              {new Date(bazaar.startDateTime).toLocaleString()} - {new Date(bazaar.endDateTime).toLocaleString()}
-            </p>
-          </div>
-        ) : (
-          <p className="text-red-500">Bazaar not found.</p>
-        )}
+       <h2 className="text-xl font-semibold mb-4">Booth Application Form</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

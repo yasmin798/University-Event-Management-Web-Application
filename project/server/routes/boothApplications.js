@@ -6,22 +6,27 @@ const BoothApplication = require("../models/BoothApplication");
 const Bazaar = require("../models/Bazaar");
 
 // Create new booth application
+// Create new booth application
 router.post("/", async (req, res) => {
   try {
-    const { bazaar, attendees, boothSize, durationWeeks, platformSlot } = req.body;
+    const { attendees, boothSize, durationWeeks, platformSlot } = req.body;
 
-    if (!bazaar) return res.status(400).json({ error: "bazaar is required" });
     if (!Array.isArray(attendees) || attendees.length < 1 || attendees.length > 5)
       return res.status(400).json({ error: "attendees must be array of 1-5" });
-    if (!["2x2","4x4"].includes(boothSize)) return res.status(400).json({ error: "invalid boothSize" });
-    if (![1,2,3,4].includes(Number(durationWeeks))) return res.status(400).json({ error: "durationWeeks must be 1-4" });
-    if (!["B1","B2","B3","B4","B5"].includes(platformSlot)) return res.status(400).json({ error: "invalid platformSlot" });
+    if (!["2x2", "4x4"].includes(boothSize))
+      return res.status(400).json({ error: "invalid boothSize" });
+    if (![1, 2, 3, 4].includes(Number(durationWeeks)))
+      return res.status(400).json({ error: "durationWeeks must be 1-4" });
+    if (!["B1", "B2", "B3", "B4", "B5"].includes(platformSlot))
+      return res.status(400).json({ error: "invalid platformSlot" });
 
-    if (!mongoose.Types.ObjectId.isValid(bazaar)) return res.status(400).json({ error: "invalid bazaar id" });
-    const foundB = await Bazaar.findById(bazaar);
-    if (!foundB) return res.status(404).json({ error: "Bazaar not found" });
+    const doc = new BoothApplication({
+      attendees,
+      boothSize,
+      durationWeeks,
+      platformSlot,
+    });
 
-    const doc = new BoothApplication({ bazaar, attendees, boothSize, durationWeeks, platformSlot });
     const saved = await doc.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -33,7 +38,7 @@ router.post("/", async (req, res) => {
 // Get all booth applications
 router.get("/", async (req, res) => {
   try {
-    const list = await BoothApplication.find().populate("bazaar").sort({ createdAt: -1 });
+    const list = await BoothApplication.find().sort({ createdAt: -1 });
     res.json(list);
   } catch (err) {
     console.error(err);
