@@ -18,7 +18,7 @@ const bazaarApplicationRoutes = require("./routes/bazaarApplications");
 const boothApplicationsRouter = require("./routes/boothApplications");
 const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
 const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
-const notificationRoutes = require('./routes/notificationRoutes');
+const notificationRoutes = require("./routes/notificationRoutes");
 const vendorApplicationsRoute = require("./routes/vendorApplications");
 
 // Models
@@ -51,16 +51,15 @@ app.use((_, res, next) => {
 });
 
 /* ---------------- Routes ---------------- */
-// ⚠️ IMPORTANT: Mount SPECIFIC routes BEFORE generic ones
-
-// Auth & Gym (specific paths)
+// Auth & Gym
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-// Notifications
-app.use('/api/notifications', notificationRoutes);
 
-// Feature routers (specific routes first)
-app.use("/api/workshops", workshopRoutes); // Must come BEFORE /api/events
+// Notifications
+app.use("/api/notifications", notificationRoutes);
+
+// Feature routers
+app.use("/api/workshops", workshopRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/bazaar-applications", bazaarApplicationRoutes);
 app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
@@ -68,11 +67,11 @@ app.use("/api/booth-applications", boothApplicationsRouter);
 app.use("/api/booth-applications", adminBoothRequestsRoute);
 app.use("/api/vendor/applications", vendorApplicationsRoute);
 
-// Events routes (can handle /api/bazaars, /api/trips, /api/conferences, /api/events)
+// Events routes (keep generic last)
 app.use("/api/events", eventRoutes);
-app.use("/api", eventRoutes); // ⚠️ This should be LAST as it's generic
+app.use("/api", eventRoutes);
 
-/* ---------------- DB ---------------- */
+/* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
 mongoose
   .connect(MONGO)
@@ -92,7 +91,6 @@ app.post("/api/register", async (req, res) => {
       companyName,
     } = req.body;
 
-    // Validation based on role
     if (role === "vendor") {
       if (!companyName || !email || !password) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -126,7 +124,7 @@ app.post("/api/register", async (req, res) => {
     });
 
     const saved = await newUser.save();
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       message: needsApproval
         ? "✅ Registration complete, awaiting admin verification!"
@@ -140,7 +138,7 @@ app.post("/api/register", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Signup error:", err);
-    return res
+    res
       .status(500)
       .json({ error: "Server error during signup", details: err.message });
   }
@@ -171,7 +169,10 @@ app.post("/api/login", async (req, res) => {
       token,
       user: {
         id: user._id,
-        name: user.role === "vendor" ? user.companyName : `${user.firstName} ${user.lastName}`,
+        name:
+          user.role === "vendor"
+            ? user.companyName
+            : `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: user.role,
       },
@@ -215,12 +216,10 @@ app.patch("/api/admin/verify/:id", async (req, res) => {
       .status(200)
       .json({ success: true, message: "✅ User verified", user: saved });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        error: "Server error during verification",
-        details: err.message,
-      });
+    res.status(500).json({
+      error: "Server error during verification",
+      details: err.message,
+    });
   }
 });
 
@@ -233,17 +232,21 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
     const deleted = await User.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
 
-    res.status(200).json({ success: true, message: "🗑️ User deleted successfully." });
-  } catch (err) {
     res
-      .status(500)
-      .json({ error: "Server error during delete", details: err.message });
+      .status(200)
+      .json({ success: true, message: "🗑️ User deleted successfully." });
+  } catch (err) {
+    res.status(500).json({
+      error: "Server error during delete",
+      details: err.message,
+    });
   }
 });
 
 /* ---------------- Email Verification ---------------- */
 const verificationTokens = {};
 
+// Send verification email
 app.post("/api/admin/send-verification", async (req, res) => {
   try {
     const { email, userId, role } = req.body;
@@ -296,14 +299,72 @@ app.post("/api/admin/send-verification", async (req, res) => {
   }
 });
 
+// Handle verification link click
+app.get("/api/verify/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const data = verificationTokens[token];
+    if (!data) {
+      return res
+        .status(400)
+        .send("<h2 style='color:red;text-align:center;'>❌ Invalid or expired verification link.</h2>");
+    }
+
+    const { userId, role } = data;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .send("<h2 style='color:red;text-align:center;'>User not found.</h2>");
+    }
+
+    user.isVerified = true;
+    if (role) user.role = role;
+
+    await user.save();
+    delete verificationTokens[token];
+
+    console.log(`✅ ${user.email} verified successfully as ${user.role}`);
+
+    res.send(`
+      <html>
+        <head>
+          <meta http-equiv="refresh" content="4;url=http://localhost:3001/login" />
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f0fdf4;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              color: #10B981;
+              text-align: center;
+            }
+            h1 { font-size: 24px; margin-bottom: 10px; }
+            p { color: #065f46; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>✅ Verification Complete!</h1>
+          <p>Your account has been successfully verified as a <b>${user.role}</b>.</p>
+          <p>You’ll be redirected to the login page shortly...</p>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error("❌ Verification error:", err);
+    res.status(500).send("<h2>Server error during verification.</h2>");
+  }
+});
+
 /* ---------------- Health & Errors ---------------- */
 app.get("/", (_req, res) => res.send("API OK"));
 
-// Global error handler
 app.use((err, _req, res, _next) => {
-  if (err && err.message === "Not allowed by CORS") {
+  if (err && err.message === "Not allowed by CORS")
     return res.status(403).json({ error: "CORS blocked this origin" });
-  }
   console.error("💥 Unhandled error:", err);
   res.status(500).json({ error: "Internal Server Error" });
 });
