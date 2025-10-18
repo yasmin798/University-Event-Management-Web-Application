@@ -278,22 +278,26 @@ export default function VendorRequestsBooth() {
                   <span style={{ fontWeight: 700 }}>{req.status}</span>
                 </div>
                 <div style={{ marginTop: "0.5rem" }}>
-                  <button
-                    onClick={() => handleAccept(req._id)}
-                    style={{ marginRight: "0.5rem" }}
-                    disabled={processingId === req._id}
-                    className="btn"
-                  >
-                    {processingId === req._id ? "Processing..." : "Accept"}
-                  </button>
-                  <button
-                    onClick={() => handleReject(req._id)}
-                    disabled={processingId === req._id}
-                    className="btn btn-outline"
-                  >
-                    {processingId === req._id ? "Processing..." : "Reject"}
-                  </button>
-                </div>
+  {req.status === "pending" && (
+    <>
+      <button
+        onClick={() => handleAccept(req._id)}
+        style={{ marginRight: "0.5rem" }}
+        disabled={processingId === req._id}
+        className="btn"
+      >
+        {processingId === req._id ? "Processing..." : "Accept"}
+      </button>
+      <button
+        onClick={() => handleReject(req._id)}
+        disabled={processingId === req._id}
+        className="btn btn-outline"
+      >
+        {processingId === req._id ? "Processing..." : "Reject"}
+      </button>
+    </>
+  )}
+</div>
               </li>
             ))}
           </ul>
