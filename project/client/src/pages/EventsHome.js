@@ -534,7 +534,7 @@ const filteredEvents = useMemo(() => {
                       </div>
                     ) : isWorkshop ? (
                       <>
-                        {ev.status === "pending" && (
+                        {(ev.status === "pending" || ev.status === "edits_requested") && (
                           <>
                             <button
                               className="btn btn-success"

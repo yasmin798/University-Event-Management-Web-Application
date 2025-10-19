@@ -1,5 +1,7 @@
+const mongoose = require("mongoose");
 const Workshop = require("../models/Workshop");
 const Notification = require("../models/Notification");
+const User = require("../models/User"); // Add this import
 
 // CREATE Workshop
 exports.createWorkshop = async (req, res) => {
@@ -101,30 +103,60 @@ exports.getMyWorkshops = async (req, res) => {
 // controllers/workshopController.js
 exports.requestEdits = async (req, res) => {
   try {
-    const { id } = req.params; // workshop ID
+    const { id } = req.params; // Workshop ID
     const { message } = req.body;
 
+    // Find the workshop
     const workshop = await Workshop.findById(id);
-    if (!workshop) return res.status(404).json({ error: "Workshop not found" });
+    if (!workshop) {
+      return res.status(404).json({ error: "Workshop not found" });
+    }
 
-    // Find the professor who owns this workshop
-    const professor = await User.findById(workshop.professorId);
-    if (!professor) return res.status(404).json({ error: "Professor not found" });
+    // Get the createdBy string and convert to ObjectId if valid
+    const createdByStr = workshop.createdBy;
+    if (!createdByStr || !mongoose.Types.ObjectId.isValid(createdByStr)) {
+      console.warn(`Invalid or missing createdBy ID: ${createdByStr}`);
+      return res.status(400).json({ error: "Invalid professor ID in workshop" });
+    }
 
-    // ✅ Create a notification for that specific professor
-    await Notification.create({
-      userId: professor._id,
-      message: message || `Edit request for your workshop "${workshop.workshopName}"`,
-      workshopId: workshop._id,
-      type: "edit_request",
-    });
+    const professorId = new mongoose.Types.ObjectId(createdByStr); // Convert string to ObjectId
 
-    console.log(`📩 Notification sent to professor ${professor.email}`);
+    // Find the professor using the ObjectId
+    const professor = await User.findById(professorId);
+    if (!professor) {
+      console.warn(`Professor not found for ID: ${createdByStr}`);
+      // Optional: Fallback to admin
+      const admin = await User.findOne({ role: "admin" });
+      if (!admin) {
+        return res.status(500).json({ error: "No professor or admin found to receive edit request" });
+      }
+      await Notification.create({
+        userId: admin._id,
+        message: `Edit request for workshop "${workshop.workshopName}" (original professor missing): ${message}`,
+        workshopId: workshop._id,
+        type: "edit_request",
+        unread: true,
+      });
+      console.log(`📩 Notification sent to admin ${admin.email}`);
+    } else {
+      await Notification.create({
+        userId: professor._id,
+        message: message || `Edit request for workshop "${workshop.workshopName}"`,
+        workshopId: workshop._id,
+        type: "edit_request",
+        unread: true,
+      });
+      console.log(`📩 Notification sent to professor ${professor.email}`);
+    }
+
+    // Do NOT update status to keep buttons visible in EventsHome
+    // workshop.status = "edits_requested";
+    // await workshop.save();
 
     res.status(200).json({ success: true, message: "Edit request sent successfully" });
   } catch (err) {
     console.error("Error in requestEdits:", err);
-    res.status(500).json({ error: "Failed to send edit request" });
+    res.status(500).json({ error: "Server error" });
   }
 };
 
