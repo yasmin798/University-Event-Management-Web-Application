@@ -1,4 +1,3 @@
-// client/src/pages/Admin.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, X, LogOut } from "lucide-react";
@@ -11,7 +10,7 @@ export default function Admin() {
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
 
-  // ===== Your existing state =====
+  // ===== State =====
   const [verifiedUsers, setVerifiedUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
   const [vendorBazaarRequests, setVendorBazaarRequests] = useState([]);
@@ -26,13 +25,19 @@ export default function Admin() {
   const [previewLink, setPreviewLink] = useState("");
   const [processingId, setProcessingId] = useState(null);
   const [eventFetchErrors, setEventFetchErrors] = useState([]);
-  const [popup, setPopup] = useState({ visible: false, message: "" });
-const [searchQuery, setSearchQuery] = useState("");
-const [eventFilter, setEventFilter] = useState(""); // valu
+  const [showCreateUserPopup, setShowCreateUserPopup] = useState(false);
+  const [createUserRole, setCreateUserRole] = useState(null);
+  const [createUserForm, setCreateUserForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [eventFilter, setEventFilter] = useState("");
 
   const API_ORIGIN = "http://localhost:3001";
 
-  // ===== Same helper functions you already had =====
+  // ===== Helper functions =====
   const tryFetchJson = async (url) => {
     try {
       const r = await fetch(url);
@@ -103,7 +108,6 @@ const [eventFilter, setEventFilter] = useState(""); // valu
       const firstAtt = Array.isArray(req.attendees) ? req.attendees[0] : null;
       const vendorName = req.vendorName || firstAtt?.name || "";
       const vendorEmail = req.vendorEmail || firstAtt?.email || "";
-
       const attendeesList = Array.isArray(req.attendees)
         ? req.attendees.map((a) => `${a.name} <${a.email}>`).join(", ")
         : "";
@@ -200,7 +204,6 @@ const [eventFilter, setEventFilter] = useState(""); // valu
       }
       setVendorBoothRequests(boothArr || []);
 
-      // Fetch all events
       const eventEndpoints = [
         { path: "/api/trips", type: "trip", key: "items" },
         { path: "/api/conferences", type: "conference", key: "items" },
@@ -344,15 +347,6 @@ const [eventFilter, setEventFilter] = useState(""); // valu
       setMessage(`❌ Event not found for ID ${eventId}`);
       return;
     }
-    const filteredEvents = events
-  .filter((event) =>
-    eventFilter ? event.eventType === eventFilter : true
-  )
-  .filter((event) => {
-    const title = event.title || event.name || "";
-    return title.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
 
     const hasRegistrations =
       Array.isArray(event.registrations) && event.registrations.length > 0;
@@ -408,6 +402,41 @@ const [eventFilter, setEventFilter] = useState(""); // valu
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!createUserForm.name || !createUserForm.email || !createUserForm.password) {
+      setMessage("❌ Please fill in all fields.");
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch(`${API_ORIGIN}/api/admin/create-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: createUserForm.name,
+          email: createUserForm.email,
+          password: createUserForm.password,
+          role: createUserRole,
+          isVerified: true,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`✅ ${createUserRole.charAt(0).toUpperCase() + createUserRole.slice(1)} created successfully!`);
+        setShowCreateUserPopup(false);
+        setCreateUserForm({ name: "", email: "", password: "" });
+        await fetchUsers();
+      } else {
+        setMessage(`❌ ${data.error || "User creation failed"}`);
+      }
+    } catch (err) {
+      console.error("Error creating user:", err);
+      setMessage("❌ Server error during user creation");
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (loading)
     return (
       <p style={{ textAlign: "center" }}>
@@ -431,7 +460,6 @@ const [eventFilter, setEventFilter] = useState(""); // valu
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Top bar */}
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
@@ -445,7 +473,6 @@ const [eventFilter, setEventFilter] = useState(""); // valu
           </button>
         </div>
 
-        {/* 🔼 Move Logout to the TOP (right under the brand) */}
         <div className="px-4 pb-4">
           <button
             onClick={handleLogout}
@@ -456,19 +483,11 @@ const [eventFilter, setEventFilter] = useState(""); // valu
           </button>
         </div>
 
-        {/* Your nav (if any). Keep or remove. */}
-        <nav className="flex-1 px-4">
-          {/* …nav buttons if you have them… */}
-        </nav>
-
-        {/* ⛔️ Remove the old bottom logout + the spacer that pushed it down */}
-        {/* <div className="flex-1" />  ← delete this if present */}
-        {/* bottom logout block ← delete this */}
+        <nav className="flex-1 px-4"></nav>
       </div>
 
       {/* Main Section */}
       <div className="flex-1 overflow-auto">
-        {/* Minimal header with menu toggle (no notifications) */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -482,12 +501,29 @@ const [eventFilter, setEventFilter] = useState(""); // valu
                 Admin Dashboard
               </h1>
             </div>
-            {/* (intentionally empty right side) */}
-            <div />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setCreateUserRole("admin");
+                  setShowCreateUserPopup(true);
+                }}
+                style={createBtnStyle}
+              >
+                Create Admin
+              </button>
+              <button
+                onClick={() => {
+                  setCreateUserRole("events_office");
+                  setShowCreateUserPopup(true);
+                }}
+                style={createBtnStyle}
+              >
+                Create Events Officer
+              </button>
+            </div>
           </div>
         </header>
 
-        {/* Your original content */}
         <main className="p-4 md:p-8">
           <div
             style={{
@@ -495,7 +531,6 @@ const [eventFilter, setEventFilter] = useState(""); // valu
               fontFamily: "Poppins, Arial, sans-serif",
             }}
           >
-            {/* message */}
             {message && (
               <p
                 style={{
@@ -517,13 +552,11 @@ const [eventFilter, setEventFilter] = useState(""); // valu
               </p>
             )}
 
-            {/* VERIFIED USERS */}
             <SectionVerified
               verifiedUsers={verifiedUsers}
               handleDelete={handleDelete}
             />
 
-            {/* PENDING USERS */}
             <SectionPending
               pendingUsers={pendingUsers}
               assignedRoles={assignedRoles}
@@ -534,74 +567,79 @@ const [eventFilter, setEventFilter] = useState(""); // valu
               handleDelete={handleDelete}
             />
 
-            {/* VENDOR REQUESTS - BAZAARS */}
             <SectionBazaarRequests
               requests={vendorBazaarRequests}
               processingId={processingId}
               handleVendorRequestStatus={handleVendorRequestStatus}
             />
 
-            {/* VENDOR REQUESTS - BOOTHS */}
             <SectionBoothRequests
               requests={vendorBoothRequests}
               processingId={processingId}
               handleVendorRequestStatus={handleVendorRequestStatus}
             />
-            
 
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <input
+                type="text"
+                placeholder="Search by title, company, or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/3"
+              />
+              <select
+                value={eventFilter}
+                onChange={(e) => setEventFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/4"
+              >
+                <option value="">All Types</option>
+                <option value="trip">Trip</option>
+                <option value="conference">Conference</option>
+                <option value="bazaar">Bazaar</option>
+                <option value="workshop">Workshop</option>
+              </select>
+            </div>
 
-<div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-  {/* Search */}
-  <input
-    type="text"
-    placeholder="Search by title, company, or name..."
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-    className="px-3 py-2 border rounded-md w-full md:w-1/3"
-  />
-
-  {/* Event type filter */}
-  <select
-    value={eventFilter}
-    onChange={(e) => setEventFilter(e.target.value)}
-    className="px-3 py-2 border rounded-md w-full md:w-1/4"
-  >
-    <option value="">All Types</option>
-    <option value="trip">Trip</option>
-    <option value="conference">Conference</option>
-    <option value="bazaar">Bazaar</option>
-    <option value="workshop">Workshop</option>
-  </select>
-</div>
-
-            {/* EVENTS LIST */}
             <SectionEvents
               events={events}
               searchQuery={searchQuery}
-               eventFilter={eventFilter}
+              eventFilter={eventFilter}
               eventFetchErrors={eventFetchErrors}
               processingId={processingId}
               handleDeleteEvent={handleDeleteEvent}
             />
-          </div>
 
-          {/* MAIL POPUP */}
-          {showMailPopup && mailTarget && (
-            <MailPopup
-              onClose={() => setShowMailPopup(false)}
-              onSend={handleSendMail}
-              sending={sending}
-              mailTarget={mailTarget}
-              previewLink={previewLink}
-            />
-          )}
+            {showMailPopup && mailTarget && (
+              <MailPopup
+                onClose={() => setShowMailPopup(false)}
+                onSend={handleSendMail}
+                sending={sending}
+                mailTarget={mailTarget}
+                previewLink={previewLink}
+              />
+            )}
+
+            {showCreateUserPopup && (
+              <CreateUserPopup
+                role={createUserRole}
+                formData={createUserForm}
+                setFormData={setCreateUserForm}
+                onClose={() => {
+                  setShowCreateUserPopup(false);
+                  setCreateUserForm({ name: "", email: "", password: "" });
+                }}
+                onCreate={handleCreateUser}
+                sending={sending}
+              />
+            )}
+          </div>
         </main>
       </div>
     </div>
   );
 }
 
-/* ===== Small presentational sub-components to keep the main JSX tidy ===== */
+/* ===== Presentational Sub-Components ===== */
 
 function SectionVerified({ verifiedUsers, handleDelete }) {
   return (
@@ -1011,17 +1049,14 @@ function SectionEvents({
   handleDeleteEvent,
 }) {
   const navigate = useNavigate();
-  // 1️⃣ Filter & search
   const filteredEvents = events
     .filter((event) => (eventFilter ? event.eventType === eventFilter : true))
     .filter((event) => {
       const title = event.title || event.name || "";
       return title.toLowerCase().includes(searchQuery.toLowerCase());
     });
-    
 
   return (
-    
     <>
       <h2 style={{ color: "#8B5CF6", marginTop: 50 }}>📅 All Events</h2>
       {eventFetchErrors.length > 0 && (
@@ -1052,8 +1087,12 @@ function SectionEvents({
                     {event.eventType.charAt(0).toUpperCase() +
                       event.eventType.slice(1)}
                   </td>
-                  <td style={tdStyle}>{event.title || event.name || "Untitled"}</td>
-                  <td style={tdStyle}>{event.location || event.venue || "—"}</td>
+                  <td style={tdStyle}>
+                    {event.title || event.name || "Untitled"}
+                  </td>
+                  <td style={tdStyle}>
+                    {event.location || event.venue || "—"}
+                  </td>
                   <td style={tdStyle}>
                     {event.startDateTime
                       ? new Date(event.startDateTime).toLocaleString()
@@ -1066,7 +1105,11 @@ function SectionEvents({
                   </td>
                   <td style={tdStyle}>
                     <button
-                      onClick={() => navigate(`/events/${event._id}`,{ state: { fromAdmin: true } })}
+                      onClick={() =>
+                        navigate(`/events/${event._id}`, {
+                          state: { fromAdmin: true },
+                        })
+                      }
                       style={{
                         ...verifyBtnStyle,
                         backgroundColor: "#3B82F6",
@@ -1076,12 +1119,17 @@ function SectionEvents({
                       Details
                     </button>
                     <button
-                      onClick={() => handleDeleteEvent(event._id, event.eventType)}
+                      onClick={() =>
+                        handleDeleteEvent(event._id, event.eventType)
+                      }
                       style={{
                         ...deleteBtnStyle,
-                        ...(hasRegistrations ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                        ...(hasRegistrations
+                          ? { opacity: 0.6, cursor: "not-allowed" }
+                          : {}),
                       }}
                       disabled={processingId === event._id}
+                      title={`Delete this ${event.eventType}`}
                     >
                       {processingId === event._id ? "Processing..." : "Delete"}
                     </button>
@@ -1101,7 +1149,6 @@ function SectionEvents({
     </>
   );
 }
-
 
 function MailPopup({ onClose, onSend, sending, mailTarget, previewLink }) {
   return (
@@ -1144,7 +1191,77 @@ function MailPopup({ onClose, onSend, sending, mailTarget, previewLink }) {
   );
 }
 
-/* ---------- Styles (same as your originals) ---------- */
+function CreateUserPopup({ role, formData, setFormData, onClose, onCreate, sending }) {
+  return (
+    <div style={popupOverlayStyle}>
+      <div style={popupHeaderStyle}>
+        <div>
+          <h3 style={{ margin: 0 }}>
+            Create {role === "admin" ? "Admin" : "Events Officer"}
+          </h3>
+          <p style={{ color: "#E5E7EB", fontSize: 14 }}>Admin User Creation</p>
+        </div>
+        <button onClick={onClose} style={closeBtnStyle}>
+          ✕
+        </button>
+      </div>
+      <div style={popupContentStyle}>
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: "block", fontWeight: 500, marginBottom: 5 }}>
+            Name
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData({ ...formData, name: e.target.value })
+            }
+            style={inputStyle}
+            placeholder="Enter full name"
+          />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: "block", fontWeight: 500, marginBottom: 5 }}>
+            Email
+          </label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
+            style={inputStyle}
+            placeholder="Enter email address"
+          />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: "block", fontWeight: 500, marginBottom: 5 }}>
+            Password
+          </label>
+          <input
+            type="password"
+            value={formData.password}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
+            style={inputStyle}
+            placeholder="Enter password"
+          />
+        </div>
+      </div>
+      <div style={popupFooterStyle}>
+        <button onClick={onCreate} style={sendBtnStyle} disabled={sending}>
+          {sending ? "Creating..." : "Create"}
+        </button>
+        <button onClick={onClose} style={cancelBtnStyle}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Styles ===== */
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
@@ -1187,14 +1304,28 @@ const mailBtnStyle = {
   cursor: "pointer",
   marginRight: 5,
 };
+const createBtnStyle = {
+  backgroundColor: "#8B5CF6",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "8px 16px",
+  cursor: "pointer",
+  fontWeight: 500,
+};
 const dropdownStyle = {
   padding: 5,
   borderRadius: 6,
   border: "1px solid #D1D5DB",
   backgroundColor: "#F9FAFB",
 };
-
-/* Popup styles */
+const inputStyle = {
+  width: "100%",
+  padding: "8px",
+  borderRadius: 6,
+  border: "1px solid #D1D5DB",
+  backgroundColor: "#F9FAFB",
+};
 const popupOverlayStyle = {
   position: "fixed",
   bottom: 0,

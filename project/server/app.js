@@ -20,6 +20,7 @@ const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
 const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
 const notificationRoutes = require("./routes/notificationRoutes");
 const vendorApplicationsRoute = require("./routes/vendorApplications");
+const adminRoutes = require("./routes/admin");
 
 // Models
 const User = require("./models/User");
@@ -54,6 +55,7 @@ app.use((_, res, next) => {
 // Auth & Gym
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
+app.use('/api/admin', require('./routes/admin'));
 
 // Notifications
 app.use("/api/notifications", notificationRoutes);
