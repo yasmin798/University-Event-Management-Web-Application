@@ -32,10 +32,10 @@ export default function Login() {
         navigate("/professor/dashboard");
         break;
       case "admin":
-        navigate("/admin/dashboard");
+        navigate("/admin");
         break;
       case "events_office":
-        navigate("/EvenetsHome");
+        navigate("/events");
         break;
       default:
         navigate("/vendors"); // fallback

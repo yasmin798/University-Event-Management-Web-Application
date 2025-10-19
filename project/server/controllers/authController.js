@@ -47,9 +47,12 @@ exports.login = async (req, res) => {
     if (!user) return res.status(400).json({ message: "User not found" });
 
     // Check verification for non-vendors
-    if (!user.isVerified && user.role !== "vendor") {
-      return res.status(401).json({ message: "User not verified" });
-    }
+    if (
+  !user.isVerified &&
+  !["vendor", "admin", "events_office"].includes(user.role)
+) {
+  return res.status(401).json({ message: "User not verified" });
+}
 
     // Check password
     const isMatch = await user.comparePassword(password);
