@@ -1,13 +1,13 @@
-import api from './api';
+// boothApi.js
+import axios from "axios";
 
 export const boothAPI = {
   getAllBooths: async () => {
-    const response = await api.get('/booth-applications');
-    // Only return accepted booths
-    return response.data.filter(b => b.status === 'accepted');
+    const res = await axios.get("/api/booth-applications");
+    return res.data;
   },
-  getBoothsByBazaar: async (bazaarId) => {
-    const response = await api.get(`/booth-applications/bazaar/${bazaarId}`);
-    return response.data.filter(b => b.status === 'accepted');
+  getBoothById: async (id) => {
+    const res = await axios.get(`/api/booth-applications/${id}`);
+    return res.data;
   },
 };

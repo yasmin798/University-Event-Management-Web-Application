@@ -7,6 +7,10 @@ import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
 
+import tripPlaceholder from "../images/trip.jpeg";
+import bazaarPlaceholder from "../images/bazaar.jpeg";
+import conferencePlaceholder from "../images/conference.jpg";
+const now = new Date();
 const TaDashboard = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,16 +31,16 @@ const fetchBooths = useCallback(async () => {
     const data = await boothAPI.getAllBooths();
 
     const normalizedBooths = data.map(b => ({
-      ...b,
-      _id: b._id,
-      type: "BOOTH",
-      title: `${b.bazaar?.title} Booth`,
-      startDateTime: b.bazaar?.startDateTime,
-      endDateTime: b.bazaar?.endDateTime,
-      date: b.bazaar?.startDateTime,
-      image: b.image || workshopPlaceholder,
-      description: b.bazaar?.shortDescription || "",
-    }));
+  _id: b._id,
+  type: "BOOTH",
+  title: b.attendees?.[0]?.name || `Booth ${b._id}`,
+  image: b.image || workshopPlaceholder,
+  description: b.description || "",
+  startDateTime: now.toISOString(),
+  startDate: now.toISOString(),
+  date: now.toISOString(),
+}));
+
 
     setBooths(normalizedBooths);
   } catch (err) {
@@ -47,6 +51,8 @@ const fetchBooths = useCallback(async () => {
   }
 }, []);
   
+
+
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
   setWorkshopsLoading(true);
@@ -91,8 +97,9 @@ const fetchBooths = useCallback(async () => {
 }, [fetchWorkshops, fetchBooths]);
 
   // Combine events like EventsHome
-  const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops];
-  const loading = otherLoading || workshopsLoading;
+  const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops,...booths];
+  const loading = otherLoading || workshopsLoading ;
+
 
   const formatEventDate = (dateTimeStr) => {
     if (!dateTimeStr) return "N/A";
@@ -103,14 +110,16 @@ const fetchBooths = useCallback(async () => {
       day: "numeric",
     });
   };
-
+console.log("Booths fetched:", booths);
   // Filter events (only future published events)
   const filteredEvents = allEvents
-    .filter((e) => {
-      const now = new Date();
-      const eventDate = new Date(e.startDateTime || e.startDate || e.date);
-      return eventDate > now; // Only future events
-    })
+  .filter((e) => {
+     if (e.type === "BOOTH") return true; // always show booths
+    if (!e.startDateTime && !e.startDate && !e.date) return false; // booths without dates
+    const now = new Date();
+    const eventDate = new Date(e.startDateTime || e.startDate || e.date);
+    return eventDate > now;
+  })
     .filter((e) => {
       const name = e.title || e.name || e.workshopName || e.bazaarName;
       const matchesSearch =
@@ -228,10 +237,25 @@ const handleCourtsAvailability = () => {
                 <div key={e._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                   <div className="h-40 w-full bg-gray-200">
                     <img
-                      src={e.image || workshopPlaceholder}
-                      alt={e.title || e.name || e.workshopName}
+                      src={
+                        e.image ||
+                        (e.type === "TRIP" ? tripPlaceholder :
+                         e.type === "BAZAAR" ? bazaarPlaceholder :
+                         e.type === "CONFERENCE" ? conferencePlaceholder :
+                         workshopPlaceholder)
+                      }
+                      alt={e.title || e.name || e.workshopName || e.bazaarName || e.tripName || e.conferenceName}
                       className="h-full w-full object-cover"
-                      onError={(target) => { target.target.src = workshopPlaceholder; }}
+                      onError={(target) => {
+                        target.target.src =
+                          e.type === "TRIP"
+                            ? tripPlaceholder
+                            : e.type === "BAZAAR"
+                            ? bazaarPlaceholder
+                            : e.type === "CONFERENCE"
+                            ? conferencePlaceholder
+                            : workshopPlaceholder;
+                      }}
                     />
                   </div>
                   <div className="p-4">
@@ -242,9 +266,9 @@ const handleCourtsAvailability = () => {
                       <p className="text-sm text-[#567c8d] truncate">Professors: {e.professorsParticipating}</p>
                     )}
                     <p className="text-sm text-[#567c8d] truncate">Type: {e.type || "N/A"}</p>
-                    <p className="text-sm text-[#567c8d] truncate">
-                      Date: {formatEventDate(e.startDateTime || e.startDate || e.date)}
-                    </p>
+                                <p className="text-sm text-[#567c8d] truncate">
+                      Date: {e.startDateTime || e.startDate || e.date ? formatEventDate(e.startDateTime || e.startDate || e.date) : "N/A"}
+                        </p>
                     <div className="flex gap-2 mt-4">
                       <button
                         className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
@@ -265,7 +289,9 @@ const handleCourtsAvailability = () => {
                 </div>
               ))}
             </div>
+            
           )}
+          
         </main>
       </div>
     </div>

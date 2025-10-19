@@ -9,6 +9,11 @@ import trip from "../images/trip.jpeg";
 import conference from "../images/conference.jpg";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";  // Or wherever your API client is defined (e.g., ../api.js)
+import { boothAPI } from "../api/boothApi";
+import tripPlaceholder from "../images/trip.jpeg";
+import bazaarPlaceholder from "../images/bazaar.jpeg";
+import conferencePlaceholder from "../images/conference.jpg";
+
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -38,8 +43,9 @@ export default function EventsHome() {
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [toast, setToast] = useState({ open: false, text: "" });
   const [searchTerm, setSearchTerm] = useState("");
-
-  
+  const [booths, setBooths] = useState([]);
+  const [boothsLoading, setBoothsLoading] = useState(true);
+  const now = new Date();
   // Styled confirm modal state
   const [confirm, setConfirm] = useState({
     open: false,
@@ -49,6 +55,40 @@ export default function EventsHome() {
     confirmLabel: "Delete",
     cancelLabel: "Cancel",
   });
+
+
+  const fetchBooths = useCallback(async () => {
+    setBoothsLoading(true);
+    try {
+      const data = await boothAPI.getAllBooths();
+  
+      const normalizedBooths = data.map(b => ({
+  _id: b._id,
+  type: "BOOTH",
+  title: b.attendees?.[0]?.name || `Booth ${b._id}`, // or use b.title if available
+  description: b.description || "",
+  startDateTime: now.toISOString(),
+  startDate: now.toISOString(),
+  date: now.toISOString(),
+  boothSize: b.boothSize,
+  durationWeeks: b.durationWeeks,
+  platformSlot: b.platformSlot,
+  status: b.status,
+  attendees: b.attendees?.map(a => a.name) || [], // list of participant names
+}));
+
+
+  
+  
+      setBooths(normalizedBooths);
+    } catch (err) {
+      console.error("Error fetching booths:", err);
+      setBooths([]);
+    } finally {
+      setBoothsLoading(false);
+    }
+  }, []);
+    
   // Edit request modal state
   const [editRequest, setEditRequest] = useState({
     open: false,
@@ -87,14 +127,16 @@ export default function EventsHome() {
 
   useEffect(() => {
     fetchWorkshops();
-  }, [fetchWorkshops]);
+    fetchBooths();
+  }, [fetchWorkshops,  fetchBooths]);
   const refresh = useCallback(() => {
     refreshOthers();
     fetchWorkshops();
   }, [refreshOthers, fetchWorkshops]);
-  const events = [...otherEvents, ...workshops];
+  const events = [...otherEvents, ...workshops, ...booths];
   const loading = otherLoading || workshopsLoading;
 const filteredEvents = useMemo(() => {
+  
   let evs = filter === "all" 
     ? events 
     : events.filter(ev => ev.type.toLowerCase() === filter.slice(0, -1));
@@ -276,7 +318,7 @@ const filteredEvents = useMemo(() => {
 
         {/* Filter pills */}
         <div className="eo-filters">
-          {["all", "bazaars", "trips", "conferences", "workshops"].map((f) => (
+          {["all", "bazaars", "trips", "conferences", "workshops","booths"].map((f) => (
             <button
               key={f}
               className={`eo-pill ${filter === f ? "active" : ""}`}
@@ -325,10 +367,13 @@ const filteredEvents = useMemo(() => {
               </div>
             )}
             {filteredEvents.map((ev) => {
+               
+   
               const id = ev._id || ev.id;
               const typeRaw = String(ev.type || "").toUpperCase();
               const isBazaar = typeRaw === "BAZAAR";
               const isTrip = typeRaw === "TRIP";
+              const isBooth = typeRaw === "BOOTH";
               const isConference = typeRaw === "CONFERENCE";
               const isWorkshop = typeRaw === "WORKSHOP";
               const title = ev.title || ev.name || "Untitled";
@@ -342,18 +387,20 @@ const filteredEvents = useMemo(() => {
                     <span className="k">Name:</span>
                     <span className="v">{title}</span>
                   </div>
+                  {!isBooth && !isConference &&(
                   <div className="kv">
                     <span className="k">Location:</span>
                     <span className="v">{ev.location}</span>
-                  </div>
+                  </div>)}
                   <div className="kv kv-date">
                     <span className="k">Starts:</span>
                     <span className="v">{formatDate(ev.startDateTime)}</span>
                   </div>
+                  {!isBooth && (
                   <div className="kv kv-date">
                     <span className="k">Ends:</span>
                     <span className="v">{formatDate(ev.endDateTime)}</span>
-                  </div>
+                  </div>)}
                   {/* Bazaar-only: registration deadline */}
                   {isBazaar && ev.registrationDeadline && (
                     <div className="kv kv-date">
@@ -363,6 +410,32 @@ const filteredEvents = useMemo(() => {
                       </span>
                     </div>
                   )}
+                  {isBooth && (
+  <>
+    <div className="kv">
+      <span className="k">Booth Size:</span>
+      <span className="v">{ev.boothSize || "—"}</span>
+    </div>
+    <div className="kv">
+      <span className="k">Duration:</span>
+      <span className="v">{ev.durationWeeks} week(s)</span>
+    </div>
+    <div className="kv">
+      <span className="k">Platform Slot:</span>
+      <span className="v">{ev.platformSlot || "—"}</span>
+    </div>
+    <div className="kv">
+      <span className="k">Status:</span>
+      <span className="v">{ev.status || "—"}</span>
+    </div>
+    <div className="kv">
+      <span className="k">Attendees:</span>
+      <span className="v">{(ev.attendees || []).join(", ") || "None"}</span>
+    </div>
+    <div className="kv">
+      </div>
+  </>
+)}
                   {/* Trip-only: price & capacity */}
                   {isTrip && (ev.price != null || ev.capacity != null) && (
                     <>

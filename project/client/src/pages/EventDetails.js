@@ -41,11 +41,13 @@ useEffect(() => {
       const data = await boothAPI.getAllBooths(); // fetch all accepted booths
 
       // Only keep the fields you want to display
-     const normalizedBooths = data.map(b => ({
+const normalizedBooths = data.map(b => ({
   _id: b._id,
   type: "BOOTH",
   bazaarId: b.bazaar?._id, // VERY IMPORTANT
   title: `${b.bazaar?.title} Booth`,
+  // title: b.attendees?.[0]?.firstName || `Booth ${b._id}`,
+  attendees: b.attendees?.map(a =>  a.name || "Unknown") || [],
   boothSize: b.boothSize,
   durationWeeks: b.durationWeeks,
   platformSlot: b.platformSlot,
@@ -119,7 +121,8 @@ useEffect(() => {
 
   const allEvents = [
     ...otherEvents.filter(e => !e.status || e.status === "published"),
-    ...workshops
+    ...workshops,
+    ...booths,
   ];
 
   const foundEvent = allEvents.find(e => e._id === id);
@@ -129,7 +132,11 @@ useEffect(() => {
     if (foundEvent.type === "BAZAAR") {
       const eventBooths = booths.filter(b => b.bazaarId === id && b.status === "accepted");
       foundEvent.booths = eventBooths;
-    }
+    } else if (foundEvent.type === "BOOTH") {
+    // standalone booth: attach itself as array
+    foundEvent.booths = [foundEvent];
+  }
+
 
     setEvent(foundEvent);
     setError("");
@@ -222,6 +229,9 @@ if (!eventImage || eventImage === "") {
     case "CONFERENCE":
       eventImage = conferenceImage;
       break;
+    default:
+      eventImage = workshopPlaceholder;
+        break;
   }
 }
 
@@ -339,6 +349,7 @@ if (!eventImage || eventImage === "") {
                         <p><strong>Platform Slot:</strong> {event.platformSlot}</p>
                         <p><strong>Duration:</strong> {event.durationWeeks} week(s)</p>
                         <p><strong>Status:</strong> {event.status}</p>
+                         <p><strong>Attendees:</strong> {(event.attendees || []).join(", ")}</p>
                       </>
                     )}
                   {event.professorsParticipating && (

@@ -203,17 +203,37 @@ export default function Admin() {
           : boothAdminAttempt.data.requests || [];
       }
       setVendorBoothRequests(boothArr || []);
+      const start = new Date();
+      
+        const boothEvents = (boothArr || []).map((booth) => {
+  const durationWeeks = booth.duration || 1; 
+  const end = new Date(start.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000);
+
+  return {
+    ...booth,
+    _id:booth._id,
+    eventType: "booth",
+    title: booth.attendees?.[0]?.name || `Booth ${booth._id}`,
+    durationWeeks,
+    location: booth.platformSlot || booth.boothLocation || booth.locationName || "—",
+    startDateTime: start.toISOString(),
+    endDateTime: end.toISOString(),
+    registrations: booth.registrations || [],
+  };
+});
 
       const eventEndpoints = [
         { path: "/api/trips", type: "trip", key: "items" },
         { path: "/api/conferences", type: "conference", key: "items" },
         { path: "/api/bazaars", type: "bazaar", key: "items" },
         { path: "/api/workshops", type: "workshop", key: "items" },
+         
       ];
+       
 
       const allEvents = [];
       const errors = [];
-
+      allEvents.push(...boothEvents);
       for (const endpoint of eventEndpoints) {
         const attempt = await tryFetchJson(`${API_ORIGIN}${endpoint.path}`);
         if (attempt.ok && attempt.data) {
@@ -223,6 +243,7 @@ export default function Admin() {
           allEvents.push(
             ...data.map((event) => ({ ...event, eventType: endpoint.type }))
           );
+         
         } else {
           errors.push(
             `Failed to fetch ${endpoint.path}: ${attempt.status} ${
@@ -347,6 +368,7 @@ export default function Admin() {
       setMessage(`❌ Event not found for ID ${eventId}`);
       return;
     }
+  
 
     const hasRegistrations =
       Array.isArray(event.registrations) && event.registrations.length > 0;
@@ -597,6 +619,7 @@ export default function Admin() {
                 <option value="conference">Conference</option>
                 <option value="bazaar">Bazaar</option>
                 <option value="workshop">Workshop</option>
+                <option value="booth">Booth</option>
               </select>
             </div>
 

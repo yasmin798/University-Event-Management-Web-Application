@@ -21,7 +21,7 @@ const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
 const notificationRoutes = require("./routes/notificationRoutes");
 const vendorApplicationsRoute = require("./routes/vendorApplications");
 const adminRoutes = require("./routes/admin");
-
+const boothRoutes = require("./routes/booths");
 // Models
 const User = require("./models/User");
 
@@ -68,6 +68,7 @@ app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
 app.use("/api/booth-applications", boothApplicationsRouter);
 app.use("/api/booth-applications", adminBoothRequestsRoute);
 app.use("/api/vendor/applications", vendorApplicationsRoute);
+app.use("/api/booths", require("./routes/booths"));
 
 // Events routes (keep generic last)
 app.use("/api/events", eventRoutes);

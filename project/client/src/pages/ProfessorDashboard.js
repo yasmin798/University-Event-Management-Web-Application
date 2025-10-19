@@ -8,8 +8,8 @@ import conferencePlaceholder from "../images/conference.jpg";
 import { workshopAPI } from '../api/workshopApi';
 import EventTypeDropdown from '../components/EventTypeDropdown';
 import { useServerEvents } from "../hooks/useServerEvents";
-
-
+import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
+const now = new Date();
 const ProfessorDashboard = () => {
   const navigate = useNavigate();
   const [currentDate] = useState(new Date());
@@ -21,10 +21,38 @@ const ProfessorDashboard = () => {
   const notificationsRef = useRef(null);
 const [eventTypeFilter, setEventTypeFilter] = useState('All');
 const [workshopsLoading, setWorkshopsLoading] = useState(true);
+const [booths, setBooths] = useState([]);
+const [boothsLoading, setBoothsLoading] = useState(true);
 
 
 // Use same hooks as EventsHome
   const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
+
+  const fetchBooths = useCallback(async () => {
+    setBoothsLoading(true);
+    try {
+      const data = await boothAPI.getAllBooths();
+  
+      const normalizedBooths = data.map(b => ({
+    _id: b._id,
+    type: "BOOTH",
+    title: b.attendees?.[0]?.name || `Booth ${b._id}`,
+    image: b.image || workshopPlaceholder,
+    description: b.description || "",
+    startDateTime: now.toISOString(),
+    startDate: now.toISOString(),
+    date: now.toISOString(),
+  }));
+  
+  
+      setBooths(normalizedBooths);
+    } catch (err) {
+      console.error("Error fetching booths:", err);
+      setBooths([]);
+    } finally {
+      setBoothsLoading(false);
+    }
+  }, []);
 
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
@@ -65,10 +93,11 @@ const [workshopsLoading, setWorkshopsLoading] = useState(true);
 
   useEffect(() => {
     fetchWorkshops();
-  }, [fetchWorkshops]);
+    fetchBooths();
+  }, [fetchWorkshops, fetchBooths]);
 
   // Combine events like EventsHome
-  const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops];
+  const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops,...booths];
   const loading = otherLoading || workshopsLoading;
 
 
@@ -142,7 +171,7 @@ const [workshopsLoading, setWorkshopsLoading] = useState(true);
 
  const filteredEvents = allEvents
     .filter((e) => {
-      const now = new Date();
+      if (e.type === "BOOTH") return true; // always show booths
       const eventDate = new Date(e.startDateTime || e.startDate || e.date);
       return eventDate > now; // Only future events
     })

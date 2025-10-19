@@ -17,6 +17,9 @@ const BoothApplicationSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
+    // server/models/BoothApplication.js
+bazaar: { type: mongoose.Schema.Types.ObjectId, ref: "Bazaar" },
+
     // ❌ REMOVE bazaarId or event references if they existed before
   },
   { timestamps: true }

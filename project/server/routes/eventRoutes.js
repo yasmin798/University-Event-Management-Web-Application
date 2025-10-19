@@ -8,6 +8,7 @@ const { register } = require("../controllers/registrationController");
 const { protect } = require("../middleware/auth"); // Import protect
 const Workshop = require("../models/Workshop"); // import your Workshop model
 const BoothApplication = require("../models/BoothApplication");
+const boothController = require("../controllers/boothController");
 
 // Helper: normalize title so UI can send either "name" or "title"
 const normTitle = (b = {}) => b.title || b.name || "";
@@ -180,6 +181,7 @@ router.post("/trips", async (req, res) => {
     registrationDeadline: b.registrationDeadline,
     price: b.price ?? 0,
     capacity: b.capacity ?? 0,
+    image: tripImage,
   });
 
   res.status(201).json(doc);
@@ -360,21 +362,18 @@ router.get("/all", async (req, res) => {
     const bazaars = await Bazaar.find();
     const trips = await Trip.find();
     const conferences = await Conference.find();
-    const booths = await BoothApplication.find({ status: "accepted" })
-      .populate("bazaar")
-      .sort({ createdAt: -1 });
+    const booths = await BoothApplication.find({ status: "accepted" }).sort({ createdAt: -1 });
 
-    // Normalize booths
-    const normalizedBooths = booths.map((b) => ({
-      ...b.toObject(),
-      type: "Booth",
-      title: b.bazaar?.title || b.bazaar?.name || "Booth",
-      name: b.bazaar?.title || b.bazaar?.name || "Booth",
-      startDateTime: b.bazaar?.startDateTime,
-      endDateTime: b.bazaar?.endDateTime,
-      image: b.image || "", // optionally add placeholder
-      description: b.description || b.shortDescription || "",
-    }));
+const normalizedBooths = booths.map((b) => ({
+ 
+  type: "booth",
+  title: b.title || `Booth ${b._id}`,
+  startDateTime: b.startDateTime || new Date().toISOString(),
+  endDateTime: b.endDateTime || new Date().toISOString(),
+  description: b.description || "",
+  image: b.image || "", 
+}));
+
 
     const allEvents = [
       ...workshops.map((w) => ({ ...w.toObject(), type: "Workshop" })),
@@ -407,9 +406,24 @@ router.get("/events/:id", async (req, res) => {
     else if (type === "bazaar") event = await Bazaar.findById(id);
     else if (type === "trip") event = await Trip.findById(id);
     else if (type === "conference") event = await Conference.findById(id);
-     else if (type === "booth") event = await Booth.findById(id)
+     else if (type === "booth") {
+    event = await BoothApplication.findById(id).populate({
+        path: "bazaar",
+        select: "title startDateTime endDateTime"
+    });
+}
     else return res.status(400).json({ error: "Invalid event type" });
-
+      if (type === "booth" && event) {
+  event = {
+    ...event.toObject(),
+    type: "Booth",
+    title: event.bazaar?.title || event.bazaar?.name || "Booth",
+    name: event.bazaar?.title || event.bazaar?.name || "Booth",
+    startDateTime: event.bazaar?.startDateTime,
+    endDateTime: event.bazaar?.endDateTime,
+    description: event.description || event.shortDescription || "",
+  };
+}
     if (!event) return res.status(404).json({ error: "Event not found" });
 
     res.json(event);
@@ -418,4 +432,23 @@ router.get("/events/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch event" });
   }
 });
+/* ---------------- BOOTHS ---------------- */
+
+// Delete booth
+// router.delete("/booths/:id", async (req, res) => {
+//   try {
+//     const booth = await BoothApplication.findById(req.params.id);
+
+//     if (!booth) return res.status(404).json({ error: "Booth not found" });
+
+   
+//     await BoothApplication.findByIdAndDelete(req.params.id);
+//     res.json({ ok: true, message: "Booth deleted successfully" });
+//   } catch (err) {
+//     console.error("Delete booth error:", err);
+//     res.status(500).json({ error: "Server error while deleting booth" });
+//   }
+// });
+router.delete("/booths/:id", boothController.deleteBooth);
+
 module.exports = router;
