@@ -1111,7 +1111,7 @@ function SectionEvents({
                       event.eventType.slice(1)}
                   </td>
                   <td style={tdStyle}>
-                    {event.title || event.name || "Untitled"}
+                    {event.title || event.name || event.workshopName||"Untitled"}
                   </td>
                   <td style={tdStyle}>
                     {event.location || event.venue || "—"}
