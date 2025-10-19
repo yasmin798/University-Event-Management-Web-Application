@@ -307,13 +307,21 @@ const RegisteredEvents = () => {
       <div className="flex-1 overflow-auto">
         {/* Header with sidebar toggle */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
           <button
             onClick={toggleSidebar}
             className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
           >
             <Menu size={24} className="text-[#2f4156]" />
           </button>
-
+           {/* 🔙 Back Button */}
+    <button
+      onClick={() => navigate(-1)} // 👈 go back to previous page
+      className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors flex items-center gap-1 text-[#2f4156]"
+    >
+      <span className="text-sm font-medium">← Back</span>
+    </button>
+  </div>
           <div className="flex items-center gap-2 md:gap-4 ml-4">
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
               <Bell size={20} className="text-[#567c8d]" />

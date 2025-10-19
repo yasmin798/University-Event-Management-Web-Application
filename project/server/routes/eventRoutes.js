@@ -9,6 +9,7 @@ const { protect } = require("../middleware/auth"); // Import protect
 const Workshop = require("../models/Workshop"); // import your Workshop model
 const BoothApplication = require("../models/BoothApplication");
 const boothController = require("../controllers/boothController");
+const tripImage = "/trip.jpeg";
 
 // Helper: normalize title so UI can send either "name" or "title"
 const normTitle = (b = {}) => b.title || b.name || "";
