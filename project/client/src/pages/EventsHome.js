@@ -8,7 +8,7 @@ import bazaar from "../images/bazaar.jpeg";
 import trip from "../images/trip.jpeg";
 import conference from "../images/conference.jpg";
 import { useServerEvents } from "../hooks/useServerEvents";
-import { workshopAPI } from "../api/workshopApi";  // Or wherever your API client is defined (e.g., ../api.js)
+import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
 import tripPlaceholder from "../images/trip.jpeg";
 import bazaarPlaceholder from "../images/bazaar.jpeg";
@@ -25,6 +25,7 @@ function formatDate(iso) {
     minute: "2-digit",
   });
 }
+
 function formatMoney(n) {
   if (n == null || n === "") return "—";
   const num = Number(n);
@@ -35,6 +36,7 @@ function formatMoney(n) {
     maximumFractionDigits: 0,
   }).format(num);
 }
+
 export default function EventsHome() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
@@ -46,7 +48,6 @@ export default function EventsHome() {
   const [booths, setBooths] = useState([]);
   const [boothsLoading, setBoothsLoading] = useState(true);
   const now = new Date();
-  // Styled confirm modal state
   const [confirm, setConfirm] = useState({
     open: false,
     title: "",
@@ -55,31 +56,30 @@ export default function EventsHome() {
     confirmLabel: "Delete",
     cancelLabel: "Cancel",
   });
-
+  const [editRequest, setEditRequest] = useState({
+    open: false,
+    workshopId: null,
+    message: "",
+  });
 
   const fetchBooths = useCallback(async () => {
     setBoothsLoading(true);
     try {
       const data = await boothAPI.getAllBooths();
-  
       const normalizedBooths = data.map(b => ({
-  _id: b._id,
-  type: "BOOTH",
-  title: b.attendees?.[0]?.name || `Booth ${b._id}`, // or use b.title if available
-  description: b.description || "",
-  startDateTime: now.toISOString(),
-  startDate: now.toISOString(),
-  date: now.toISOString(),
-  boothSize: b.boothSize,
-  durationWeeks: b.durationWeeks,
-  platformSlot: b.platformSlot,
-  status: b.status,
-  attendees: b.attendees?.map(a => a.name) || [], // list of participant names
-}));
-
-
-  
-  
+        _id: b._id,
+        type: "BOOTH",
+        title: b.attendees?.[0]?.name || `Booth ${b._id}`,
+        description: b.description || "",
+        startDateTime: now.toISOString(),
+        startDate: now.toISOString(),
+        date: now.toISOString(),
+        boothSize: b.boothSize,
+        durationWeeks: b.durationWeeks,
+        platformSlot: b.platformSlot,
+        status: b.status,
+        attendees: b.attendees?.map(a => a.name) || [],
+      }));
       setBooths(normalizedBooths);
     } catch (err) {
       console.error("Error fetching booths:", err);
@@ -88,72 +88,63 @@ export default function EventsHome() {
       setBoothsLoading(false);
     }
   }, []);
-    
-  // Edit request modal state
-  const [editRequest, setEditRequest] = useState({
-    open: false,
-    workshopId: null,
-    message: "",
-  });
+
   const fetchWorkshops = useCallback(async () => {
-  setWorkshopsLoading(true);
-  try {
-    const data = await workshopAPI.getAllWorkshops();
-
-    const normalizedWorkshops = data.map((w) => {
-      const start = new Date(w.startDateTime);
-      const end = new Date(w.endDateTime);
-
-      return {
-        ...w,
-        type: "WORKSHOP",
-        title: w.workshopName,
-        name: w.workshopName,
-        startDateTime: start.toISOString(),
-        endDateTime: end.toISOString(),
-        description: w.shortDescription,
-        registrations: w.registeredUsers || [],
-      };
-    });
-
-    setWorkshops(normalizedWorkshops);
-  } catch (error) {
-    console.error("Error fetching workshops:", error);
-    setToast({ open: true, text: "Failed to load workshops" });
-  } finally {
-    setWorkshopsLoading(false);
-  }
-}, []);
+    setWorkshopsLoading(true);
+    try {
+      const data = await workshopAPI.getAllWorkshops();
+      const normalizedWorkshops = data.map((w) => {
+        const start = new Date(w.startDateTime);
+        const end = new Date(w.endDateTime);
+        return {
+          ...w,
+          type: "WORKSHOP",
+          title: w.workshopName,
+          name: w.workshopName,
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          description: w.shortDescription,
+          registrations: w.registeredUsers || [],
+        };
+      });
+      setWorkshops(normalizedWorkshops);
+    } catch (error) {
+      console.error("Error fetching workshops:", error);
+      setToast({ open: true, text: "Failed to load workshops" });
+    } finally {
+      setWorkshopsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchWorkshops();
     fetchBooths();
-  }, [fetchWorkshops,  fetchBooths]);
+  }, [fetchWorkshops, fetchBooths]);
+
   const refresh = useCallback(() => {
     refreshOthers();
     fetchWorkshops();
-  }, [refreshOthers, fetchWorkshops]);
+    fetchBooths();
+  }, [refreshOthers, fetchWorkshops, fetchBooths]);
+
   const events = [...otherEvents, ...workshops, ...booths];
-  const loading = otherLoading || workshopsLoading;
-const filteredEvents = useMemo(() => {
-  
-  let evs = filter === "all" 
-    ? events 
-    : events.filter(ev => ev.type.toLowerCase() === filter.slice(0, -1));
+  const loading = otherLoading || workshopsLoading || boothsLoading;
 
-  if (searchTerm.trim() === "") return evs;
+  const filteredEvents = useMemo(() => {
+    let evs = filter === "all"
+      ? events
+      : events.filter(ev => ev.type.toLowerCase() === filter.slice(0, -1));
+    if (searchTerm.trim() === "") return evs;
+    return evs.filter((ev) => {
+      const name = (ev.title || ev.name || "").toLowerCase();
+      const desc = (ev.shortDescription || ev.description || "").toLowerCase();
+      return (
+        name.includes(searchTerm.toLowerCase()) ||
+        desc.includes(searchTerm.toLowerCase())
+      );
+    });
+  }, [events, filter, searchTerm]);
 
-  return evs.filter((ev) => {
-    const name = (ev.title || ev.name || "").toLowerCase();
-    const desc = (ev.shortDescription || ev.description || "").toLowerCase();
-    return (
-      name.includes(searchTerm.toLowerCase()) ||
-      desc.includes(searchTerm.toLowerCase())
-    );
-  });
-}, [events, filter, searchTerm]);
-
-  // Feature cards
   const CARDS = useMemo(
     () => [
       {
@@ -190,9 +181,9 @@ const filteredEvents = useMemo(() => {
     ],
     []
   );
-  const visible =
-    filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
-  // Do the actual DELETE
+
+  const visible = filter === "all" ? CARDS : CARDS.filter((c) => c.type === filter);
+
   const doDelete = async (id, eventType) => {
     try {
       const res = await fetch(`/api/${eventType}/${id}`, { method: "DELETE" });
@@ -208,7 +199,7 @@ const filteredEvents = useMemo(() => {
       setToast({ open: true, text: "Network error: Could not delete" });
     }
   };
-  // Do the actual status update
+
   const doUpdateStatus = async (id, newStatus) => {
     try {
       const res = await fetch(`/api/workshops/${id}`, {
@@ -228,38 +219,34 @@ const filteredEvents = useMemo(() => {
       setToast({ open: true, text: "Network error: Could not update" });
     }
   };
-  // Do the actual edit request
+
   const doRequestEdits = async () => {
-  try {
-    const token = localStorage.getItem("token"); // Or whatever key you used
-    const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ message: editRequest.message }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setToast({ open: true, text: err.error || "Failed to send request" });
-      return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/workshops/${editRequest.workshopId}/request-edits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: editRequest.message }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setToast({ open: true, text: err.error || "Failed to send request" });
+        return;
+      }
+      setToast({ open: true, text: "Edit request sent successfully!" });
+      setEditRequest({ open: false, workshopId: null, message: "" });
+      refresh();
+    } catch (e) {
+      console.error("Edit request error:", e);
+      setToast({ open: true, text: "Network error: Could not send request" });
     }
+  };
 
-    setToast({ open: true, text: "Edit request sent successfully!" });
-    setEditRequest({ open: false, workshopId: null, message: "" });
-    refresh();
-  } catch (e) {
-    console.error("Edit request error:", e);
-    setToast({ open: true, text: "Network error: Could not send request" });
-  }
-};
-
-  // Open themed confirm dialog for delete
   const handleDelete = (id, eventType) => {
-    const typeLabel =
-      eventType.charAt(0).toUpperCase() + eventType.slice(1, -1); // "bazaars" -> "Bazaar"
+    const typeLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1, -1);
     setConfirm({
       open: true,
       title: `Delete this ${typeLabel.toLowerCase()}?`,
@@ -269,7 +256,7 @@ const filteredEvents = useMemo(() => {
       cancelLabel: "Cancel",
     });
   };
-  // Open themed confirm dialog for accept
+
   const handleAccept = (id) => {
     setConfirm({
       open: true,
@@ -280,7 +267,7 @@ const filteredEvents = useMemo(() => {
       cancelLabel: "Cancel",
     });
   };
-  // Open themed confirm dialog for reject
+
   const handleReject = (id) => {
     setConfirm({
       open: true,
@@ -291,7 +278,7 @@ const filteredEvents = useMemo(() => {
       cancelLabel: "Cancel",
     });
   };
-  // Open edit request modal
+
   const handleRequestEdits = (id) => {
     setEditRequest({
       open: true,
@@ -299,6 +286,7 @@ const filteredEvents = useMemo(() => {
       message: "",
     });
   };
+
   return (
     <div className="events-theme events-home">
       <div className="container">
@@ -307,18 +295,16 @@ const filteredEvents = useMemo(() => {
           <h1>Manage and organize all GUC events.</h1>
         </header>
         <div className="eo-search" style={{ margin: "12px 0" }}>
-  <input
-    type="text"
-    placeholder="Search events..."
-    value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
-    className="w-full md:w-1/3 p-2 border border-gray-300 rounded"
-  />
-</div>
-
-        {/* Filter pills */}
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full md:w-1/3 p-2 border border-gray-300 rounded"
+          />
+        </div>
         <div className="eo-filters">
-          {["all", "bazaars", "trips", "conferences", "workshops","booths"].map((f) => (
+          {["all", "bazaars", "trips", "conferences", "workshops", "booths"].map((f) => (
             <button
               key={f}
               className={`eo-pill ${filter === f ? "active" : ""}`}
@@ -328,13 +314,11 @@ const filteredEvents = useMemo(() => {
             </button>
           ))}
         </div>
-        {/* Create cards */}
         <section className="eo-grid">
           {visible.map((c) => (
             <FeatureCard key={c.type} {...c} />
           ))}
         </section>
-        {/* Quick links */}
         {filter === "all" && (
           <div style={{ margin: "24px 0" }}>
             <button
@@ -355,7 +339,6 @@ const filteredEvents = useMemo(() => {
         <h1 className="eo-section-title">
           {filter === "all" ? "All Events" : `${filter[0].toUpperCase() + filter.slice(1)}`}
         </h1>
-        
         {loading ? (
           <div className="empty">Loading…</div>
         ) : (
@@ -367,8 +350,6 @@ const filteredEvents = useMemo(() => {
               </div>
             )}
             {filteredEvents.map((ev) => {
-               
-   
               const id = ev._id || ev.id;
               const typeRaw = String(ev.type || "").toUpperCase();
               const isBazaar = typeRaw === "BAZAAR";
@@ -378,8 +359,7 @@ const filteredEvents = useMemo(() => {
               const isWorkshop = typeRaw === "WORKSHOP";
               const title = ev.title || ev.name || "Untitled";
               const editable = isEditable(ev.startDateTime);
-              const hasRegistrations =
-                Array.isArray(ev.registrations) && ev.registrations.length > 0;
+              const hasRegistrations = Array.isArray(ev.registrations) && ev.registrations.length > 0;
               return (
                 <article key={id} className="card">
                   <div className="chip">{typeRaw}</div>
@@ -387,56 +367,52 @@ const filteredEvents = useMemo(() => {
                     <span className="k">Name:</span>
                     <span className="v">{title}</span>
                   </div>
-                  {!isBooth && !isConference &&(
-                  <div className="kv">
-                    <span className="k">Location:</span>
-                    <span className="v">{ev.location}</span>
-                  </div>)}
+                  {!isBooth && !isConference && (
+                    <div className="kv">
+                      <span className="k">Location:</span>
+                      <span className="v">{ev.location}</span>
+                    </div>
+                  )}
                   <div className="kv kv-date">
                     <span className="k">Starts:</span>
                     <span className="v">{formatDate(ev.startDateTime)}</span>
                   </div>
                   {!isBooth && (
-                  <div className="kv kv-date">
-                    <span className="k">Ends:</span>
-                    <span className="v">{formatDate(ev.endDateTime)}</span>
-                  </div>)}
-                  {/* Bazaar-only: registration deadline */}
+                    <div className="kv kv-date">
+                      <span className="k">Ends:</span>
+                      <span className="v">{formatDate(ev.endDateTime)}</span>
+                    </div>
+                  )}
                   {isBazaar && ev.registrationDeadline && (
                     <div className="kv kv-date">
                       <span className="k">Registration Deadline:</span>
-                      <span className="v">
-                        {formatDate(ev.registrationDeadline)}
-                      </span>
+                      <span className="v">{formatDate(ev.registrationDeadline)}</span>
                     </div>
                   )}
                   {isBooth && (
-  <>
-    <div className="kv">
-      <span className="k">Booth Size:</span>
-      <span className="v">{ev.boothSize || "—"}</span>
-    </div>
-    <div className="kv">
-      <span className="k">Duration:</span>
-      <span className="v">{ev.durationWeeks} week(s)</span>
-    </div>
-    <div className="kv">
-      <span className="k">Platform Slot:</span>
-      <span className="v">{ev.platformSlot || "—"}</span>
-    </div>
-    <div className="kv">
-      <span className="k">Status:</span>
-      <span className="v">{ev.status || "—"}</span>
-    </div>
-    <div className="kv">
-      <span className="k">Attendees:</span>
-      <span className="v">{(ev.attendees || []).join(", ") || "None"}</span>
-    </div>
-    <div className="kv">
-      </div>
-  </>
-)}
-                  {/* Trip-only: price & capacity */}
+                    <>
+                      <div className="kv">
+                        <span className="k">Booth Size:</span>
+                        <span className="v">{ev.boothSize || "—"}</span>
+                      </div>
+                      <div className="kv">
+                        <span className="k">Duration:</span>
+                        <span className="v">{ev.durationWeeks} week(s)</span>
+                      </div>
+                      <div className="kv">
+                        <span className="k">Platform Slot:</span>
+                        <span className="v">{ev.platformSlot || "—"}</span>
+                      </div>
+                      <div className="kv">
+                        <span className="k">Status:</span>
+                        <span className="v">{ev.status || "—"}</span>
+                      </div>
+                      <div className="kv">
+                        <span className="k">Attendees:</span>
+                        <span className="v">{(ev.attendees || []).join(", ") || "None"}</span>
+                      </div>
+                    </>
+                  )}
                   {isTrip && (ev.price != null || ev.capacity != null) && (
                     <>
                       <div className="kv">
@@ -449,28 +425,20 @@ const filteredEvents = useMemo(() => {
                       </div>
                     </>
                   )}
-                  {/* Conference-specific: Website */}
                   {isConference && ev.website && (
                     <div className="kv">
                       <span className="k">Website:</span>
                       <span className="v">
-                        <a
-                          href={ev.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <a href={ev.website} target="_blank" rel="noopener noreferrer">
                           {ev.website}
                         </a>
                       </span>
                     </div>
                   )}
-                  {/* Workshop-specific fields */}
                   {isWorkshop && ev.registrationDeadline && (
                     <div className="kv kv-date">
                       <span className="k">Registration Deadline:</span>
-                      <span className="v">
-                        {formatDate(ev.registrationDeadline)}
-                      </span>
+                      <span className="v">{formatDate(ev.registrationDeadline)}</span>
                     </div>
                   )}
                   {isWorkshop && (
@@ -491,31 +459,19 @@ const filteredEvents = useMemo(() => {
                       <span className="v">{ev.status}</span>
                     </div>
                   )}
-                  {/* Optional: registration count */}
                   {hasRegistrations && (
                     <div className="kv">
                       <span className="k">Registered:</span>
-                      <span className="v">
-                        {ev.registrations.length} participants
-                      </span>
+                      <span className="v">{ev.registrations.length} participants</span>
                     </div>
                   )}
-                  {/* Description */}
                   {(ev?.shortDescription && ev.shortDescription.trim()) ||
                   (ev?.description && String(ev.description).trim()) ? (
                     <p>{ev.shortDescription || ev.description}</p>
                   ) : null}
-                  {/* ACTIONS */}
-                  <div
-                    className="actions"
-                    style={{ position: "relative", zIndex: 2 }}
-                  >
+                  <div className="actions" style={{ position: "relative", zIndex: 2 }}>
                     {isBazaar ? (
-                      <div
-                        className="actions-wrap"
-                        style={{ position: "relative", zIndex: 2 }}
-                      >
-                        {/* Row 1: Edit + Delete */}
+                      <div className="actions-wrap" style={{ position: "relative", zIndex: 2 }}>
                         <div className="actions-row">
                           {editable ? (
                             <Link className="btn" to={`/bazaars/${id}`}>
@@ -526,7 +482,6 @@ const filteredEvents = useMemo(() => {
                               Edit
                             </button>
                           )}
-
                           <button
                             className="btn btn-danger"
                             onClick={() => handleDelete(id, "bazaars")}
@@ -540,14 +495,9 @@ const filteredEvents = useMemo(() => {
                             Delete
                           </button>
                         </div>
-
-                        {/* Row 2: Vendor Requests */}
                         <div className="actions-row">
                           {editable ? (
-                            <Link
-                              className="btn"
-                              to={`/bazaars/${id}/vendor-requests`}
-                            >
+                            <Link className="btn" to={`/bazaars/${id}/vendor-requests`}>
                               Vendor Requests
                             </Link>
                           ) : (
@@ -630,6 +580,16 @@ const filteredEvents = useMemo(() => {
                           </>
                         )}
                       </>
+                    ) : isBooth ? (
+                      <div className="actions-row">
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "booths")}
+                          title="Delete this booth"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 </article>
@@ -638,7 +598,6 @@ const filteredEvents = useMemo(() => {
           </div>
         )}
       </div>
-      {/* Themed confirmation modal (same look as Save/Cancel modal) */}
       {confirm.open && (
         <div className="confirm-overlay" role="dialog" aria-modal="true">
           <div className="confirm">
@@ -665,8 +624,6 @@ const filteredEvents = useMemo(() => {
           </div>
         </div>
       )}
-
-      {/* Edit request modal */}
       {editRequest.open && (
         <div className="confirm-overlay" role="dialog" aria-modal="true">
           <div className="confirm">
