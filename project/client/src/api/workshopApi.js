@@ -1,15 +1,24 @@
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000/api';
-
+const token = localStorage.getItem("token");
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+     "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   },
 });
 
-// Workshop API calls
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const workshopAPI = {
   // Create a new workshop
   createWorkshop: async (workshopData) => {
@@ -22,6 +31,17 @@ export const workshopAPI = {
     const response = await api.get('/workshops');
     return response.data;
   },
+// Get workshops created by the logged-in professor
+getMine: async () => {
+  const response = await api.get('/workshops/mine');
+  return response.data;
+},
+
+// Get workshops NOT created by the logged-in professor
+getOthers: async () => {
+  const response = await api.get('/workshops/others');
+  return response.data;
+},
 
   // Get a single workshop by ID
   getWorkshopById: async (id) => {
@@ -41,10 +61,30 @@ export const workshopAPI = {
     return response.data;
   },
 
-  // Get workshops by professor
-  getMyWorkshops: async (professorId) => {
-    const response = await api.get(`/workshops/mine/${professorId}`);
-    return response.data;
+  // Get workshops created by the current professor
+  getMyWorkshops: async () => {
+     const token = localStorage.getItem('token');
+    const res = await fetch('/api/workshops/mine', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch workshops');
+    return res.json();
+  },
+
+  // Get workshops NOT created by this professor
+  getOtherWorkshops: async () => {
+     const token = localStorage.getItem('token');
+    const res = await fetch('/api/workshops/others', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch workshops');
+    return res.json();
   },
 };
 

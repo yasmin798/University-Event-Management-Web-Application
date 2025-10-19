@@ -10,19 +10,26 @@ const WorkshopsListPage = () => {
   const [locationFilter, setLocationFilter] = useState('all');
   const [facultyFilter, setFacultyFilter] = useState('all');
 
-  const currentProfessor = "Professor A"; // Replace later with actual logged-in professor
-
+  const user = JSON.parse(localStorage.getItem("user"));
+const currentProfessorId = user?.id;
   useEffect(() => {
-    const fetchWorkshops = async () => {
-      try {
-        const data = await workshopAPI.getAllWorkshops();
-        setWorkshops(data);
-      } catch (error) {
-        console.error('Error fetching workshops:', error);
+  const fetchWorkshops = async () => {
+    try {
+      let data = [];
+      if (filter === 'mine') {
+        data = await workshopAPI.getMyWorkshops(); // fetch only my workshops
+      } else if (filter === 'others') {
+        data = await workshopAPI.getOtherWorkshops(); // fetch others
+      } else {
+        data = await workshopAPI.getAllWorkshops();
       }
-    };
-    fetchWorkshops();
-  }, []);
+      setWorkshops(data);
+    } catch (error) {
+      console.error('Error fetching workshops:', error);
+    }
+  };
+  fetchWorkshops();
+}, [filter]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this workshop?')) {
@@ -65,21 +72,11 @@ const WorkshopsListPage = () => {
 
   // 🔹 Combined filtering logic
   const filteredWorkshops = workshops.filter((w) => {
-    const baseFilter =
-      filter === 'all'
-        ? true
-        : filter === 'mine'
-        ? w.createdBy === currentProfessor
-        : w.createdBy !== currentProfessor;
+  const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
+  const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
+  return locationMatch && facultyMatch;
+});
 
-    const locationMatch =
-      locationFilter === 'all' ? true : w.location === locationFilter;
-
-    const facultyMatch =
-      facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
-
-    return baseFilter && locationMatch && facultyMatch;
-  });
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -126,7 +123,7 @@ const WorkshopsListPage = () => {
                 : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
             }`}
           >
-            My Workshops ({workshops.filter((w) => w.createdBy === currentProfessor).length})
+            My Workshops ({workshops.filter((w) => w.createdBy === currentProfessorId).length})
           </button>
           <button
             onClick={() => setFilter('others')}
@@ -136,7 +133,7 @@ const WorkshopsListPage = () => {
                 : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
             }`}
           >
-            Other Professors ({workshops.filter((w) => w.createdBy !== currentProfessor).length})
+            Other Professors ({workshops.filter((w) => w.createdBy !== currentProfessorId).length})
           </button>
 
           {/* 🔹 Location dropdown */}

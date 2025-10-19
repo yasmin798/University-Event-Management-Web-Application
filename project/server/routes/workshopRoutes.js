@@ -8,12 +8,14 @@ const {
   updateWorkshop,
   deleteWorkshop,
   getMyWorkshops,
-  getOtherWorkshops
+  getOtherWorkshops,
+  getMine,
+  getOthers,
 } = require("../controllers/workshopController");
 // ... existing routes ...
 const { requestEdits } = require('../controllers/workshopController');
 const { protect, adminOnly } = require('../middleware/auth'); // Assuming adminOnly exists
-
+router.post('/', protect, createWorkshop);
 // Protected actions
 router.post('/:id/request-edits', protect, (req, res, next) => {
   if (!["admin", "events_office"].includes(req.user.role)) {
@@ -24,8 +26,12 @@ router.post('/:id/request-edits', protect, (req, res, next) => {
 
 
 // ⚠️ IMPORTANT: specific/filter routes MUST come BEFORE parametric routes
-router.get('/mine/:professorId', getMyWorkshops);
-router.get('/others/:professorId', getOtherWorkshops);
+router.get('/mine', protect, getMyWorkshops);
+router.get('/others', protect, getOtherWorkshops);
+router.post("/workshops", protect, createWorkshop);
+router.get("/workshops/mine", protect, getMyWorkshops);
+router.get("/workshops/others", protect, getOtherWorkshops);
+
 
 // CRUD routes (general paths)
 router.post('/', createWorkshop);

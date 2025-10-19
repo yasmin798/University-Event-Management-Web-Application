@@ -6,14 +6,18 @@ const User = require("../models/User"); // Add this import
 // CREATE Workshop
 exports.createWorkshop = async (req, res) => {
   try {
-    console.log('Creating workshop with data:', req.body);
-    const workshop = new Workshop(req.body);
+    // Make sure protect middleware has run and attached req.user
+    const workshop = new Workshop({
+      ...req.body,
+      createdBy: req.user._id, // ✅ store as ObjectId
+      status: "pending",       // optional: default status
+    });
+
     await workshop.save();
-    console.log('Workshop created successfully:', workshop._id);
+
     res.status(201).json(workshop);
   } catch (err) {
-    console.error('Error creating workshop:', err);
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -89,15 +93,19 @@ exports.deleteWorkshop = async (req, res) => {
 // GET workshops by professor ID
 exports.getMyWorkshops = async (req, res) => {
   try {
-    console.log('Fetching workshops for professor:', req.params.professorId);
-    const workshops = await Workshop.find({ createdBy: req.params.professorId });
-    console.log(`Found ${workshops.length} workshops for this professor`);
-    res.status(200).json(workshops);
+    const userId = req.user._id; 
+    const workshops = await Workshop.find({ createdBy: userId });
+    res.status(200).json(
+      workshops.map(w => ({
+        ...w.toObject(),
+        createdBy: w.createdBy.toString(), // ✅ convert ObjectId to string
+      }))
+    );
   } catch (err) {
-    console.error('Error fetching professor workshops:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
+
 // ... existing exports ...
 
 // controllers/workshopController.js
@@ -164,12 +172,15 @@ exports.requestEdits = async (req, res) => {
 // GET workshops NOT created by this professor
 exports.getOtherWorkshops = async (req, res) => {
   try {
-    console.log('Fetching other professors workshops, excluding:', req.params.professorId);
-    const workshops = await Workshop.find({ createdBy: { $ne: req.params.professorId } });
-    console.log(`Found ${workshops.length} workshops from other professors`);
-    res.status(200).json(workshops);
+    const userId = req.user._id; 
+    const workshops = await Workshop.find({ createdBy: { $ne: userId } });
+    res.status(200).json(
+      workshops.map(w => ({
+        ...w.toObject(),
+        createdBy: w.createdBy.toString(), // ✅ convert ObjectId to string
+      }))
+    );
   } catch (err) {
-    console.error('Error fetching other workshops:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };

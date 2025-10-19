@@ -15,7 +15,7 @@ const workshopSchema = new mongoose.Schema({
   capacity: { type: Number, required: true },
   registrationDeadline: { type: Date, required: true },
   registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  createdBy: { type: String },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' ,required: true,},
   status: { 
   type: String, 
   default: "pending",

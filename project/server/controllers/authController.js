@@ -80,6 +80,7 @@ exports.login = async (req, res) => {
   }
 };
 
+
 // ================= Logout =================
 // In JWT auth, logout is handled on the client side by deleting the token
 exports.logout = async (req, res) => {
