@@ -22,6 +22,7 @@ const ProfessorDashboard = () => {
 const [eventTypeFilter, setEventTypeFilter] = useState('All');
 const [workshopsLoading, setWorkshopsLoading] = useState(true);
 
+
 // Use same hooks as EventsHome
   const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
 
@@ -52,6 +53,7 @@ const [workshopsLoading, setWorkshopsLoading] = useState(true);
             professorsParticipating: w.professorsParticipating || "",
           };
         });
+        
       setWorkshops(normalizedWorkshops);
     } catch (error) {
       console.error("Error fetching workshops:", error);
@@ -94,6 +96,7 @@ const [workshopsLoading, setWorkshopsLoading] = useState(true);
         setIsNotificationsOpen(false);
       }
     };
+    
 
     if (isNotificationsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -245,29 +248,50 @@ const formatEventDate = (dateTimeStr) => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeModal = () => setSelectedWorkshop(null);
 
-  // Sample notifications data (replace with actual fetch if backend is implemented)
-  const notifications = [
-    {
-      id: 1,
-      message: 'Your workshop "AI Fundamentals" has been approved.',
-      time: '2 hours ago',
-      unread: true
-    },
-    {
-      id: 2,
-      message: 'New registration for "Machine Learning Basics".',
-      time: 'Yesterday',
-      unread: false
-    },
-    {
-      id: 3,
-      message: 'Reminder: Budget submission due for upcoming conference.',
-      time: '3 days ago',
-      unread: false
-    }
-  ];
+// 🔔 Notifications state
+const [notifications, setNotifications] = useState([]);
+const [unreadCount, setUnreadCount] = useState(0);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+// 🔹 Fetch notifications from backend
+useEffect(() => {
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.warn("No token found, skipping notifications fetch.");
+        return;
+      }
+
+      const res = await fetch("http://localhost:3000/api/notifications", {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+
+      const data = await res.json();
+      console.log("✅ Notifications fetched:", data);
+
+      const formatted = data.map((n) => ({
+        id: n._id,
+        message: n.message,
+        time: new Date(n.createdAt).toLocaleString(),
+        unread: n.unread,
+        workshopName: n.workshopId?.workshopName || "General",
+      }));
+
+      setNotifications(formatted);
+      setUnreadCount(formatted.filter(n => n.unread).length);
+    } catch (err) {
+      console.error("❌ Error fetching notifications:", err);
+    }
+  };
+
+  fetchNotifications();
+}, []);
+
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">

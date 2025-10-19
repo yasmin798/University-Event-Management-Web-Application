@@ -1,4 +1,5 @@
 const Workshop = require("../models/Workshop");
+const Notification = require("../models/Notification");
 
 // CREATE Workshop
 exports.createWorkshop = async (req, res) => {
@@ -97,40 +98,36 @@ exports.getMyWorkshops = async (req, res) => {
 };
 // ... existing exports ...
 
+// controllers/workshopController.js
 exports.requestEdits = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // workshop ID
     const { message } = req.body;
 
-    if (!message?.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
     const workshop = await Workshop.findById(id);
-    if (!workshop) {
-      return res.status(404).json({ error: 'Workshop not found' });
-    }
+    if (!workshop) return res.status(404).json({ error: "Workshop not found" });
 
-    // Create notification for professor
-    const notification = new Notification({
-      userId: workshop.createdBy,
-      message: `Edit request for workshop "${workshop.workshopName}": ${message}`,
-      type: 'edit_request',
-      workshopId: id,
-      unread: true
+    // Find the professor who owns this workshop
+    const professor = await User.findById(workshop.professorId);
+    if (!professor) return res.status(404).json({ error: "Professor not found" });
+
+    // ✅ Create a notification for that specific professor
+    await Notification.create({
+      userId: professor._id,
+      message: message || `Edit request for your workshop "${workshop.workshopName}"`,
+      workshopId: workshop._id,
+      type: "edit_request",
     });
-    await notification.save();
 
-    // Update workshop status
-    workshop.status = 'edits_requested';
-    await workshop.save();
+    console.log(`📩 Notification sent to professor ${professor.email}`);
 
-    res.json({ success: true, message: 'Edit request sent successfully' });
+    res.status(200).json({ success: true, message: "Edit request sent successfully" });
   } catch (err) {
-    console.error('Request edits error:', err);
-    res.status(500).json({ error: 'Failed to send edit request' });
+    console.error("Error in requestEdits:", err);
+    res.status(500).json({ error: "Failed to send edit request" });
   }
 };
+
 
 // GET workshops NOT created by this professor
 exports.getOtherWorkshops = async (req, res) => {

@@ -1,67 +1,72 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Notification = require('../models/Notification');
-const User = require('../models/User');
-const { protect } = require('../middleware/auth');
+const Notification = require("../models/Notification");
+const { protect } = require("../middleware/auth");
 
-// 🟩 GET user's notifications
-router.get('/', protect, async (req, res) => {
+// 📩 GET all notifications for the logged-in user
+router.get("/", protect, async (req, res) => {
   try {
-    const notifications = await Notification.find({ userId: req.user.id })
-      .sort({ createdAt: -1 })
-      .populate('workshopId', 'workshopName');
-    res.json(notifications);
+    console.log("📨 Fetching notifications for user:", req.user._id);
+
+    const notifications = await Notification.find({ userId: req.user._id })
+      .populate("workshopId", "workshopName")
+      .sort({ createdAt: -1 });
+
+    if (!notifications.length) {
+      console.log("⚠️ No notifications found for this user");
+    }
+
+    res.status(200).json(notifications);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch notifications' });
+    console.error("❌ Error fetching notifications:", err);
+    res.status(500).json({ error: "Failed to fetch notifications" });
   }
 });
 
-// 🟩 POST mark all as read
-router.post('/mark-read', protect, async (req, res) => {
+// 🆕 POST create new notification (optional for testing)
+router.post("/", protect, async (req, res) => {
   try {
-    await Notification.updateMany(
-      { userId: req.user.id, unread: true },
-      { unread: false }
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to mark as read' });
-  }
-});
+    const { message, type, workshopId, receiverId } = req.body;
 
-// 🟩 POST create new notification (e.g., student requests edits)
-router.post('/', protect, async (req, res) => {
-  try {
-    const { message, workshopId, receiverRole } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
+    if (!message || !receiverId) {
+      return res.status(400).json({ error: "Message and receiverId required" });
     }
 
-    // Find all professors if receiverRole = "professor"
-    let recipients = [];
-    if (receiverRole === "professor") {
-      recipients = await User.find({ role: "professor" }).select("_id");
-    } else {
-      recipients = [{ _id: req.user.id }]; // fallback to self
-    }
-
-    // Create a notification for each recipient
-    const notifications = recipients.map(recipient => ({
-      userId: recipient._id,
+    const newNotification = new Notification({
+      userId: receiverId, // the receiver of the notification
       message,
-      workshopId,
-      type: "edit_request"
-    }));
+      type: type || "general",
+      workshopId: workshopId || null,
+    });
 
-    await Notification.insertMany(notifications);
-
-    res.status(201).json({ success: true, count: notifications.length });
+    await newNotification.save();
+    console.log("✅ Notification saved:", newNotification);
+    res.status(201).json(newNotification);
   } catch (err) {
-    console.error("Error creating notification:", err);
+    console.error("❌ Error creating notification:", err);
     res.status(500).json({ error: "Failed to create notification" });
+  }
+});
+
+// ✅ PATCH mark as read
+router.patch("/:id/read", protect, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await Notification.findOneAndUpdate(
+      { _id: id, userId: req.user._id },
+      { unread: false },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+
+    res.json(notification);
+  } catch (err) {
+    console.error("❌ Error marking notification as read:", err);
+    res.status(500).json({ error: "Failed to update notification" });
   }
 });
 

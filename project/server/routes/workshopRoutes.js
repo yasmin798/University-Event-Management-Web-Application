@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const {
   createWorkshop,
   getAllWorkshops,
@@ -14,7 +15,13 @@ const { requestEdits } = require('../controllers/workshopController');
 const { protect, adminOnly } = require('../middleware/auth'); // Assuming adminOnly exists
 
 // Protected actions
-router.post('/:id/request-edits', protect, adminOnly, requestEdits);
+router.post('/:id/request-edits', protect, (req, res, next) => {
+  if (!["admin", "events_office"].includes(req.user.role)) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+  next();
+}, requestEdits);
+
 
 // ⚠️ IMPORTANT: specific/filter routes MUST come BEFORE parametric routes
 router.get('/mine/:professorId', getMyWorkshops);
