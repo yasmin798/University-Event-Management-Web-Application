@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../events.theme.css";
 import NavBar from "../components/NavBar";
 
 const GymSessions = () => {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,16 @@ const GymSessions = () => {
         <header className="eo-pagehead-simple">
           <h1>Manage and organize all Gym sessions.</h1>
         </header>
-        <h1 className="eo-section-title">All Sessions</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+          <button 
+            className="btn" 
+            onClick={() => navigate(-1)}
+            style={{ padding: "8px 16px", fontSize: "14px" }}
+          >
+            ← Back
+          </button>
+          <h1 className="eo-section-title">All Sessions</h1>
+        </div>
 
         <div className="grid">
           {gymSessions.length === 0 && (

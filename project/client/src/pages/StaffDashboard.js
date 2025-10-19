@@ -97,7 +97,7 @@ const fetchBooths = useCallback(async () => {
 
   // Combine events like EventsHome
   const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops,...booths];
-  const loading = otherLoading || workshopsLoading ;
+  const loading = otherLoading || workshopsLoading || boothsLoading;
 
 
   const formatEventDate = (dateTimeStr) => {
@@ -136,6 +136,11 @@ console.log("Booths fetched:", booths);
 // Update this function
 const handleCourtsAvailability = () => {
   navigate("/courts-availability"); // Change this line from "/courts/availability" to "/courts-availability"
+  closeSidebar();
+};
+
+const handleGymSessions = () => {
+  navigate("/gym-sessions");
   closeSidebar();
 };
 
@@ -189,6 +194,13 @@ const handleCourtsAvailability = () => {
 >
   <Map size={18} />
   Courts Availability
+</button>
+<button
+  onClick={handleGymSessions}
+  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+>
+  <Calendar size={18} />
+  Gym Sessions
 </button>
           <button
             onClick={handleLogout}
