@@ -6,30 +6,20 @@ import { workshopAPI } from '../api/workshopApi';
 const WorkshopsListPage = () => {
   const navigate = useNavigate();
   const [workshops, setWorkshops] = useState([]);
-  const [filter, setFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [facultyFilter, setFacultyFilter] = useState('all');
 
-  const user = JSON.parse(localStorage.getItem("user"));
-const currentProfessorId = user?.id;
   useEffect(() => {
-  const fetchWorkshops = async () => {
-    try {
-      let data = [];
-      if (filter === 'mine') {
-        data = await workshopAPI.getMyWorkshops(); // fetch only my workshops
-      } else if (filter === 'others') {
-        data = await workshopAPI.getOtherWorkshops(); // fetch others
-      } else {
-        data = await workshopAPI.getAllWorkshops();
+    const fetchWorkshops = async () => {
+      try {
+        const data = await workshopAPI.getAllWorkshops();
+        setWorkshops(data);
+      } catch (error) {
+        console.error('Error fetching workshops:', error);
       }
-      setWorkshops(data);
-    } catch (error) {
-      console.error('Error fetching workshops:', error);
-    }
-  };
-  fetchWorkshops();
-}, [filter]);
+    };
+    fetchWorkshops();
+  }, []);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this workshop?')) {
@@ -53,11 +43,8 @@ const currentProfessorId = user?.id;
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // 🔹 Unique locations from workshops
- const uniqueLocations = ['all', 'GUC Cairo', 'GUC Berlin'];
+  const uniqueLocations = ['all', 'GUC Cairo', 'GUC Berlin'];
 
-
-  // 🔹 Static faculty options
   const faculties = [
     { value: 'all', label: 'All Faculties' },
     { value: 'MET', label: 'MET - Media Engineering and Technology' },
@@ -70,13 +57,11 @@ const currentProfessorId = user?.id;
     { value: 'LAW', label: 'LAW - Law and Legal Studies' },
   ];
 
-  // 🔹 Combined filtering logic
   const filteredWorkshops = workshops.filter((w) => {
-  const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
-  const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
-  return locationMatch && facultyMatch;
-});
-
+    const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
+    const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
+    return locationMatch && facultyMatch;
+  });
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -102,41 +87,8 @@ const currentProfessorId = user?.id;
       </div>
 
       <div className="max-w-6xl mx-auto p-8">
-        {/* 🔹 Filter controls */}
+        {/* 🔹 Location & Faculty Filters */}
         <div className="flex flex-wrap gap-4 mb-6">
-          {/* All / Mine / Others */}
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filter === 'all'
-                ? 'bg-[#567c8d] text-white'
-                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-            }`}
-          >
-            All ({workshops.length})
-          </button>
-          <button
-            onClick={() => setFilter('mine')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filter === 'mine'
-                ? 'bg-[#567c8d] text-white'
-                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-            }`}
-          >
-            My Workshops ({workshops.filter((w) => w.createdBy === currentProfessorId).length})
-          </button>
-          <button
-            onClick={() => setFilter('others')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filter === 'others'
-                ? 'bg-[#567c8d] text-white'
-                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-            }`}
-          >
-            Other Professors ({workshops.filter((w) => w.createdBy !== currentProfessorId).length})
-          </button>
-
-          {/* 🔹 Location dropdown */}
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
@@ -149,7 +101,6 @@ const currentProfessorId = user?.id;
             ))}
           </select>
 
-          {/* 🔹 Faculty dropdown */}
           <select
             value={facultyFilter}
             onChange={(e) => setFacultyFilter(e.target.value)}
