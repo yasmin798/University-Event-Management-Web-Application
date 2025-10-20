@@ -674,6 +674,8 @@ function SectionVerified({ verifiedUsers, handleDelete }) {
             <th style={thStyle}>Name / Company</th>
             <th style={thStyle}>Email</th>
             <th style={thStyle}>Role</th>
+            <th style={thStyle}>ID</th>
+            <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
           </tr>
         </thead>
@@ -687,6 +689,23 @@ function SectionVerified({ verifiedUsers, handleDelete }) {
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
                 <td style={tdStyle}>
+                  {user.roleSpecificId || (
+                    <span style={{ color: "#6B7280", fontStyle: "italic" }}>
+                      N/A
+                    </span>
+                  )}
+                </td>
+                 <td style={tdStyle}>
+                  <span
+                    style={{
+                      color: user.status === "active" ? "green" : "red",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {user.status || "active"}
+                  </span>
+                </td>
+                <td style={tdStyle}>
                   <button
                     onClick={() => handleDelete(user._id)}
                     style={deleteBtnStyle}
@@ -698,7 +717,7 @@ function SectionVerified({ verifiedUsers, handleDelete }) {
             ))
           ) : (
             <tr>
-              <td colSpan="4" style={tdEmptyStyle}>
+              <td colSpan="6" style={tdEmptyStyle}>
                 No verified users yet.
               </td>
             </tr>
@@ -729,7 +748,9 @@ function SectionPending({
             <th style={thStyle}>Name / Company</th>
             <th style={thStyle}>Email</th>
             <th style={thStyle}>Current Role</th>
+             <th style={thStyle}>ID</th>
             <th style={thStyle}>Assigned Role</th>
+            <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
           </tr>
         </thead>
@@ -742,6 +763,13 @@ function SectionPending({
                 </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
+                   <td style={tdStyle}>
+                  {user.roleSpecificId || (
+                    <span style={{ color: "#6B7280", fontStyle: "italic" }}>
+                      N/A
+                    </span>
+                  )}
+                </td>
                 <td style={tdStyle}>
                   <select
                     style={dropdownStyle}
@@ -758,6 +786,16 @@ function SectionPending({
                     <option value="ta">TA</option>
                     <option value="professor">Professor</option>
                   </select>
+                </td>
+                <td style={tdStyle}>
+                  <span
+                    style={{
+                      color: user.status === "active" ? "green" : "red",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {user.status || "active"}
+                  </span>
                 </td>
                 <td style={tdStyle}>
                   <button
@@ -781,7 +819,7 @@ function SectionPending({
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={tdEmptyStyle}>
+              <td colSpan="7" style={tdEmptyStyle}>
                 No pending users.
               </td>
             </tr>
