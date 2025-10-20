@@ -5,6 +5,7 @@ import workshopPlaceholder from "../images/workshop.png";
 import tripPlaceholder from "../images/trip.jpeg";
 import bazaarPlaceholder from "../images/bazaar.jpeg";
 import conferencePlaceholder from "../images/conference.jpg";
+import boothPlaceholder from "../images/booth.jpg";
 import { workshopAPI } from '../api/workshopApi';
 import EventTypeDropdown from '../components/EventTypeDropdown';
 import { useServerEvents } from "../hooks/useServerEvents";
@@ -29,30 +30,29 @@ const [boothsLoading, setBoothsLoading] = useState(true);
   const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
 
   const fetchBooths = useCallback(async () => {
-    setBoothsLoading(true);
-    try {
-      const data = await boothAPI.getAllBooths();
-  
-      const normalizedBooths = data.map(b => ({
-    _id: b._id,
-    type: "BOOTH",
-    title: b.attendees?.[0]?.name || `Booth ${b._id}`,
-    image: b.image || workshopPlaceholder,
-    description: b.description || "",
-    startDateTime: now.toISOString(),
-    startDate: now.toISOString(),
-    date: now.toISOString(),
-  }));
-  
-  
-      setBooths(normalizedBooths);
-    } catch (err) {
-      console.error("Error fetching booths:", err);
-      setBooths([]);
-    } finally {
-      setBoothsLoading(false);
-    }
-  }, []);
+  setBoothsLoading(true);
+  try {
+    const data = await boothAPI.getAllBooths();
+
+    const normalizedBooths = data.map(b => ({
+      _id: b._id,
+      type: "BOOTH",
+      title: b.attendees?.[0]?.name || `Booth ${b._id}`,
+      image: b.image || boothPlaceholder, // ✅ use boothPlaceholder instead of workshopPlaceholder
+      description: b.description || "",
+      startDateTime: now.toISOString(),
+      startDate: now.toISOString(),
+      date: now.toISOString(),
+    }));
+
+    setBooths(normalizedBooths);
+  } catch (err) {
+    console.error("Error fetching booths:", err);
+    setBooths([]);
+  } finally {
+    setBoothsLoading(false);
+  }
+}, []);
 
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
@@ -703,12 +703,13 @@ useEffect(() => {
                             {filteredEvents.map((e) => (
                               <div key={e._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
                                 <div className="h-40 w-full bg-gray-200">
-                                 <img
+                                <img
   src={
     e.image ||
     (e.type === "TRIP" ? tripPlaceholder :
      e.type === "BAZAAR" ? bazaarPlaceholder :
      e.type === "CONFERENCE" ? conferencePlaceholder :
+     e.type === "BOOTH" ? boothPlaceholder :
      workshopPlaceholder)
   }
   alt={e.title || e.name || e.workshopName || e.bazaarName || e.tripName || e.conferenceName}
@@ -721,10 +722,11 @@ useEffect(() => {
         ? bazaarPlaceholder
         : e.type === "CONFERENCE"
         ? conferencePlaceholder
+        : e.type === "BOOTH"
+        ? boothPlaceholder
         : workshopPlaceholder;
   }}
 />
-
                                 </div>
                                 <div className="p-4">
                                   <h3 className="font-semibold text-lg text-[#2f4156] truncate">

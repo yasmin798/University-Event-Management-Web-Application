@@ -7,6 +7,7 @@ import workshopPlaceholder from "../images/workshop.png";
 import tripImage from "../images/trip.jpeg";
 import bazaarImage from "../images/bazaar.jpeg";
 import conferenceImage from "../images/conference.jpg";
+import boothImage from "../images/booth.jpg";
 import { boothAPI } from "../api/boothApi";
 
 
@@ -44,16 +45,15 @@ useEffect(() => {
 const normalizedBooths = data.map(b => ({
   _id: b._id,
   type: "BOOTH",
-  bazaarId: b.bazaar?._id, // VERY IMPORTANT
+  bazaarId: b.bazaar?._id,
   title: `${b.bazaar?.title} Booth`,
-  // title: b.attendees?.[0]?.firstName || `Booth ${b._id}`,
-  attendees: b.attendees?.map(a =>  a.name || "Unknown") || [],
+  attendees: b.attendees?.map(a => a.name || "Unknown") || [],
   boothSize: b.boothSize,
   durationWeeks: b.durationWeeks,
   platformSlot: b.platformSlot,
   status: b.status,
   description: b.description || "",
-  image: b.image || workshopPlaceholder,
+  image: b.image || boothImage, // ✅ Changed from workshopPlaceholder → boothImage
 }));
 
 
@@ -229,9 +229,12 @@ if (!eventImage || eventImage === "") {
     case "CONFERENCE":
       eventImage = conferenceImage;
       break;
+    case "BOOTH":
+      eventImage = boothImage; // ✅ Added booth image support
+      break;
     default:
       eventImage = workshopPlaceholder;
-        break;
+      break;
   }
 }
 
