@@ -296,11 +296,37 @@ export default function Admin() {
     }
   };
 
+  const handleBlock = async (userId, currentStatus) => {
+    const newStatus = currentStatus === "blocked" ? "active" : "blocked";
+    if (!window.confirm(`Are you sure you want to ${newStatus} this user?`)) return;
+
+    try {
+      const res = await fetch(`${API_ORIGIN}/api/admin/block/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(data.message);
+        fetchUsers();
+      } else {
+        setMessage(`❌ ${data.error || "Block/Unblock failed"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Server error during block/unblock");
+    }
+  };
+
   const handleSendMail = async () => {
     if (!mailTarget) return;
     setSending(true);
     try {
-      const assignedRole = assignedRoles[mailTarget._id];
+      let assignedRole = assignedRoles[mailTarget._id];
+      if (mailTarget.role === "student") {
+        assignedRole = "student"; // Pre-assign for students
+      }
       const res = await fetch(`${API_ORIGIN}/api/admin/send-verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -577,6 +603,7 @@ export default function Admin() {
             <SectionVerified
               verifiedUsers={verifiedUsers}
               handleDelete={handleDelete}
+              handleBlock={handleBlock}
             />
 
             <SectionPending
@@ -587,6 +614,8 @@ export default function Admin() {
               generatePreviewLink={generatePreviewLink}
               setShowMailPopup={setShowMailPopup}
               handleDelete={handleDelete}
+              handleBlock={handleBlock}
+              handleSendMail={handleSendMail}
             />
 
             <SectionBazaarRequests
@@ -664,7 +693,7 @@ export default function Admin() {
 
 /* ===== Presentational Sub-Components ===== */
 
-function SectionVerified({ verifiedUsers, handleDelete }) {
+function SectionVerified({ verifiedUsers, handleDelete, handleBlock }) {
   return (
     <>
       <h2 style={{ color: "#10B981", marginTop: 10 }}>✅ Verified Users</h2>
@@ -698,7 +727,7 @@ function SectionVerified({ verifiedUsers, handleDelete }) {
                  <td style={tdStyle}>
                   <span
                     style={{
-                      color: user.status === "active" ? "green" : "red",
+                      color: user.status === "blocked" ? "red" : "green",
                       fontWeight: "bold",
                     }}
                   >
@@ -706,6 +735,20 @@ function SectionVerified({ verifiedUsers, handleDelete }) {
                   </span>
                 </td>
                 <td style={tdStyle}>
+                  <button
+                    onClick={() => handleBlock(user._id, user.status || "active")}
+                    style={{
+                      backgroundColor: user.status === "blocked" ? "#10B981" : "#EF4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                      marginRight: 5,
+                    }}
+                  >
+                    {user.status === "blocked" ? "Unblock" : "Block"}
+                  </button>
                   <button
                     onClick={() => handleDelete(user._id)}
                     style={deleteBtnStyle}
@@ -736,6 +779,8 @@ function SectionPending({
   generatePreviewLink,
   setShowMailPopup,
   handleDelete,
+  handleBlock,
+  handleSendMail,
 }) {
   return (
     <>
@@ -771,26 +816,30 @@ function SectionPending({
                   )}
                 </td>
                 <td style={tdStyle}>
-                  <select
-                    style={dropdownStyle}
-                    value={assignedRoles[user._id] || ""}
-                    onChange={(e) =>
-                      setAssignedRoles({
-                        ...assignedRoles,
-                        [user._id]: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Select Role</option>
-                    <option value="staff">Staff</option>
-                    <option value="ta">TA</option>
-                    <option value="professor">Professor</option>
-                  </select>
+                  {user.role === "student" ? (
+                    <span style={{ fontWeight: "bold" }}>Student</span>
+                  ) : (
+                    <select
+                      style={dropdownStyle}
+                      value={assignedRoles[user._id] || ""}
+                      onChange={(e) =>
+                        setAssignedRoles({
+                          ...assignedRoles,
+                          [user._id]: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Select Role</option>
+                      <option value="staff">Staff</option>
+                      <option value="ta">TA</option>
+                      <option value="professor">Professor</option>
+                    </select>
+                  )}
                 </td>
                 <td style={tdStyle}>
                   <span
                     style={{
-                      color: user.status === "active" ? "green" : "red",
+                      color: user.status === "blocked" ? "red" : "green",
                       fontWeight: "bold",
                     }}
                   >
@@ -798,6 +847,20 @@ function SectionPending({
                   </span>
                 </td>
                 <td style={tdStyle}>
+                  <button
+                    onClick={() => handleBlock(user._id, user.status || "active")}
+                    style={{
+                      backgroundColor: user.status === "blocked" ? "#10B981" : "#EF4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                      marginRight: 5,
+                    }}
+                  >
+                    {user.status === "blocked" ? "Unblock" : "Block"}
+                  </button>
                   <button
                     onClick={() => {
                       setMailTarget(user);

@@ -1,3 +1,4 @@
+// Updated StaffSignup.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -127,136 +128,122 @@ export default function StaffSignup() {
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={formBoxStyle}>
-        <h1 style={titleStyle}>Staff Signup</h1>
+    <div style={formContainerStyle}>
+      <h1 style={titleStyle}>Staff Signup</h1>
 
-        <form onSubmit={handleSubmit} style={formStyle}>
-          <input
-            type="text"
-            name="firstName"
-            placeholder="First Name"
-            value={formData.firstName}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-          <input
-            type="text"
-            name="lastName"
-            placeholder="Last Name"
-            value={formData.lastName}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-          <input
-            type="text"
-            name="staffId"
-            placeholder="Staff ID"
-            value={formData.staffId}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email (e.g. staff@guc.edu.eg)"
-            value={formData.email}
-            onChange={handleChange}
-            style={{
-              ...inputStyle,
-              borderColor: emailError ? "red" : "#D1D5DB",
-            }}
-          />
-          {emailError && (
-            <p style={{ color: "red", fontSize: "0.9rem", textAlign: "left" }}>
-              {emailError}
-            </p>
-          )}
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-
-          <button type="submit" style={buttonStyle}>
-            Sign Up
-          </button>
-        </form>
-
-        {message && (
-          <p
-            style={{
-              marginTop: "15px",
-              textAlign: "center",
-              color: isError ? "red" : "green",
-              fontWeight: "500",
-            }}
-          >
-            {message}
+      <form onSubmit={handleSubmit} style={formStyle}>
+        <input
+          type="text"
+          name="firstName"
+          placeholder="First Name"
+          value={formData.firstName}
+          onChange={handleChange}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          name="lastName"
+          placeholder="Last Name"
+          value={formData.lastName}
+          onChange={handleChange}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          name="staffId"
+          placeholder="Staff ID"
+          value={formData.staffId}
+          onChange={handleChange}
+          style={inputStyle}
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email (e.g. staff@guc.edu.eg)"
+          value={formData.email}
+          onChange={handleChange}
+          style={{
+            ...inputStyle,
+            borderColor: emailError ? "red" : "#D1D5DB",
+          }}
+        />
+        {emailError && (
+          <p style={{ color: "red", fontSize: "0.9rem", textAlign: "left" }}>
+            {emailError}
           </p>
         )}
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          value={formData.password}
+          onChange={handleChange}
+          style={inputStyle}
+        />
 
-        <button onClick={() => navigate("/signup")} style={backButtonStyle}>
-          ← Back to Role Selection
+        <button type="submit" style={buttonStyle}>
+          Sign Up
         </button>
-      </div>
+      </form>
+
+      {message && (
+        <p
+          style={{
+            marginTop: "20px",
+            textAlign: "center",
+            color: isError ? "red" : "green",
+            fontWeight: "500",
+          }}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 }
 
 /* ---------- Styles ---------- */
-const containerStyle = {
-  minHeight: "100vh",
-  backgroundColor: "#c8d9e6",
+const formContainerStyle = {
+  width: "100%",
+  maxWidth: "100%",
   display: "flex",
+  flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  fontFamily: "Poppins, Arial, sans-serif",
-  padding: "20px",
 };
-const formBoxStyle = {
-  background: "#f5efeb",
-  borderRadius: "16px",
-  boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-  padding: "40px",
-  width: "100%",
-  maxWidth: "400px",
-};
+
 const titleStyle = {
   textAlign: "center",
-  fontSize: "2rem",
+  fontSize: "2.2rem", // Slightly bigger
   color: "#111827",
   marginBottom: "30px",
+  fontWeight: "700",
 };
-const formStyle = { display: "flex", flexDirection: "column", gap: "15px" };
+
+const formStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "20px", // More gap for better spacing
+  width: "100%",
+};
+
 const inputStyle = {
-  padding: "10px 14px",
-  borderRadius: "8px",
-  border: "1px solid #D1D5DB",
-  fontSize: "1rem",
+  padding: "15px 20px", // Bigger padding
+  borderRadius: "12px", // Rounder
+  border: "2px solid #D1D5DB", // Thicker border
+  fontSize: "1.1rem", // Larger text
   outline: "none",
+  transition: "border-color 0.3s ease",
 };
+
 const buttonStyle = {
   backgroundColor: "#567c8d",
   color: "white",
-  padding: "12px",
+  padding: "15px", // Bigger
   border: "none",
-  borderRadius: "10px",
+  borderRadius: "12px",
   cursor: "pointer",
   fontWeight: "600",
-};
-const backButtonStyle = {
-  marginTop: "25px",
-  backgroundColor: "#E5E7EB",
-  color: "#111827",
-  border: "none",
-  borderRadius: "10px",
-  padding: "10px 20px",
-  fontSize: "0.95rem",
-  fontWeight: "500",
-  cursor: "pointer",
-  width: "100%",
+  fontSize: "1.1rem", // Larger
+  transition: "all 0.3s ease",
 };

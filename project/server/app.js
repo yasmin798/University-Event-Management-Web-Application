@@ -1,3 +1,4 @@
+// Updated app.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -81,6 +82,72 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+/* ---------------- Helper: Send Verification Email ---------------- */
+async function sendVerificationEmail(email, userId, role, isAdmin = false) {
+  try {
+    const token = crypto.randomBytes(32).toString("hex");
+    verificationTokens[token] = { userId, role };
+
+    const verifyUrl = `http://localhost:3000/api/verify/${token}`;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const subject = isAdmin 
+      ? "Account Verification - Admin Approval" 
+      : "Welcome to Eventity - Verify Your Account";
+
+    const body = isAdmin 
+      ? `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;">
+          <h2 style="color:#10B981;">Eventity - Account Verification</h2>
+          <p>Hello,</p>
+          <p>Your account has been approved by an admin. Please click the button below to verify your account:</p>
+          <a href="${verifyUrl}" target="_blank"
+             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:10px;">
+            Verify My Account
+          </a>
+          <p style="margin-top:20px;color:#555;">If you did not request this, you can safely ignore this email.</p>
+          <hr/>
+          <small>© 2025 Eventity Team</small>
+        </div>
+      `
+      : `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;">
+          <h2 style="color:#10B981;">Welcome to Eventity!</h2>
+          <p>Hello ${email.split('@')[0]},</p>
+          <p>Thank you for registering with Eventity. To complete your registration, please click the button below to verify your email address:</p>
+          <a href="${verifyUrl}" target="_blank"
+             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:10px;">
+            Verify Email Address
+          </a>
+          <p style="margin-top:20px;color:#555;">This link will expire in 24 hours. If you did not create an account, please ignore this email.</p>
+          <hr/>
+          <small>© 2025 Eventity Team</small>
+        </div>
+      `;
+
+    const mailOptions = {
+      from: `"Eventity" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject,
+      html: body,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    console.log(`📧 ${isAdmin ? 'Admin' : 'Student'} verification email sent to ${email}`);
+  } catch (err) {
+    console.error("❌ Email send error:", err);
+    throw new Error("Failed to send verification email");
+  }
+}
+
 /* ---------------- Auth: Signup/Login ---------------- */
 app.post("/api/register", async (req, res) => {
   try {
@@ -112,8 +179,15 @@ app.post("/api/register", async (req, res) => {
     if (existingUser)
       return res.status(400).json({ error: "Email already registered" });
 
-    const needsApproval = ["staff", "professor", "ta"].includes(role);
-    const isVerified = !needsApproval;
+    let isVerified = true;
+    let message = "✅ Signup successful!";
+
+    const needsAdminApproval = ["staff", "professor", "ta", "student"].includes(role);
+
+    if (needsAdminApproval) {
+      isVerified = false;
+      message = "✅ Registration complete, awaiting admin approval!";
+    }
 
     const newUser = new User({
       firstName: role !== "vendor" ? firstName : undefined,
@@ -124,14 +198,14 @@ app.post("/api/register", async (req, res) => {
       roleSpecificId: role !== "vendor" ? roleSpecificId : undefined,
       companyName: companyName || "",
       isVerified,
+      status: "active", // Explicitly set default
     });
 
     const saved = await newUser.save();
+
     res.status(201).json({
       success: true,
-      message: needsApproval
-        ? "✅ Registration complete, awaiting admin verification!"
-        : "✅ Signup successful!",
+      message,
       user: {
         id: saved._id,
         email: saved.email,
@@ -160,6 +234,9 @@ app.post("/api/login", async (req, res) => {
 
     if (!user.isVerified)
       return res.status(403).json({ error: "Account not verified yet." });
+
+    if (user.status === "blocked")
+      return res.status(403).json({ error: "Account is blocked." });
 
     const token = jwt.sign(
       { id: user._id, role: user.role, email: user.email },
@@ -195,7 +272,7 @@ app.get("/api/debug/users", async (_req, res) => {
   }
 });
 
-/* ---------------- Admin Verify/Delete ---------------- */
+/* ---------------- Admin Verify/Delete/Block ---------------- */
 app.patch("/api/admin/verify/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -246,52 +323,48 @@ app.delete("/api/admin/delete/:id", async (req, res) => {
   }
 });
 
+app.patch("/api/admin/block/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["active", "blocked"].includes(status))
+      return res.status(400).json({ error: "status must be 'active' or 'blocked'" });
+
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ error: "Invalid user ID" });
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.status = status;
+
+    const saved = await user.save();
+    res.status(200).json({
+      success: true,
+      message: `User ${status === "blocked" ? "blocked" : "unblocked"} successfully.`,
+      user: saved,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Server error during block/unblock",
+      details: err.message,
+    });
+  }
+});
+
 /* ---------------- Email Verification ---------------- */
 const verificationTokens = {};
 
-// Send verification email
+// Send verification email (admin)
 app.post("/api/admin/send-verification", async (req, res) => {
   try {
     const { email, userId, role } = req.body;
     if (!email || !userId)
       return res.status(400).json({ error: "Missing email or userId" });
 
-    const token = crypto.randomBytes(32).toString("hex");
-    verificationTokens[token] = { userId, role };
+    await sendVerificationEmail(email, userId, role, true);
 
-    const verifyUrl = `http://localhost:3000/api/verify/${token}`;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: `"Eventity Admin" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Account Verification - Eventity",
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;">
-          <h2 style="color:#10B981;">Eventity - Account Verification</h2>
-          <p>Hello,</p>
-          <p>Your account has been approved by an admin. Please click the button below to verify your account:</p>
-          <a href="${verifyUrl}" target="_blank"
-             style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:10px;">
-            Verify My Account
-          </a>
-          <p style="margin-top:20px;color:#555;">If you did not request this, you can safely ignore this email.</p>
-          <hr/>
-          <small>© 2025 Eventity Team</small>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    console.log(`📧 Verification email sent to ${email}`);
     res.json({ success: true, message: `Verification email sent to ${email}` });
   } catch (err) {
     console.error("❌ Mail error:", err);
@@ -327,12 +400,12 @@ app.get("/api/verify/:token", async (req, res) => {
     await user.save();
     delete verificationTokens[token];
 
-    console.log(`✅ ${user.email} verified successfully as ${user.role}`);
+    console.log(`✅ ${user.email} verified successfully as ${user.role || 'student'}`);
 
     res.send(`
       <html>
         <head>
-          <meta http-equiv="refresh" content="4;url=http://localhost:3001/login" />
+          <meta http-equiv="refresh" content="3;url=http://localhost:3001/login" />
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -351,8 +424,8 @@ app.get("/api/verify/:token", async (req, res) => {
         </head>
         <body>
           <h1>✅ Verification Complete!</h1>
-          <p>Your account has been successfully verified as a <b>${user.role}</b>.</p>
-          <p>You’ll be redirected to the login page shortly...</p>
+          <p>Your account has been successfully verified.</p>
+          <p>Redirecting to login in 3 seconds...</p>
         </body>
       </html>
     `);

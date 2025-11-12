@@ -1,14 +1,48 @@
-import React from "react";
+// Updated Signup.js
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import StudentSignup from "./StudentSignup";
+import StaffSignup from "./StaffSignup";
+import VendorSignup from "./VendorSignup";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(null); // Initially null, no form shown
 
-  const roles = [
-    { title: "Student", color: "#2f4156", path: "/signup/student" },
-    { title: "Staff", color: "#567c8d", path: "/signup/staff" }, // middle box -> ProfessorSignup
-    { title: "Vendor", color: "#c8d9e6", path: "/signup/vendor" },
+  const tabs = [
+    { id: "student", title: "Student", color: "#2f4156" },
+    { id: "staff", title: "Staff", color: "#567c8d" },
+    { id: "vendor", title: "Vendor", color: "#c8d9e6" },
   ];
+
+  const renderForm = () => {
+    if (!activeTab) {
+      return (
+        <p
+          style={{
+            color: "#6B7280",
+            fontSize: "1.1rem",
+            fontWeight: "500",
+            textAlign: "center",
+            margin: "0",
+          }}
+        >
+          Select a role above to get started.
+        </p>
+      );
+    }
+
+    switch (activeTab) {
+      case "student":
+        return <StudentSignup />;
+      case "staff":
+        return <StaffSignup />;
+      case "vendor":
+        return <VendorSignup />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div
@@ -30,72 +64,69 @@ export default function Signup() {
           fontSize: "3rem",
           fontWeight: "700",
           color: "#111827",
-          marginBottom: "50px",
+          marginBottom: "30px",
         }}
       >
-        Signing up as a:
+        Sign Up
       </h1>
 
-      {/* Role Squares */}
+      {/* Tabs */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "30px",
-          maxWidth: "700px",
-          width: "100%",
+          display: "flex",
+          gap: "10px",
+          marginBottom: "40px",
+          backgroundColor: "#f5efeb",
+          borderRadius: "10px",
+          padding: "5px",
+          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
         }}
       >
-        {roles.map((role, index) => (
-          <div
-            key={index}
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
             style={{
-              background: "#f5efeb", //567c8d
-              borderRadius: "16px",
-              boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-              padding: "40px 20px",
-              transition: "transform 0.3s, box-shadow 0.3s",
+              flex: 1,
+              padding: "12px 20px",
+              border: "none",
+              borderRadius: "8px",
+              backgroundColor: activeTab === tab.id ? "#fff" : "transparent",
+              color: activeTab === tab.id ? "#111827" : "#6B7280",
+              fontWeight: activeTab === tab.id ? "600" : "500",
               cursor: "pointer",
+              transition: "all 0.3s ease",
+              boxShadow: activeTab === tab.id
+                ? "0 2px 4px rgba(0, 0, 0, 0.1)"
+                : "none",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)";
-              e.currentTarget.style.boxShadow =
-                "0 6px 20px rgba(0, 0, 0, 0.15)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 4px 10px rgba(0, 0, 0, 0.1)";
-            }}
-            onClick={() => navigate(role.path)}
           >
-            <div
-              style={{
-                width: "70px",
-                height: "70px",
-                borderRadius: "14px",
-                backgroundColor: role.color,
-                margin: "0 auto 20px",
-              }}
-            ></div>
-            <h2
-              style={{
-                fontSize: "1.4rem",
-                fontWeight: "600",
-                color: "#1F2937",
-              }}
-            >
-              {role.title}
-            </h2>
-          </div>
+            {tab.title}
+          </button>
         ))}
+      </div>
+
+      {/* Form Card */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "500px", // Wider: 500px
+          backgroundColor: "#f5efeb",
+          borderRadius: "20px", // Nicer: larger radius
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)", // Nicer: deeper shadow
+          border: "1px solid rgba(255, 255, 255, 0.2)", // Subtle border
+          padding: "40px",
+          minHeight: "550px", // Slightly taller for better proportions
+        }}
+      >
+        {renderForm()}
       </div>
 
       {/* Back Button */}
       <button
         onClick={() => navigate("/")}
         style={{
-          marginTop: "60px",
+          marginTop: "30px",
           backgroundColor: "#E5E7EB",
           color: "#111827",
           border: "none",
