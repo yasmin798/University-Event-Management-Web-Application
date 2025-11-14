@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ⟵ add this
-import "../events.theme.css";
-import NavBar from "../components/NavBar";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import "../events.theme.css";
+import Sidebar from "../components/Sidebar";
 
 const sessionTypes = [
   "yoga",
@@ -13,9 +13,12 @@ const sessionTypes = [
   "kick-boxing",
 ];
 
-export default function GymManager() {
-  const navigate = useNavigate(); // ⟵ add this
-  const [sessions, setSessions] = useState([]);
+export default function CreateGym() {
+  const navigate = useNavigate();
+
+  // ⭐ FILTER STATE — only ONCE ⭐
+  const [filter, setFilter] = useState("All");
+
   const [form, setForm] = useState({
     date: "",
     time: "",
@@ -26,24 +29,12 @@ export default function GymManager() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const fetchSessions = async () => {
-    try {
-      const res = await axios.get("http://localhost:3000/api/gym");
-      setSessions(res.data);
-    } catch (err) {
-      console.error("Error fetching sessions:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchSessions();
-  }, []);
-
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (parseInt(form.maxParticipants) < 1) {
       alert("❌ Max participants must be at least 1");
       return;
@@ -56,6 +47,7 @@ export default function GymManager() {
     try {
       await axios.post("http://localhost:3000/api/gym", form);
       alert("✅ Session created successfully!");
+
       setForm({
         date: "",
         time: "",
@@ -63,174 +55,192 @@ export default function GymManager() {
         type: "",
         maxParticipants: "",
       });
-      fetchSessions();
     } catch (err) {
       console.error(err);
       alert("❌ Failed to create session");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this session?"))
-      return;
-    try {
-      await axios.delete(`http://localhost:3000/api/gym/${id}`);
-      alert("🗑️ Deleted successfully!");
-      fetchSessions();
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to delete");
-    }
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) navigate("/");
   };
 
-  const gymSessions = [...sessions].sort(
-    (a, b) => new Date(a.date) - new Date(b.date)
-  );
-
   return (
-    <div className="events-theme gym-manager">
-      <div className="container">
-        <NavBar bleed />
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {/* ==================== FIXED SIDEBAR ==================== */}
+      <Sidebar filter={filter} setFilter={setFilter} />
 
-        {/* Unified title + back row */}
-        <div className="eo-head-row">
-          <h1>Manage and organize all Gym sessions.</h1>
-          <button
-            type="button"
-            className="btn btn-outline eo-back"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
+      <main
+        style={{
+          flex: 1,
+          marginLeft: "260px",
+          padding: "20px 40px 40px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <h1
+          style={{
+            color: "var(--navy)",
+            fontWeight: 800,
+            marginBottom: "12px",
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
+          Create a New Gym Session
+        </h1>
+
+        <div
+          className="card"
+          style={{
+            width: "100%",
+            maxWidth: "520px",
+            padding: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+            borderRadius: "18px",
+            boxShadow: "var(--shadow)",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
+            Add a New Gym Session
+          </h2>
+
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
-            Back
-          </button>
+            {/* DATE */}
+            <div
+              className="kv"
+              style={{ display: "flex", flexDirection: "column" }}
+            >
+              <label className="k" style={{ marginBottom: "6px" }}>
+                Date:
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={form.date}
+                onChange={handleChange}
+                required
+                min={today}
+                style={{
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #ccc",
+                }}
+              />
+            </div>
+
+            {/* TIME */}
+            <div
+              className="kv"
+              style={{ display: "flex", flexDirection: "column" }}
+            >
+              <label className="k" style={{ marginBottom: "6px" }}>
+                Time:
+              </label>
+              <input
+                type="time"
+                name="time"
+                value={form.time}
+                onChange={handleChange}
+                required
+                style={{
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #ccc",
+                }}
+              />
+            </div>
+
+            {/* DURATION */}
+            <div
+              className="kv"
+              style={{ display: "flex", flexDirection: "column" }}
+            >
+              <label className="k" style={{ marginBottom: "6px" }}>
+                Duration (minutes):
+              </label>
+              <input
+                type="number"
+                name="duration"
+                value={form.duration}
+                onChange={handleChange}
+                required
+                min="1"
+                style={{
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #ccc",
+                }}
+              />
+            </div>
+
+            {/* TYPE */}
+            <div
+              className="kv"
+              style={{ display: "flex", flexDirection: "column" }}
+            >
+              <label className="k" style={{ marginBottom: "6px" }}>
+                Type:
+              </label>
+              <select
+                name="type"
+                value={form.type}
+                onChange={handleChange}
+                required
+                style={{
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #ccc",
+                }}
+              >
+                <option value="">Select Type</option>
+                {sessionTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* MAX PARTICIPANTS */}
+            <div
+              className="kv"
+              style={{ display: "flex", flexDirection: "column" }}
+            >
+              <label className="k" style={{ marginBottom: "6px" }}>
+                Max Participants:
+              </label>
+              <input
+                type="number"
+                name="maxParticipants"
+                value={form.maxParticipants}
+                onChange={handleChange}
+                required
+                min="1"
+                style={{
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #ccc",
+                }}
+              />
+            </div>
+
+            <button type="submit" className="btn" style={{ marginTop: "10px" }}>
+              Create Session
+            </button>
+          </form>
         </div>
-
-        <section className="eo-grid">
-          <article className="card">
-            <h2 style={{ margin: "0 0 16px" }}>Add a New Gym Session</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="kv">
-                <label className="k" htmlFor="date">
-                  Date:
-                </label>
-                <input
-                  id="date"
-                  type="date"
-                  name="date"
-                  value={form.date}
-                  onChange={handleChange}
-                  required
-                  min={today}
-                />
-              </div>
-              <div className="kv">
-                <label className="k" htmlFor="time">
-                  Time:
-                </label>
-                <input
-                  id="time"
-                  type="time"
-                  name="time"
-                  value={form.time}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="kv">
-                <label className="k" htmlFor="duration">
-                  Duration (minutes):
-                </label>
-                <input
-                  id="duration"
-                  type="number"
-                  name="duration"
-                  value={form.duration}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                />
-              </div>
-              <div className="kv">
-                <label className="k" htmlFor="type">
-                  Type:
-                </label>
-                <select
-                  id="type"
-                  name="type"
-                  value={form.type}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select Type</option>
-                  {sessionTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="kv">
-                <label className="k" htmlFor="maxParticipants">
-                  Max Participants:
-                </label>
-                <input
-                  id="maxParticipants"
-                  type="number"
-                  name="maxParticipants"
-                  value={form.maxParticipants}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                />
-              </div>
-              <div className="actions">
-                <button type="submit" className="btn">
-                  Create Session
-                </button>
-              </div>
-            </form>
-          </article>
-        </section>
-
-        <h1 className="eo-section-title">All Sessions</h1>
-
-        <div className="grid">
-          {gymSessions.length === 0 && (
-            <div className="empty">No sessions found.</div>
-          )}
-          {gymSessions.map((s) => (
-            <article key={s._id} className="card">
-              <div className="chip">{s.type}</div>
-              <div className="kv kv-date">
-                <span className="k">Date:</span>
-                <span className="v">
-                  {new Date(s.date).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="kv">
-                <span className="k">Time:</span>
-                <span className="v">{s.time}</span>
-              </div>
-              <div className="kv">
-                <span className="k">Duration:</span>
-                <span className="v">{s.duration} min</span>
-              </div>
-              <div className="kv">
-                <span className="k">Max Participants:</span>
-                <span className="v">{s.maxParticipants}</span>
-              </div>
-              <div className="actions">
-                <button
-                  className="btn btn-danger"
-                  onClick={() => handleDelete(s._id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

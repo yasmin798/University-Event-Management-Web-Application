@@ -1,7 +1,6 @@
-// client/src/pages/TripForm.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import NavBar from "../components/NavBar";
+import Sidebar from "../components/Sidebar"; // ✅ ADD SIDEBAR
 import FormField from "../components/FormField";
 import { validateTrip, isEditable } from "../utils/validation";
 import "../events.theme.css";
@@ -11,6 +10,7 @@ export default function TripForm() {
   const navigate = useNavigate();
 
   const editing = Boolean(id);
+  const [filter, setFilter] = useState("All"); // sidebar filter state
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [data, setData] = useState({
@@ -24,19 +24,25 @@ export default function TripForm() {
     price: "",
     capacity: "",
   });
-  const [errors, setErrors] = useState({});
 
+  const [errors, setErrors] = useState({});
   const canEdit = isEditable(data.startDateTime);
 
-  // Load existing trip when editing (from backend)
+  // ------------------------------
+  // Load trip (editing mode)
+  // ------------------------------
   useEffect(() => {
     let cancelled = false;
+
     if (!editing) return;
+
     (async () => {
       const r = await fetch(`/api/trips/${id}`, { cache: "no-store" });
-      if (!r.ok) return; // optionally show toast
+      if (!r.ok) return;
+
       const doc = await r.json();
       if (cancelled) return;
+
       setData({
         type: "TRIP",
         name: doc.title || "",
@@ -51,28 +57,29 @@ export default function TripForm() {
         capacity: doc.capacity ?? "",
       });
     })();
-    return () => {
-      cancelled = true;
-    };
+
+    return () => (cancelled = true);
   }, [editing, id]);
 
+  // handle change
   function handleChange(e) {
     const { name, value } = e.target;
     setData((d) => ({ ...d, [name]: value }));
   }
 
+  // save trip
   async function saveTrip() {
     const errs = validateTrip(data);
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
     if (!canEdit && editing) {
-      alert("Trips can’t be edited after the start time.");
+      alert("Trips can't be edited after the start time.");
       return;
     }
 
     const payload = {
-      title: data.name, // backend expects 'title'
+      title: data.name,
       location: data.location,
       shortDescription: data.shortDescription,
       startDateTime: data.startDateTime,
@@ -100,6 +107,7 @@ export default function TripForm() {
     navigate("/events", { replace: true });
   }
 
+  // submit handler
   function handleSubmit(e) {
     e.preventDefault();
 
@@ -108,7 +116,7 @@ export default function TripForm() {
     if (Object.keys(errs).length) return;
 
     if (!canEdit && editing) {
-      alert("Trips can’t be edited after the start time.");
+      alert("Trips can't be edited after the start time.");
       return;
     }
 
@@ -116,21 +124,20 @@ export default function TripForm() {
   }
 
   return (
-    <div className="events-theme">
-      <div className="container">
-        <NavBar bleed />
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {/* 🟣 LEFT SIDEBAR */}
+      <Sidebar filter={filter} setFilter={setFilter} />
 
-        <div className="eo-head-row">
-          <h1>{editing ? "Edit Trip" : "Create Trip"}</h1>
-          <button
-            type="button"
-            className="btn btn-outline eo-back"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-          >
-            Back
-          </button>
-        </div>
+      {/* 🟡 MAIN CONTENT */}
+      <main style={{ flex: 1, marginLeft: "260px", padding: "24px" }}>
+        <h1
+          style={{ marginTop: 0, color: "var(--navy)", marginBottom: "18px" }}
+        >
+          {editing ? "Edit Trip" : "Create Trip"}
+        </h1>
 
         {!canEdit && editing && (
           <div className="lock">
@@ -138,6 +145,7 @@ export default function TripForm() {
           </div>
         )}
 
+        {/* FORM */}
         <form onSubmit={handleSubmit} className="form form-pro" noValidate>
           {/* Basic info */}
           <fieldset className="form-sec">
@@ -152,7 +160,6 @@ export default function TripForm() {
                   onChange={handleChange}
                   aria-invalid={Boolean(errors.name)}
                   disabled={!canEdit && editing}
-                  autoComplete="off"
                 />
                 <div className="help">Use a clear, descriptive title.</div>
               </FormField>
@@ -160,13 +167,12 @@ export default function TripForm() {
               <FormField label="Location" error={errors.location} required>
                 <input
                   name="location"
-                  placeholder="e.g., Blue Ridge Mountains, NC"
+                  placeholder="e.g., Blue Ridge Mountains"
                   value={data.location}
                   onChange={handleChange}
                   aria-invalid={Boolean(errors.location)}
                   disabled={!canEdit && editing}
                 />
-                <div className="help">Destination or meeting point.</div>
               </FormField>
 
               <FormField
@@ -175,14 +181,12 @@ export default function TripForm() {
               >
                 <textarea
                   name="shortDescription"
-                  placeholder="Brief overview of the trip experience."
+                  rows={3}
+                  placeholder="Brief overview of the trip."
                   value={data.shortDescription}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.shortDescription)}
-                  rows={3}
                   disabled={!canEdit && editing}
                 />
-                <div className="help">This appears in the events list.</div>
               </FormField>
             </div>
           </fieldset>
@@ -198,7 +202,6 @@ export default function TripForm() {
                   name="startDateTime"
                   value={data.startDateTime}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.startDateTime)}
                   disabled={editing && !canEdit}
                 />
               </FormField>
@@ -209,7 +212,6 @@ export default function TripForm() {
                   name="endDateTime"
                   value={data.endDateTime}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.endDateTime)}
                   disabled={editing && !canEdit}
                 />
               </FormField>
@@ -223,51 +225,42 @@ export default function TripForm() {
                   name="registrationDeadline"
                   value={data.registrationDeadline}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.registrationDeadline)}
-                  disabled={editing && !canEdit}
+                  disabled={!canEdit && editing}
                 />
               </FormField>
             </div>
           </fieldset>
 
-          {/* Capacity & pricing */}
+          {/* Pricing & Capacity */}
           <fieldset className="form-sec">
-            <legend>Capacity & pricing</legend>
+            <legend>Capacity & Pricing</legend>
 
             <div className="form-grid form-grid-2">
               <FormField label="Price" error={errors.price}>
                 <input
                   type="number"
-                  min="0"
-                  step="0.01"
                   name="price"
-                  placeholder="e.g., 150.00"
+                  placeholder="150"
                   value={data.price}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.price)}
                   disabled={!canEdit && editing}
                 />
-                <div className="help">Leave 0 for free trips.</div>
               </FormField>
 
               <FormField label="Capacity" error={errors.capacity} required>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
                   name="capacity"
-                  placeholder="e.g., 40"
+                  placeholder="40"
                   value={data.capacity}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.capacity)}
                   disabled={!canEdit && editing}
                 />
-                <div className="help">Maximum number of attendees.</div>
               </FormField>
             </div>
           </fieldset>
 
-          {/* Actions */}
+          {/* Submit */}
           <div className="form-actions">
             <button
               className="btn"
@@ -281,22 +274,22 @@ export default function TripForm() {
 
         {/* Confirm modal */}
         {confirmOpen && (
-          <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm-overlay">
             <div className="confirm">
               <h2>{editing ? "Save changes?" : "Create this trip?"}</h2>
+
               <p>
                 {editing ? (
                   <>
-                    Are you sure you want to save these edits to{" "}
-                    <strong>{data.name || "this trip"}</strong>?
+                    Save edits to <strong>{data.name || "this trip"}</strong>?
                   </>
                 ) : (
                   <>
-                    Are you sure you want to create{" "}
-                    <strong>{data.name || "this trip"}</strong>?
+                    Create <strong>{data.name || "this trip"}</strong>?
                   </>
                 )}
               </p>
+
               <div className="confirm-actions">
                 <button
                   className="btn btn-outline"
@@ -317,7 +310,7 @@ export default function TripForm() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

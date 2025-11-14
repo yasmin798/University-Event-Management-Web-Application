@@ -1395,3 +1395,264 @@ body {
     flex-wrap: wrap;
   }
 }
+.events-theme .eo-select.eo-filter {
+  width: 130px;
+  flex: 0 0 130px;
+  margin-left: -8px; /* subtle left nudge */
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* pushes actions to the bottom */
+  height: 100%; /* ensures equal card height */
+}
+
+.card .actions {
+  margin-top: auto; /* pushes it to bottom */
+  padding-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pg-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid rgba(47, 65, 86, 0.25);
+  color: var(--navy);
+  transition: 0.2s ease;
+}
+
+.pg-btn:hover:not(:disabled) {
+  background: var(--teal);
+  color: white;
+  border-color: var(--teal);
+}
+
+.pg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pg-btn.current {
+  background: var(--navy);
+  color: white;
+  border-color: var(--navy);
+}
+
+.pg-btn.total {
+  background: white;
+  color: var(--navy);
+}
+
+.pg-btn.arrow {
+  font-size: 22px;
+  font-weight: 400;
+  padding-bottom: 3px;
+}
+/* same grid as workshops/events office */
+.eo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.8rem;
+  margin-top: 1.5rem;
+}
+
+/* same card style */
+.eo-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.4rem 1.6rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9e9e9;
+}
+
+/* inside card layout */
+.eo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+/* key-value rows */
+.kv {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.k {
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.v {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+/* actions */
+.eo-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.sidebar {
+  width: 260px;
+  background: var(--navy);
+  color: white;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--teal);
+  border-radius: 50%;
+}
+
+.sidebar-links button {
+  width: 100%;
+  background: none;
+  border: none;
+  color: white;
+  text-align: left;
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sidebar-links button:hover,
+.sidebar-links .active {
+  background: var(--teal);
+}
+
+.sidebar-footer {
+  padding: 20px;
+}
+
+.main-content {
+  margin-left: 260px;
+  padding: 40px;
+}
+/* --- Card Improvements --- */
+.eo-card {
+  padding: 22px;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 17px; /* Bigger text */
+}
+
+.eo-card .kv {
+  display: flex;
+  justify-content: space-between;
+  font-size: 17px; /* Bigger text */
+}
+
+.eo-card .k {
+  font-weight: 600;
+  color: #555;
+}
+
+.eo-card .v {
+  font-weight: 500;
+  color: #333;
+}
+
+.eo-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+}
+
+/* When status is not pending → shrink card height */
+.eo-card.done {
+  padding-bottom: 10px !important;
+}
+
+/* Buttons styled to match Events Office look */
+.btn {
+  background: var(--teal);
+  border: none;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.btn-outline {
+  background: white;
+  color: var(--teal);
+  border: 2px solid var(--teal);
+}
+/* Make all text bigger */
+.k.big,
+.v.big {
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+/* Better spacing between rows */
+.kv {
+  margin-bottom: 10px;
+}
+
+/* Status colors */
+.status-text {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.eo-card.done .status-text {
+  color: var(--teal);
+}
+
+/* Make card smaller when accepted/rejected */
+.eo-card.done {
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  min-height: 150px !important;
+}
+
+/* Remove empty space where buttons were */
+.eo-card.done .eo-actions {
+  display: none;
+}
+
+/* Make cards nicer on grid */
+.eo-card {
+  transition: 0.3s ease;
+}
+
+/* Slight hover effect */
+.eo-card:hover {
+  transform: translateY(-3px);
+}

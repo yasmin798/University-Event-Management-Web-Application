@@ -1,20 +1,17 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import NavBar from "../components/NavBar";
-import "../events.theme.css"; // make sure the confirm modal styles are loaded
+import "../events.theme.css";
+import { LogOut } from "lucide-react";
+import Sidebar from "../components/Sidebar";
 
 function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
   if (!open) return null;
   return (
-    <div
-      className="confirm-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-title"
-    >
+    <div className="confirm-overlay" role="dialog" aria-modal="true">
       <div className="confirm">
-        <h2 id="confirm-title">{title}</h2>
+        <h2>{title}</h2>
         <p>{body}</p>
+
         <div className="confirm-actions">
           <button className="btn btn-outline" onClick={onCancel}>
             Cancel
@@ -31,12 +28,14 @@ function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
 export default function VendorRequestsBooth() {
   const { id: bazaarId } = useParams();
   const navigate = useNavigate();
+  const [filter, setFilter] = useState("All");
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState(null);
 
-  // NEW: confirmation modal state
+  // modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState({
     requestId: null,
@@ -45,9 +44,9 @@ export default function VendorRequestsBooth() {
     body: "",
   });
 
-  // change if your backend runs elsewhere
   const API_ORIGIN = "http://localhost:3001";
 
+  // ---------- FETCH REQUESTS ----------
   useEffect(() => {
     const fetchRequests = async () => {
       try {
@@ -61,45 +60,48 @@ export default function VendorRequestsBooth() {
         ];
 
         let data = null;
+
         for (const url of endpoints) {
           try {
             const res = await fetch(url);
             if (!res.ok) continue;
+
             const text = await res.text();
             const parsed = text ? JSON.parse(text) : null;
+
             if (Array.isArray(parsed)) {
               data = parsed;
               break;
             }
-            if (parsed && Array.isArray(parsed.requests)) {
+            if (parsed?.requests) {
               data = parsed.requests;
               break;
             }
-            if (parsed && Array.isArray(parsed.items)) {
+            if (parsed?.items) {
               data = parsed.items;
               break;
             }
-          } catch (e) {
-            console.warn("booth list fetch failed for", url, e);
-          }
+          } catch (e) {}
         }
 
-        if (!data)
-          throw new Error("Could not fetch booth requests from server");
+        if (!data) throw new Error("Could not fetch booth requests");
 
         setRequests(
           data.map((r) => ({
             _id: r._id || r.id || null,
+
             name:
               r.vendorName ||
               (r.attendees && r.attendees[0] && r.attendees[0].name) ||
               r.name ||
               "",
+
             email:
               r.vendorEmail ||
               (r.attendees && r.attendees[0] && r.attendees[0].email) ||
               r.email ||
               "",
+
             duration:
               r.duration ||
               r.durationWeeks ||
@@ -108,6 +110,7 @@ export default function VendorRequestsBooth() {
               r.weeks ||
               r.timeframe ||
               "",
+
             location:
               (r.location && String(r.location)) ||
               r.selectedLocation ||
@@ -116,194 +119,174 @@ export default function VendorRequestsBooth() {
               r.platformSlot ||
               r.boothLocation ||
               "",
+
             boothSize: r.boothSize || r.size || "",
+
             status: (r.status || r.state || "pending").toLowerCase(),
+
             raw: r,
           }))
         );
       } catch (err) {
-        console.error("Failed to load booth requests:", err);
-        setError("Failed to load booth requests from server");
-        setRequests([]);
+        setError("Failed to load booth requests");
       } finally {
         setLoading(false);
       }
     };
 
     fetchRequests();
-  }, [bazaarId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bazaarId]);
 
+  // ---------- PATCH STATUS ----------
   const updateStatusOnServer = async (appId, newStatus) => {
-    if (!appId) throw new Error("Missing application id");
-    const urlsToTry = [
+    const urls = [
       `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
       `${API_ORIGIN}/api/booth-applications/${appId}`,
       `${API_ORIGIN}/api/booth-vendor-requests/${appId}`,
     ];
 
-    for (const url of urlsToTry) {
+    for (const url of urls) {
       try {
         const res = await fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: newStatus }),
         });
-        const text = await res.text();
-        let body;
-        try {
-          body = text ? JSON.parse(text) : null;
-        } catch {
-          body = text;
-        }
-        if (res.ok) {
-          console.log("Status updated on", url, body);
-          return { ok: true, body };
-        } else {
-          console.warn("Patch returned not-ok from", url, res.status, body);
-        }
-      } catch (err) {
-        console.warn("Patch error for", url, err);
-      }
+
+        if (res.ok) return true;
+      } catch {}
     }
-    throw new Error(
-      "Failed to update application on server (all endpoints tried)"
-    );
+
+    throw new Error("Failed update");
   };
 
-  // Original action but without window.confirm; this is called after modal OK
   const handleDecision = async (requestId, newStatus) => {
     setProcessingId(requestId);
-    setError("");
 
     try {
-      const result = await updateStatusOnServer(requestId, newStatus);
-      if (result.ok) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r._id === requestId ? { ...r, status: newStatus } : r
-          )
-        );
-      } else {
-        throw new Error("Server did not accept the update");
-      }
-    } catch (err) {
-      console.error(`Failed to ${newStatus} booth request:`, err);
-      setError(
-        `Failed to ${newStatus} booth request. Check console for details.`
+      await updateStatusOnServer(requestId, newStatus);
+
+      setRequests((prev) =>
+        prev.map((r) => (r._id === requestId ? { ...r, status: newStatus } : r))
       );
-      alert(`Failed to ${newStatus} booth request. See console.`);
+    } catch (err) {
+      alert("Failed to update.");
     } finally {
       setProcessingId(null);
     }
   };
 
-  // Open the themed modal with the correct copy
-  const openConfirm = (requestId, newStatus) => {
-    const verb = newStatus === "accepted" ? "ACCEPT" : "REJECT";
+  const openConfirm = (id, status) => {
     setConfirmData({
-      requestId,
-      newStatus,
-      title:
-        newStatus === "accepted"
-          ? "Accept this booth request?"
-          : "Reject this booth request?",
+      requestId: id,
+      newStatus: status,
+      title: status === "accepted" ? "Accept request?" : "Reject request?",
       body:
-        newStatus === "accepted"
-          ? "This will mark the application as accepted."
-          : "This will mark the application as rejected.",
+        status === "accepted"
+          ? "This will accept the vendor booth request."
+          : "This will reject the vendor booth request.",
     });
     setConfirmOpen(true);
   };
 
-  // Button handlers now open the modal
-  const handleAccept = (requestId) => openConfirm(requestId, "accepted");
-  const handleReject = (requestId) => openConfirm(requestId, "rejected");
-
   return (
-    <div className="events-theme">
-      <div className="container">
-        <NavBar bleed />
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {" "}
+      <Sidebar filter={filter} setFilter={setFilter} />
+      {/* ---------- MAIN CONTENT ---------- */}
+      <main style={{ flex: 1, padding: "20px", marginLeft: "260px" }}>
+        <h1>Booth Requests</h1>
 
-        <div className="eo-head-row">
-          <h1>Booth Requests</h1>
-          <button
-            type="button"
-            className="btn btn-outline eo-back"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-          >
-            Back
-          </button>
-        </div>
+        {loading && <p>Loading…</p>}
 
-        {loading ? (
-          <p className="empty">Loading…</p>
-        ) : error ? (
-          <p style={{ color: "red" }}>{error}</p>
-        ) : requests.length === 0 ? (
-          <p className="empty">No booth requests.</p>
-        ) : (
-          <ul>
-            {requests.map((req) => (
-              <li
-                key={req._id || req.raw._id || Math.random()}
-                style={{
-                  marginBottom: "1.5rem",
-                  padding: "1rem",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  background: "#fff",
-                }}
-              >
-                <div>
-                  <strong>Application ID:</strong> {req._id || "—"}
-                </div>
-                <div>
-                  <strong>Name:</strong> {req.name || "—"}
-                </div>
-                <div>
-                  <strong>Email:</strong> {req.email || "—"}
-                </div>
-                <div>
-                  <strong>Duration:</strong> {req.duration || "—"}
-                </div>
-                <div>
-                  <strong>Booth Location:</strong> {req.location || "—"}
-                </div>
-                <div>
-                  <strong>Booth Size:</strong> {req.boothSize || "—"}
-                </div>
-                <div>
-                  <strong>Status:</strong>{" "}
-                  <span style={{ fontWeight: 700 }}>{req.status}</span>
-                </div>
-                <div style={{ marginTop: "0.5rem" }}>
-  {req.status === "pending" && (
-    <>
-      <button
-        onClick={() => handleAccept(req._id)}
-        style={{ marginRight: "0.5rem" }}
-        disabled={processingId === req._id}
-        className="btn"
-      >
-        {processingId === req._id ? "Processing..." : "Accept"}
-      </button>
-      <button
-        onClick={() => handleReject(req._id)}
-        disabled={processingId === req._id}
-        className="btn btn-outline"
-      >
-        {processingId === req._id ? "Processing..." : "Reject"}
-      </button>
-    </>
-  )}
-</div>
-              </li>
-            ))}
-          </ul>
+        {!loading && error && <p style={{ color: "red" }}>{error}</p>}
+
+        {!loading && !error && requests.length === 0 && (
+          <p>No booth requests.</p>
         )}
 
-        {/* Themed confirmation modal (same look as Bazaar/Trip forms) */}
+        {/* LONG VENDOR-STYLE CARDS */}
+        {!loading && !error && requests.length > 0 && (
+          <div className="space-y-6">
+            {requests.map((req) => (
+              <div
+                key={req._id}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
+              >
+                <div className="mb-3">
+                  <strong className="block text-gray-700">Application:</strong>
+                  <span className="text-gray-900">{req._id || "—"}</span>
+                </div>
+
+                <div className="mb-3">
+                  <strong className="block text-gray-700">Name:</strong>
+                  <span className="text-gray-900">{req.name || "—"}</span>
+                </div>
+
+                <div className="mb-3">
+                  <strong className="block text-gray-700">Email:</strong>
+                  <span className="text-gray-900">{req.email || "—"}</span>
+                </div>
+
+                <div className="mb-3">
+                  <strong className="block text-gray-700">Duration:</strong>
+                  <span className="text-gray-900">{req.duration || "—"}</span>
+                </div>
+
+                <div className="mb-3">
+                  <strong className="block text-gray-700">Location:</strong>
+                  <span className="text-gray-900">{req.location || "—"}</span>
+                </div>
+
+                <div className="mb-3">
+                  <strong className="block text-gray-700">Size:</strong>
+                  <span className="text-gray-900">{req.boothSize || "—"}</span>
+                </div>
+
+                <div className="mb-4">
+                  <strong className="block text-gray-700">Status:</strong>
+                  <span
+                    className="font-semibold"
+                    style={{
+                      color:
+                        req.status === "accepted"
+                          ? "green"
+                          : req.status === "rejected"
+                          ? "red"
+                          : "gray",
+                    }}
+                  >
+                    {req.status}
+                  </span>
+                </div>
+
+                {req.status === "pending" && (
+                  <div className="flex gap-3">
+                    <button
+                      className="btn"
+                      disabled={processingId === req._id}
+                      onClick={() => openConfirm(req._id, "accepted")}
+                    >
+                      {processingId === req._id ? "Processing…" : "Accept"}
+                    </button>
+
+                    <button
+                      className="btn btn-outline"
+                      disabled={processingId === req._id}
+                      onClick={() => openConfirm(req._id, "rejected")}
+                    >
+                      {processingId === req._id ? "Processing…" : "Reject"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <ConfirmModal
           open={confirmOpen}
           title={confirmData.title}
@@ -314,7 +297,7 @@ export default function VendorRequestsBooth() {
             handleDecision(confirmData.requestId, confirmData.newStatus);
           }}
         />
-      </div>
+      </main>
     </div>
   );
 }

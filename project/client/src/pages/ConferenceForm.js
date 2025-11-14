@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import NavBar from "../components/NavBar";
 import FormField from "../components/FormField";
+import Sidebar from "../components/Sidebar"; // ✅ added
 import { validateConference, isEditable, newId } from "../utils/validation";
 import "../events.theme.css";
 
@@ -10,6 +10,8 @@ export default function ConferenceForm() {
   const navigate = useNavigate();
 
   const editing = Boolean(id);
+  const [filter, setFilter] = useState("All"); // sidebar requirement
+
   const [data, setData] = useState({
     id: newId(),
     type: "CONFERENCE",
@@ -23,110 +25,95 @@ export default function ConferenceForm() {
     fundingSource: "",
     extraResources: "",
   });
+
   const [errors, setErrors] = useState({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(editing);
 
-  // Fetch existing conference if editing
+  // ===================== LOAD EXISTING ======================
   useEffect(() => {
-    if (editing) {
-      setLoading(true);
-      fetch(`/api/conferences/${id}`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Conference not found");
-          return res.json();
-        })
-        .then((conference) => {
-          setData({
-            ...conference,
-            id: conference._id || conference.id,
-            name: conference.name || conference.title,
-            startDateTime: conference.startDateTime
-              ? new Date(conference.startDateTime).toISOString().slice(0, 16)
-              : "",
-            endDateTime: conference.endDateTime
-              ? new Date(conference.endDateTime).toISOString().slice(0, 16)
-              : "",
-          });
-        })
-        .catch((e) => {
-          console.error("Fetch conference error:", e);
-          alert("Failed to load conference");
-          navigate("/events");
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [id, editing, navigate]);
+    if (!editing) return;
+
+    setLoading(true);
+    fetch(`/api/conferences/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Conference not found");
+        return res.json();
+      })
+      .then((c) => {
+        setData({
+          ...c,
+          id: c._id || c.id,
+          name: c.name || c.title,
+          startDateTime: c.startDateTime ? c.startDateTime.slice(0, 16) : "",
+          endDateTime: c.endDateTime ? c.endDateTime.slice(0, 16) : "",
+        });
+      })
+      .catch((e) => {
+        console.error(e);
+        alert("Failed to load conference");
+        navigate("/events");
+      })
+      .finally(() => setLoading(false));
+  }, [editing, id, navigate]);
 
   const canEdit = isEditable(data.startDateTime);
 
+  // ===================== CHANGE HANDLER ======================
   function handleChange(e) {
     const { name, value } = e.target;
     setData((d) => ({ ...d, [name]: value }));
   }
 
+  // ===================== SAVE ======================
   async function saveConference() {
     const errs = validateConference(data);
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
-    if (!canEdit && editing) {
-      alert("Conferences can’t be edited after the start time.");
-      return;
-    }
+    if (!canEdit && editing) return alert("Cannot edit after start time.");
 
     try {
       const url = editing ? `/api/conferences/${id}` : "/api/conferences";
       const method = editing ? "PUT" : "POST";
-      const response = await fetch(url, {
+
+      const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          title: data.name,
-        }),
+        body: JSON.stringify({ ...data, title: data.name }),
       });
 
-      if (!response.ok) throw new Error("Failed to save conference");
+      if (!res.ok) throw new Error("Failed to save conference");
       navigate("/events", { replace: true });
     } catch (e) {
-      console.error("Save conference error:", e);
+      console.error(e);
       alert("Failed to save conference");
     }
   }
 
+  // ===================== SUBMIT ======================
   function handleSubmit(e) {
     e.preventDefault();
     const errs = validateConference(data);
     setErrors(errs);
-    if (Object.keys(errs).length) return;
-
-    if (!canEdit && editing) {
-      alert("Conferences can’t be edited after the start time.");
-      return;
-    }
-
-    setConfirmOpen(true);
+    if (!Object.keys(errs).length) setConfirmOpen(true);
   }
 
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="events-theme">
-      <div className="container">
-        <NavBar bleed />
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {/* ---------- LEFT SIDEBAR ---------- */}
+      <Sidebar filter={filter} setFilter={setFilter} />
 
-        <div className="eo-head-row">
-          <h1>{editing ? "Edit Conference" : "Create Conference"}</h1>
-          <button
-            type="button"
-            className="btn btn-outline eo-back"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-          >
-            Back
-          </button>
-        </div>
+      {/* ---------- RIGHT CONTENT ---------- */}
+      <main style={{ flex: 1, marginLeft: "260px", padding: "24px" }}>
+        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>
+          {editing ? "Edit Conference" : "Create Conference"}
+        </h1>
 
         {!canEdit && editing && (
           <div className="lock">
@@ -135,36 +122,29 @@ export default function ConferenceForm() {
         )}
 
         <form onSubmit={handleSubmit} className="form form-pro" noValidate>
+          {/* Basic Details */}
           <fieldset className="form-sec">
             <legend>Basic details</legend>
             <div className="form-grid">
               <FormField label="Name" error={errors.name} required>
                 <input
                   name="name"
-                  placeholder="e.g., Annual Tech Conference 2025"
+                  placeholder="Annual Tech Conference 2025"
                   value={data.name}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.name)}
                   disabled={!canEdit && editing}
-                  autoComplete="off"
                 />
-                <div className="help">Use a clear, searchable title.</div>
               </FormField>
 
               <FormField label="Website" error={errors.website} required>
-                {" "}
-                {/* Added required prop */}
                 <input
                   type="url"
                   name="website"
-                  placeholder="https://example.com/conference"
+                  placeholder="https://example.com"
                   value={data.website}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.website)}
                   disabled={!canEdit && editing}
-                  required // Added HTML required attribute
                 />
-                <div className="help">Link to the conference website.</div>
               </FormField>
 
               <FormField
@@ -174,18 +154,16 @@ export default function ConferenceForm() {
               >
                 <textarea
                   name="shortDescription"
-                  placeholder="One or two sentences about the conference."
                   value={data.shortDescription}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.shortDescription)}
                   rows={3}
                   disabled={!canEdit && editing}
                 />
-                <div className="help">This appears in the events list.</div>
               </FormField>
             </div>
           </fieldset>
 
+          {/* Schedule */}
           <fieldset className="form-sec">
             <legend>Schedule</legend>
             <div className="form-grid form-grid-2">
@@ -195,8 +173,7 @@ export default function ConferenceForm() {
                   name="startDateTime"
                   value={data.startDateTime}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.startDateTime)}
-                  disabled={editing && !canEdit}
+                  disabled={!canEdit && editing}
                 />
               </FormField>
 
@@ -206,31 +183,28 @@ export default function ConferenceForm() {
                   name="endDateTime"
                   value={data.endDateTime}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.endDateTime)}
-                  disabled={editing && !canEdit}
+                  disabled={!canEdit && editing}
                 />
               </FormField>
             </div>
           </fieldset>
 
+          {/* Agenda */}
           <fieldset className="form-sec">
             <legend>Agenda</legend>
             <FormField label="Full Agenda" error={errors.fullAgenda} required>
               <textarea
                 name="fullAgenda"
-                placeholder="Detailed schedule of sessions, speakers, and timings."
+                rows={6}
+                placeholder="Detailed program, speakers, schedule…"
                 value={data.fullAgenda}
                 onChange={handleChange}
-                aria-invalid={Boolean(errors.fullAgenda)}
-                rows={6}
                 disabled={!canEdit && editing}
               />
-              <div className="help">
-                Provide a comprehensive outline of the conference program.
-              </div>
             </FormField>
           </fieldset>
 
+          {/* Budget */}
           <fieldset className="form-sec">
             <legend>Budget & Funding</legend>
             <div className="form-grid">
@@ -242,42 +216,32 @@ export default function ConferenceForm() {
                 <input
                   type="number"
                   name="requiredBudget"
-                  placeholder="e.g., 5000"
                   value={data.requiredBudget}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.requiredBudget)}
                   disabled={!canEdit && editing}
-                  min="0"
-                  step="0.01"
                 />
-                <div className="help">Estimated total budget in EGP.</div>
               </FormField>
 
               <FormField
-                label="Source of Funding"
+                label="Funding Source"
                 error={errors.fundingSource}
                 required
               >
                 <select
-                  className="eo-select eo-select-lg"
                   name="fundingSource"
                   value={data.fundingSource}
                   onChange={handleChange}
-                  aria-invalid={Boolean(errors.fundingSource)}
                   disabled={!canEdit && editing}
-                  required
                 >
-                  <option value="" disabled hidden>
-                    Select source
-                  </option>
+                  <option value="">Select source</option>
                   <option value="GUC">GUC</option>
                   <option value="external">External</option>
                 </select>
-                <div className="help">Indicate primary funding source.</div>
               </FormField>
             </div>
           </fieldset>
 
+          {/* Resources */}
           <fieldset className="form-sec">
             <legend>Resources</legend>
             <FormField
@@ -286,19 +250,15 @@ export default function ConferenceForm() {
             >
               <textarea
                 name="extraResources"
-                placeholder="e.g., Projector, microphones, venue setup, etc"
+                rows={4}
                 value={data.extraResources}
                 onChange={handleChange}
-                aria-invalid={Boolean(errors.extraResources)}
-                rows={4}
                 disabled={!canEdit && editing}
               />
-              <div className="help">
-                List any additional materials or facilities needed.
-              </div>
             </FormField>
           </fieldset>
 
+          {/* Submit */}
           <div className="form-actions">
             <button
               className="btn"
@@ -310,25 +270,12 @@ export default function ConferenceForm() {
           </div>
         </form>
 
+        {/* Confirm Modal */}
         {confirmOpen && (
-          <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm-overlay" role="dialog">
             <div className="confirm">
               <h2>{editing ? "Save changes?" : "Create this conference?"}</h2>
-              <p>
-                {editing ? (
-                  <>
-                    Are you sure you want to save these edits to{" "}
-                    <strong>{data.name || "this conference"}</strong>?
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to create{" "}
-                    <strong>{data.name || "this conference"}</strong>?
-                  </>
-                )}
-              </p>
 
-              {/* ✨ Same structure & classes as Bazaar */}
               <div className="confirm-actions">
                 <button
                   className="btn btn-outline"
@@ -336,6 +283,7 @@ export default function ConferenceForm() {
                 >
                   Cancel
                 </button>
+
                 <button
                   className="btn"
                   onClick={() => {
@@ -349,7 +297,7 @@ export default function ConferenceForm() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

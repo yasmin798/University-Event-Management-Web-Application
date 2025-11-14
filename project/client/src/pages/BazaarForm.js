@@ -1,7 +1,6 @@
-// client/src/pages/BazaarForm.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import NavBar from "../components/NavBar";
+import Sidebar from "../components/Sidebar";
 import FormField from "../components/FormField";
 import { validateBazaar, isEditable } from "../utils/validation";
 import "../events.theme.css";
@@ -10,16 +9,16 @@ const API =
   process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3000";
 
 export default function BazaarForm() {
-  const { id } = useParams(); // Mongo _id when editing
+  const { id } = useParams();
   const navigate = useNavigate();
   const editing = Boolean(id);
 
+  const [filter, setFilter] = useState("All"); // for sidebar
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [loading, setLoading] = useState(editing); // only load when editing
+  const [loading, setLoading] = useState(editing);
   const [errors, setErrors] = useState({});
 
   const [data, setData] = useState({
-    // local form state uses "name" but backend uses "title"
     name: "",
     location: "",
     shortDescription: "",
@@ -28,52 +27,36 @@ export default function BazaarForm() {
     registrationDeadline: "",
   });
 
-  // lock if started (re-evaluates whenever start changes)
   const canEdit = useMemo(
     () => isEditable(data.startDateTime),
     [data.startDateTime]
   );
 
-  // ---- Load existing bazaar on edit ----
   useEffect(() => {
     if (!editing) return;
 
-    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API}/api/bazaars/${id}`, {
-          credentials: "omit",
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" },
-        });
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-        const doc = await res.json(); // assume the route returns the bazaar document
-        if (cancelled) return;
+        const res = await fetch(`${API}/api/bazaars/${id}`);
+        if (!res.ok) throw new Error("Failed to load bazaar");
+        const doc = await res.json();
 
         setData({
-          name: doc.title || doc.name || "",
+          name: doc.title || "",
           location: doc.location || "",
           shortDescription: doc.shortDescription || "",
-          startDateTime: doc.startDateTime
-            ? doc.startDateTime.slice(0, 16)
-            : "",
-          endDateTime: doc.endDateTime ? doc.endDateTime.slice(0, 16) : "",
-          registrationDeadline: doc.registrationDeadline
-            ? doc.registrationDeadline.slice(0, 16)
-            : "",
+          startDateTime: doc.startDateTime?.slice(0, 16) || "",
+          endDateTime: doc.endDateTime?.slice(0, 16) || "",
+          registrationDeadline: doc.registrationDeadline?.slice(0, 16) || "",
         });
       } catch (e) {
         console.error(e);
         alert("Failed to load bazaar");
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [editing, id]);
 
   function handleChange(e) {
@@ -82,33 +65,25 @@ export default function BazaarForm() {
   }
 
   async function saveBazaar() {
-    const errs = validateBazaar({ ...data });
+    const errs = validateBazaar(data);
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
-    if (!canEdit && editing) {
-      alert("Bazaars can’t be edited after the start time.");
-      return;
-    }
+    if (!canEdit && editing) return alert("Cannot edit after start.");
 
-    // Build clean payload (omit optional date if empty)
     const payload = {
-      title: (data.name || "").trim(),
-      location: (data.location || "").trim(),
-      shortDescription: (data.shortDescription || "").trim(),
-      startDateTime: data.startDateTime
-        ? new Date(data.startDateTime).toISOString()
-        : null, // required
-      endDateTime: data.endDateTime
-        ? new Date(data.endDateTime).toISOString()
-        : null, // required
+      title: data.name,
+      location: data.location,
+      shortDescription: data.shortDescription,
+      startDateTime: new Date(data.startDateTime).toISOString(),
+      endDateTime: new Date(data.endDateTime).toISOString(),
       ...(data.registrationDeadline
         ? {
             registrationDeadline: new Date(
               data.registrationDeadline
             ).toISOString(),
           }
-        : {}), // omit if empty
+        : {}),
     };
 
     try {
@@ -121,67 +96,49 @@ export default function BazaarForm() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("Save bazaar failed:", res.status, txt);
-        alert(
-          `Failed to save bazaar (${res.status}). ${txt || "See console."}`
-        );
-        return;
-      }
+      if (!res.ok) throw new Error("Failed to save");
 
-      navigate("/events", { replace: true });
+      navigate("/events");
     } catch (e) {
+      alert("Save failed");
       console.error(e);
-      alert("Failed to save bazaar");
     }
   }
 
   function handleSubmit(e) {
     e.preventDefault();
-
-    // Validate before opening confirm
     const errs = validateBazaar(data);
     setErrors(errs);
     if (Object.keys(errs).length) return;
-
-    if (!canEdit && editing) {
-      alert("Bazaars can’t be edited after the start time.");
-      return;
-    }
-
     setConfirmOpen(true);
   }
 
   return (
-    <div className="events-theme">
-      <div className="container">
-        <NavBar bleed />
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {/* LEFT SIDEBAR */}
+      <Sidebar filter={filter} setFilter={setFilter} />
 
-        <div className="eo-head-row">
-          <h1>{editing ? "Edit Bazaar" : "Create Bazaar"}</h1>
-          <button
-            type="button"
-            className="btn btn-outline eo-back"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-          >
-            Back
-          </button>
-        </div>
+      {/* MAIN CONTENT */}
+      <main style={{ flex: 1, padding: "24px", marginLeft: "260px" }}>
+        <h1 style={{ marginTop: 0 }}>
+          {editing ? "Edit Bazaar" : "Create Bazaar"}
+        </h1>
 
-        {editing && loading ? (
-          <div className="empty">Loading…</div>
+        {loading ? (
+          <p>Loading…</p>
         ) : (
           <>
             {!canEdit && editing && (
               <div className="lock">
-                This bazaar has started; editing is disabled.
+                This bazaar has started — editing disabled.
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="form form-pro" noValidate>
-              {/* Basic info */}
+            <form onSubmit={handleSubmit} className="form form-pro">
+              {/* BASIC DETAILS */}
               <fieldset className="form-sec">
                 <legend>Basic details</legend>
 
@@ -189,26 +146,19 @@ export default function BazaarForm() {
                   <FormField label="Name" error={errors.name} required>
                     <input
                       name="name"
-                      placeholder="e.g., Spring Charity Bazaar"
                       value={data.name}
                       onChange={handleChange}
-                      aria-invalid={Boolean(errors.name)}
                       disabled={!canEdit && editing}
-                      autoComplete="off"
                     />
-                    <div className="help">Use a clear, searchable title.</div>
                   </FormField>
 
                   <FormField label="Location" error={errors.location} required>
                     <input
                       name="location"
-                      placeholder="e.g., Main Hall, Building A"
                       value={data.location}
                       onChange={handleChange}
-                      aria-invalid={Boolean(errors.location)}
                       disabled={!canEdit && editing}
                     />
-                    <div className="help">Room, building, or address.</div>
                   </FormField>
 
                   <FormField
@@ -217,19 +167,16 @@ export default function BazaarForm() {
                   >
                     <textarea
                       name="shortDescription"
-                      placeholder="One or two sentences about the bazaar."
                       value={data.shortDescription}
                       onChange={handleChange}
-                      aria-invalid={Boolean(errors.shortDescription)}
                       rows={3}
                       disabled={!canEdit && editing}
                     />
-                    <div className="help">This appears in the events list.</div>
                   </FormField>
                 </div>
               </fieldset>
 
-              {/* Scheduling */}
+              {/* SCHEDULE */}
               <fieldset className="form-sec">
                 <legend>Schedule</legend>
 
@@ -244,8 +191,7 @@ export default function BazaarForm() {
                       name="startDateTime"
                       value={data.startDateTime}
                       onChange={handleChange}
-                      aria-invalid={Boolean(errors.startDateTime)}
-                      disabled={editing && !canEdit}
+                      disabled={!canEdit && editing}
                     />
                   </FormField>
 
@@ -255,8 +201,7 @@ export default function BazaarForm() {
                       name="endDateTime"
                       value={data.endDateTime}
                       onChange={handleChange}
-                      aria-invalid={Boolean(errors.endDateTime)}
-                      disabled={editing && !canEdit}
+                      disabled={!canEdit && editing}
                     />
                   </FormField>
 
@@ -269,43 +214,24 @@ export default function BazaarForm() {
                       name="registrationDeadline"
                       value={data.registrationDeadline}
                       onChange={handleChange}
-                      aria-invalid={Boolean(errors.registrationDeadline)}
-                      disabled={editing && !canEdit}
+                      disabled={!canEdit && editing}
                     />
                   </FormField>
                 </div>
               </fieldset>
 
-              {/* Actions */}
               <div className="form-actions">
-                <button
-                  className="btn"
-                  type="submit"
-                  disabled={editing && !canEdit}
-                >
+                <button className="btn" type="submit">
                   {editing ? "Save Changes" : "Create Bazaar"}
                 </button>
               </div>
             </form>
 
-            {/* Confirm modal */}
             {confirmOpen && (
-              <div className="confirm-overlay" role="dialog" aria-modal="true">
+              <div className="confirm-overlay">
                 <div className="confirm">
                   <h2>{editing ? "Save changes?" : "Create this bazaar?"}</h2>
-                  <p>
-                    {editing ? (
-                      <>
-                        Are you sure you want to save these edits to{" "}
-                        <strong>{data.name || "this bazaar"}</strong>?
-                      </>
-                    ) : (
-                      <>
-                        Are you sure you want to create{" "}
-                        <strong>{data.name || "this bazaar"}</strong>?
-                      </>
-                    )}
-                  </p>
+
                   <div className="confirm-actions">
                     <button
                       className="btn btn-outline"
@@ -313,6 +239,7 @@ export default function BazaarForm() {
                     >
                       Cancel
                     </button>
+
                     <button
                       className="btn"
                       onClick={() => {
@@ -328,7 +255,7 @@ export default function BazaarForm() {
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
