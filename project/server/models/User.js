@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "blocked"],
       default: "active",     // added for checking if user is active/blocked
     },
+    favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Event", // we'll use a virtual populate later
+  }],
   },
   { timestamps: true }
 );

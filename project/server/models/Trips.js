@@ -18,6 +18,7 @@ const TripSchema = new mongoose.Schema(
       type: [
         {
           userId: { type: String },
+          name: { type: String, default: "Guest" },   // ADD THIS
           email: { type: String, required: true },
           registeredAt: { type: Date, default: Date.now },
         },

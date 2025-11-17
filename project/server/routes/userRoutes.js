@@ -5,6 +5,8 @@ const User = require("../models/User");
 const Trip = require("../models/Trips");
 const Bazaar = require("../models/Bazaar");
 const Workshop = require("../models/Workshop");
+const Conference = require("../models/Conference");
+const BoothApplication = require("../models/BoothApplication");
 
 const router = express.Router();
 
@@ -17,7 +19,56 @@ router.get("/admin/users", protect, adminOnly, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
+// POST /api/users/me/favorites
+router.post("/me/favorites", protect, async (req, res) => {
+  try {
+    const { eventId } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user.favorites.includes(eventId)) {
+      user.favorites.push(eventId);
+      await user.save();
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// DELETE /api/users/me/favorites/:eventId
+router.delete("/me/favorites/:eventId", protect, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, {
+      $pull: { favorites: req.params.eventId }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// GET /api/users/me/favorites
+router.get("/me/favorites", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).lean();
+    const favorites = user.favorites || [];
 
+    // Fetch full event data
+    const events = await Promise.all(
+      favorites.map(async (id) => {
+        const models = [Workshop, Bazaar, Trip, Conference, BoothApplication];
+        for (const Model of models) {
+          const doc = await Model.findById(id).lean();
+          if (doc) {
+            return { ...doc, _id: doc._id.toString(), type: Model.modelName.toUpperCase() };
+          }
+        }
+        return null;
+      })
+    );
+
+    res.json(events.filter(Boolean));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ✅ Correct path (no extra "users")
 router.get("/me/registered-events", protect, async (req, res) => {
   try {
