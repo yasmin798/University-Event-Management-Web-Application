@@ -18,6 +18,8 @@ export default function Sidebar({}) {
   const navigationMenu = [
     ["Gym Sessions", "/gym-sessions"],
     ["Vendor Booths", "/vendor-requests-booths"],
+    ["Attendees Report", "/reports/attendees"],
+    ["Sales Report", "/reports/sales"],
   ];
 
   return (

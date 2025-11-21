@@ -47,6 +47,8 @@ import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
 import WorkshopsListPage from "./pages/WorkshopsListPage";
 import EditWorkshopPage from "./pages/EditWorkshopPage";
+import AttendeesReport from "./pages/AttendeesReport";
+import SalesReport from "./pages/SalesReport";
 
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
@@ -96,6 +98,8 @@ function App() {
           path="/professor/workshops/edit/:id"
           element={<EditWorkshopPage />}
         />
+        <Route path="/reports/attendees" element={<AttendeesReport />} />
+        <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
