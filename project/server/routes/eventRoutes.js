@@ -1,62 +1,53 @@
 // server/routes/eventRoutes.js
 const express = require("express");
-const Bazaar = require("../models/Bazaar");
-const Trip = require("../models/Trips");  // Fixed file name reference
-const Conference = require("../models/Conference");
 const router = express.Router();
-const { register } = require("../controllers/registrationController");
-const { protect } = require("../middleware/auth"); // Import protect
-const Workshop = require("../models/Workshop"); // import your Workshop model
-const BoothApplication = require("../models/BoothApplication");
-const boothController = require("../controllers/boothController");
-const tripImage = "/trip.jpeg";
+const ExcelJS = require("exceljs");
 
-// Helper: normalize title so UI can send either "name" or "title"
+// Models
+const Bazaar = require("../models/Bazaar");
+const Trip = require("../models/Trips");
+const Conference = require("../models/Conference");
+const Workshop = require("../models/Workshop");
+const BoothApplication = require("../models/BoothApplication");
+
+// Controllers
+const { register } = require("../controllers/registrationController");
+const boothController = require("../controllers/boothController");
+
+// Middleware
+const { protect, adminOnly } = require("../middleware/auth");
+
+// Helper: normalize title
 const normTitle = (b = {}) => b.title || b.name || "";
 
-/* ---------------- BAZAARS ---------------- */
-
-// List bazaars
-router.get("/bazaars", async (_req, res) => {
-  const items = await Bazaar.find().sort({ startDateTime: 1 });
-  res.json({ items, total: items.length, page: 1, pages: 1 });
-});
-
-// Get one bazaar
-router.get("/bazaars/:id", async (req, res) => {
-  const doc = await Bazaar.findById(req.params.id);
-  if (!doc) return res.status(404).json({ error: "Not found" });
-  res.json(doc);
-});
-
-
-// GET /api/bazaars/upcoming
-router.get("/upcoming", async (req, res) => {
+/* ------------------- BAZAARS ------------------- */
+router.get("/bazaars", async (req, res) => {
   try {
-    // Example: find bazaars with start date >= today, sorted ascending
-    const now = new Date();
-    const bazaars = await Bazaar.find({ startDate: { $gte: now } }).sort({ startDate: 1 }).lean();
-    return res.json({ bazaars });
+    const items = await Bazaar.find().sort({ startDateTime: 1 });
+    res.json({ items, total: items.length, page: 1, pages: 1 });
   } catch (err) {
-    console.error("Error fetching bazaars:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Create bazaar
+router.get("/bazaars/:id", async (req, res) => {
+  try {
+    const doc = await Bazaar.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: "Not found" });
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/bazaars", async (req, res) => {
   try {
     const b = req.body || {};
-
-    const title = b.title || b.name || "";
+    const title = normTitle(b);
     if (!title) return res.status(400).json({ error: "title is required" });
-    if (!b.location)
-      return res.status(400).json({ error: "location is required" });
-    if (!b.startDateTime || !b.endDateTime) {
-      return res
-        .status(400)
-        .json({ error: "startDateTime and endDateTime are required" });
-    }
+    if (!b.location) return res.status(400).json({ error: "location is required" });
+    if (!b.startDateTime || !b.endDateTime)
+      return res.status(400).json({ error: "startDateTime and endDateTime are required" });
 
     const doc = await Bazaar.create({
       type: "bazaar",
@@ -65,40 +56,30 @@ router.post("/bazaars", async (req, res) => {
       shortDescription: b.shortDescription || "",
       startDateTime: new Date(b.startDateTime),
       endDateTime: new Date(b.endDateTime),
-      registrationDeadline: b.registrationDeadline
-        ? new Date(b.registrationDeadline)
-        : undefined,
+      registrationDeadline: b.registrationDeadline ? new Date(b.registrationDeadline) : undefined,
       price: b.price != null ? Number(b.price) : 0,
       capacity: b.capacity != null ? Number(b.capacity) : 0,
       status: "published",
     });
-
     res.status(201).json(doc);
   } catch (e) {
-    console.error("Create bazaar error:", e);
     res.status(400).json({ error: e.message });
   }
 });
 
-// Update bazaar
 router.put("/bazaars/:id", async (req, res) => {
   try {
     const b = req.body || {};
     const updates = {
       ...(b.title || b.name ? { title: b.title || b.name } : {}),
       ...(b.location ? { location: b.location } : {}),
-      ...(b.shortDescription !== undefined
-        ? { shortDescription: b.shortDescription }
-        : {}),
+      ...(b.shortDescription !== undefined ? { shortDescription: b.shortDescription } : {}),
       ...(b.startDateTime ? { startDateTime: new Date(b.startDateTime) } : {}),
       ...(b.endDateTime ? { endDateTime: new Date(b.endDateTime) } : {}),
-      ...(b.registrationDeadline
-        ? { registrationDeadline: new Date(b.registrationDeadline) }
-        : {}),
+      ...(b.registrationDeadline ? { registrationDeadline: new Date(b.registrationDeadline) } : {}),
       ...(b.price != null ? { price: Number(b.price) } : {}),
       ...(b.capacity != null ? { capacity: Number(b.capacity) } : {}),
     };
-
     const doc = await Bazaar.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
@@ -106,176 +87,140 @@ router.put("/bazaars/:id", async (req, res) => {
     if (!doc) return res.status(404).json({ error: "Not found" });
     res.json(doc);
   } catch (e) {
-    console.error("Update bazaar error:", e);
     res.status(400).json({ error: e.message });
   }
 });
 
-// Delete bazaar
 router.delete("/bazaars/:id", async (req, res) => {
   try {
     const bazaar = await Bazaar.findById(req.params.id);
     if (!bazaar) return res.status(404).json({ error: "Bazaar not found" });
-
-    const hasRegistrations = Array.isArray(bazaar.registrations) && bazaar.registrations.length > 0;
-    if (hasRegistrations) {
-      return res.status(403).json({ error: "Cannot delete: participants have registered" });
+    if (Array.isArray(bazaar.registrations) && bazaar.registrations.length > 0) {
+      return res.status(403).json({ error: "Cannot delete: participants registered" });
     }
-
     await Bazaar.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Bazaar deleted successfully" });
   } catch (e) {
-    console.error("Delete bazaar error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* ---------------- TRIPS ---------------- */
-
-// List trips (paged)
+/* ------------------- TRIPS ------------------- */
 router.get("/trips", async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page || "1", 10));
-  const limit = Math.max(
-    1,
-    Math.min(100, parseInt(req.query.limit || "50", 10))
-  );
-
-  const [items, total] = await Promise.all([
-    Trip.find()
-      .sort({ startDateTime: 1 })
-      .skip((page - 1) * limit)
-      .limit(limit),
-    Trip.countDocuments(),
-  ]);
-
-  res.json({ items, total, page, pages: Math.ceil(total / limit) });
-});
-
-// Get one trip
-router.get("/trips/:id", async (req, res) => {
-  const doc = await Trip.findById(req.params.id);
-  if (!doc) return res.status(404).json({ error: "Trip not found" });
-  res.json(doc);
-});
-
-// Create trip
-router.post("/trips", async (req, res) => {
-  const b = req.body || {};
-
-  const title = normTitle(b);
-  if (!title) return res.status(400).json({ error: "title is required" });
-  if (!b.location)
-    return res.status(400).json({ error: "location is required" });
-  if (!b.startDateTime || !b.endDateTime) {
-    return res
-      .status(400)
-      .json({ error: "startDateTime and endDateTime are required" });
+  try {
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
+    const [items, total] = await Promise.all([
+      Trip.find().sort({ startDateTime: 1 }).skip((page - 1) * limit).limit(limit),
+      Trip.countDocuments(),
+    ]);
+    res.json({ items, total, page, pages: Math.ceil(total / limit) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-
-  const doc = await Trip.create({
-    type: "trip",
-    title,
-    location: b.location,
-    shortDescription: b.shortDescription,
-    startDateTime: b.startDateTime,
-    endDateTime: b.endDateTime,
-    registrationDeadline: b.registrationDeadline,
-    price: b.price ?? 0,
-    capacity: b.capacity ?? 0,
-    image: tripImage,
-  });
-
-  res.status(201).json(doc);
 });
 
-// Update trip
+router.get("/trips/:id", async (req, res) => {
+  try {
+    const doc = await Trip.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: "Trip not found" });
+    res.json(doc);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/trips", async (req, res) => {
+  try {
+    const b = req.body || {};
+    const title = normTitle(b);
+    if (!title) return res.status(400).json({ error: "title is required" });
+    if (!b.location) return res.status(400).json({ error: "location is required" });
+    if (!b.startDateTime || !b.endDateTime)
+      return res.status(400).json({ error: "startDateTime and endDateTime are required" });
+
+    const doc = await Trip.create({
+      type: "trip",
+      title,
+      location: b.location,
+      shortDescription: b.shortDescription,
+      startDateTime: b.startDateTime,
+      endDateTime: b.endDateTime,
+      registrationDeadline: b.registrationDeadline,
+      price: b.price ?? 0,
+      capacity: b.capacity ?? 0,
+      image: "/trip.jpeg",
+    });
+    res.status(201).json(doc);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 router.put("/trips/:id", async (req, res) => {
-  const updates = { ...req.body };
-  if (updates.name && !updates.title) updates.title = updates.name;
-
-  const doc = await Trip.findByIdAndUpdate(req.params.id, updates, {
-    new: true,
-    runValidators: true,
-  });
-  if (!doc) return res.status(404).json({ error: "Trip not found" });
-  res.json(doc);
+  try {
+    const updates = { ...req.body };
+    if (updates.name && !updates.title) updates.title = updates.name;
+    const doc = await Trip.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    });
+    if (!doc) return res.status(404).json({ error: "Trip not found" });
+    res.json(doc);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
-// Delete trip
 router.delete("/trips/:id", async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ error: "Trip not found" });
-
-    const hasRegistrations = Array.isArray(trip.registrations) && trip.registrations.length > 0;
-    if (hasRegistrations) {
-      return res.status(403).json({ error: "Cannot delete: participants have registered" });
+    if (Array.isArray(trip.registrations) && trip.registrations.length > 0) {
+      return res.status(403).json({ error: "Cannot delete: participants registered" });
     }
-
     await Trip.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Trip deleted successfully" });
   } catch (e) {
-    console.error("Delete trip error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* ---------------- CONFERENCES ---------------- */
-
-// List conferences
+/* ------------------- CONFERENCES ------------------- */
 router.get("/conferences", async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
-    const limit = Math.max(
-      1,
-      Math.min(100, parseInt(req.query.limit || "50", 10))
-    );
-
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
     const [items, total] = await Promise.all([
-      Conference.find()
-        .sort({ startDateTime: 1 })
-        .skip((page - 1) * limit)
-        .limit(limit),
+      Conference.find().sort({ startDateTime: 1 }).skip((page - 1) * limit).limit(limit),
       Conference.countDocuments(),
     ]);
-
     res.json({ items, total, page, pages: Math.ceil(total / limit) });
   } catch (e) {
-    console.error("List conferences error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-// Get one conference
 router.get("/conferences/:id", async (req, res) => {
   try {
     const doc = await Conference.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: "Conference not found" });
     res.json(doc);
   } catch (e) {
-    console.error("Get conference error:", e);
     res.status(400).json({ error: e.message });
   }
 });
 
-// Create conference
 router.post("/conferences", async (req, res) => {
   try {
     const b = req.body || {};
-
     const title = normTitle(b);
     if (!title) return res.status(400).json({ error: "title is required" });
-    if (!b.startDateTime || !b.endDateTime) {
-      return res
-        .status(400)
-        .json({ error: "startDateTime and endDateTime are required" });
-    }
-    if (!b.requiredBudget)
-      return res.status(400).json({ error: "requiredBudget is required" });
-    if (!b.fundingSource)
-      return res.status(400).json({ error: "fundingSource is required" });
-    if (!b.website)
-      return res.status(400).json({ error: "website is required" });
+    if (!b.startDateTime || !b.endDateTime)
+      return res.status(400).json({ error: "startDateTime and endDateTime are required" });
+    if (!b.requiredBudget) return res.status(400).json({ error: "requiredBudget is required" });
+    if (!b.fundingSource) return res.status(400).json({ error: "fundingSource is required" });
+    if (!b.website) return res.status(400).json({ error: "website is required" });
 
     const doc = await Conference.create({
       type: "conference",
@@ -291,21 +236,16 @@ router.post("/conferences", async (req, res) => {
       extraResources: b.extraResources || "",
       status: "published",
     });
-
     res.status(201).json(doc);
   } catch (e) {
-    console.error("Create conference error:", e);
     res.status(400).json({ error: e.message });
   }
 });
 
-// Update conference
 router.put("/conferences/:id", async (req, res) => {
   try {
     const b = req.body || {};
-    if (b.website === undefined)
-      return res.status(400).json({ error: "website is required" });
-
+    if (b.website === undefined) return res.status(400).json({ error: "website is required" });
     const updates = {
       ...(b.title || b.name ? { title: b.title || b.name, name: b.title || b.name } : {}),
       ...(b.shortDescription !== undefined ? { shortDescription: b.shortDescription } : {}),
@@ -317,7 +257,6 @@ router.put("/conferences/:id", async (req, res) => {
       ...(b.fundingSource ? { fundingSource: b.fundingSource } : {}),
       ...(b.extraResources !== undefined ? { extraResources: b.extraResources } : {}),
     };
-
     const doc = await Conference.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
@@ -325,131 +264,242 @@ router.put("/conferences/:id", async (req, res) => {
     if (!doc) return res.status(404).json({ error: "Conference not found" });
     res.json(doc);
   } catch (e) {
-    console.error("Update conference error:", e);
     res.status(400).json({ error: e.message });
   }
 });
 
-// Delete conference
 router.delete("/conferences/:id", async (req, res) => {
   try {
     const conference = await Conference.findById(req.params.id);
     if (!conference) return res.status(404).json({ error: "Conference not found" });
-
-    // Only check registrations (no start time restriction)
-    const hasRegistrations = Array.isArray(conference.registrations) && conference.registrations.length > 0;
-    if (hasRegistrations) {
-      return res.status(403).json({ error: "Cannot delete: participants have registered" });
+    if (Array.isArray(conference.registrations) && conference.registrations.length > 0) {
+      return res.status(403).json({ error: "Cannot delete: participants registered" });
     }
-
     await Conference.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Conference deleted successfully" });
   } catch (e) {
-    console.error("Delete conference error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-// Register for any event (generic)
-router.post("/events/:eventId/register", protect, register); // protect requires token
+/* ------------------- BOOTHS ------------------- */
+router.delete("/booths/:id", boothController.deleteBooth);
 
-// GET /api/events/all
-// GET /api/events/all
-// GET /api/events/all
+/* ------------------- REGISTRATION ------------------- */
+router.post("/events/:eventId/register", protect, register);
+
+/* ------------------- UNIFIED EVENT LIST (FILTER + SORT) ------------------- */
 router.get("/all", async (req, res) => {
   try {
-    // Fetch all event types
-    const workshops = await Workshop.find();
-    const bazaars = await Bazaar.find();
-    const trips = await Trip.find();
-    const conferences = await Conference.find();
-    const booths = await BoothApplication.find({ status: "accepted" }).sort({ createdAt: -1 });
+    const {
+      search,
+      type,
+      location,
+      date,
+      sort = "startDateTime",
+      order = "asc",
+    } = req.query;
 
-const normalizedBooths = booths.map((b) => ({
- 
-  type: "booth",
-  title: b.title || `Booth ${b._id}`,
-  startDateTime: b.startDateTime || new Date().toISOString(),
-  endDateTime: b.endDateTime || new Date().toISOString(),
-  description: b.description || "",
-  image: b.image || "", 
-}));
+    const query = {};
 
+    if (type) query.type = type.toUpperCase();
+    if (location) query.location = new RegExp(location, "i");
 
-    const allEvents = [
-      ...workshops.map((w) => ({ ...w.toObject(), type: "Workshop" })),
-      ...bazaars.map((b) => ({ ...b.toObject(), type: "Bazaar" })),
-      ...trips.map((t) => ({ ...t.toObject(), type: "Trip" })),
-      ...conferences.map((c) => ({ ...c.toObject(), type: "Conference" })),
-      ...normalizedBooths,
+    if (search) {
+      const regex = new RegExp(search, "i");
+      query.$or = [
+        { title: regex },
+        { name: regex },
+        { workshopName: regex },
+        { professorsParticipating: regex },
+        { description: regex },
+        { shortDescription: regex },
+      ];
+    }
+
+    if (date) {
+      const day = new Date(date);
+      const next = new Date(day);
+      next.setDate(day.getDate() + 1);
+      query.startDateTime = { $gte: day, $lt: next };
+    }
+
+    const [workshops, bazaars, trips, conferences, booths] = await Promise.all([
+      Workshop.find(query).lean(),
+      Bazaar.find(query).lean(),
+      Trip.find(query).lean(),
+      Conference.find(query).lean(),
+      BoothApplication.find({ ...query, status: "accepted" }).lean(),
+    ]);
+
+    const normalize = (doc, type) => ({
+      ...doc,
+      _id: doc._id.toString(),
+      type,
+      title: doc.title || doc.name || doc.workshopName || "Untitled",
+      professorsParticipating: doc.professorsParticipating || "",
+      location: doc.location || "",
+      startDateTime: doc.startDateTime || doc.startDate || doc.date,
+      endDateTime: doc.endDateTime || doc.startDateTime,
+      image: doc.image || "",
+    });
+
+    let allEvents = [
+      ...workshops.map((w) => normalize(w, "WORKSHOP")),
+      ...bazaars.map((b) => normalize(b, "BAZAAR")),
+      ...trips.map((t) => normalize(t, "TRIP")),
+      ...conferences.map((c) => normalize(c, "CONFERENCE")),
+      ...booths.map((b) =>
+        normalize(
+          {
+            ...b,
+            title: b.bazaar?.title || b.title || "Booth",
+            startDateTime: b.bazaar?.startDateTime || b.startDateTime,
+            endDateTime: b.bazaar?.endDateTime || b.endDateTime,
+          },
+          "BOOTH"
+        )
+      ),
     ];
+
+    // Sort
+    const dir = order === "desc" ? -1 : 1;
+    allEvents.sort((a, b) => {
+      const A = new Date(a.startDateTime);
+      const B = new Date(b.startDateTime);
+      return (A > B ? 1 : -1) * dir;
+    });
 
     res.json(allEvents);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch events" });
+    console.error("GET /all error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
+/* ------------------- EXPORT ATTENDEES AS XLSX (FIXED) ------------------- */
+router.get("/events/:id/registrations", protect, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { format } = req.query;
 
+    // Try to find event in any model
+    let event = null;
+    let attendees = [];
 
+    // 1. Try Workshop (has registeredUsers as User refs)
+    event = await Workshop.findById(id).populate("registeredUsers", "firstName lastName email");
+    if (event && event.registeredUsers) {
+      attendees = event.registeredUsers.map(u => ({
+        name: `${u.firstName} ${u.lastName}`,
+        email: u.email,
+      }));
+    }
 
+    // 2. Try Bazaar (has registrations array of objects)
+    if (!attendees.length) {
+      event = await Bazaar.findById(id);
+      if (event && event.registrations) {
+        attendees = event.registrations.map(r => ({
+          name: r.name || "—",
+          email: r.email || "—",
+        }));
+      }
+    }
 
+    // 3. Try Trip (has registrations array)
+    if (!attendees.length) {
+      event = await Trip.findById(id);
+      if (event && event.registrations) {
+        attendees = event.registrations.map(r => ({
+          name: r.name || "—",
+          email: r.email || "—",
+        }));
+      }
+    }
+
+    // 4. Try Booth (has attendees array)
+    if (!attendees.length) {
+      event = await BoothApplication.findById(id);
+      if (event && event.attendees) {
+        attendees = event.attendees.map(a => ({
+          name: a.name || "—",
+          email: a.email || "—",
+        }));
+      }
+    }
+
+    if (!event || attendees.length === 0) {
+      return res.status(404).json({ error: "No attendees found" });
+    }
+
+    // Block Conference
+    if (event instanceof Conference) {
+      return res.status(403).json({ error: "Conferences cannot be exported" });
+    }
+
+    if (format === "xlsx") {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Attendees");
+      sheet.columns = [
+        { header: "Name", key: "name", width: 30 },
+        { header: "Email", key: "email", width: 35 },
+      ];
+      attendees.forEach(att => sheet.addRow(att));
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", `attachment; filename=attendees_${id}.xlsx`);
+      await workbook.xlsx.write(res);
+      res.end();
+    } else {
+      res.json(attendees);
+    }
+  } catch (err) {
+    console.error("Export error:", err);
+    res.status(500).json({ error: "Export failed" });
+  }
+});
+
+/* ------------------- GET SINGLE EVENT BY ID (UNIFIED) ------------------- */
 router.get("/events/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { type } = req.query;
-
     if (!id || !type) return res.status(400).json({ error: "Missing id or type" });
 
     let event;
-    if (type === "workshop") event = await Workshop.findById(id);
+    if (type === "¿workshop") event = await Workshop.findById(id);
     else if (type === "bazaar") event = await Bazaar.findById(id);
     else if (type === "trip") event = await Trip.findById(id);
     else if (type === "conference") event = await Conference.findById(id);
-     else if (type === "booth") {
-    event = await BoothApplication.findById(id).populate({
+    else if (type === "booth") {
+      event = await BoothApplication.findById(id).populate({
         path: "bazaar",
-        select: "title startDateTime endDateTime"
-    });
-}
-    else return res.status(400).json({ error: "Invalid event type" });
-      if (type === "booth" && event) {
-  event = {
-    ...event.toObject(),
-    type: "Booth",
-    title: event.bazaar?.title || event.bazaar?.name || "Booth",
-    name: event.bazaar?.title || event.bazaar?.name || "Booth",
-    startDateTime: event.bazaar?.startDateTime,
-    endDateTime: event.bazaar?.endDateTime,
-    description: event.description || event.shortDescription || "",
-  };
-}
-    if (!event) return res.status(404).json({ error: "Event not found" });
+        select: "title startDateTime endDateTime",
+      });
+    } else return res.status(400).json({ error: "Invalid event type" });
 
+    if (type === "booth" && event) {
+      event = {
+        ...event.toObject(),
+        type: "Booth",
+        title: event.bazaar?.title || event.bazaar?.name || "Booth",
+        name: event.bazaar?.title || event.bazaar?.name || "Booth",
+        startDateTime: event.bazaar?.startDateTime,
+        endDateTime: event.bazaar?.endDateTime,
+        description: event.description || event.shortDescription || "",
+      };
+    }
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
     res.json(event);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch event" });
   }
 });
-/* ---------------- BOOTHS ---------------- */
-
-// Delete booth
-// router.delete("/booths/:id", async (req, res) => {
-//   try {
-//     const booth = await BoothApplication.findById(req.params.id);
-
-//     if (!booth) return res.status(404).json({ error: "Booth not found" });
-
-   
-//     await BoothApplication.findByIdAndDelete(req.params.id);
-//     res.json({ ok: true, message: "Booth deleted successfully" });
-//   } catch (err) {
-//     console.error("Delete booth error:", err);
-//     res.status(500).json({ error: "Server error while deleting booth" });
-//   }
-// });
-router.delete("/booths/:id", boothController.deleteBooth);
 
 module.exports = router;

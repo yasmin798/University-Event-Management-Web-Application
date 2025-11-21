@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, Bell, User, LogOut, Calendar , Map} from "lucide-react";
+import { Search, Menu, Bell, User, LogOut, Calendar, Map, Heart } from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import workshopPlaceholder from "../images/workshop.png";
@@ -17,6 +17,7 @@ const StaffDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workshops, setWorkshops] = useState([]);
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
+  const [favorites, setFavorites] = useState([]);
 const [booths, setBooths] = useState([]);
 const [boothsLoading, setBoothsLoading] = useState(true);
 
@@ -93,7 +94,45 @@ const fetchBooths = useCallback(async () => {
   useEffect(() => {
     fetchWorkshops();
     fetchBooths();
+    // load user favorites
+    const fetchFavorites = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch("/api/users/me/favorites", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setFavorites(data.map(e => e._id));
+        }
+      } catch (err) {
+        console.error("Failed to fetch favorites", err);
+      }
+    };
+
+    fetchFavorites();
 }, [fetchWorkshops, fetchBooths]);
+
+  // Toggle favorite
+  const toggleFavorite = async (eventId) => {
+    const method = favorites.includes(eventId) ? "DELETE" : "POST";
+    const url = `/api/users/me/favorites${method === "DELETE" ? `/${eventId}` : ""}`;
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token
+        ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+        : { "Content-Type": "application/json" };
+      await fetch(url, {
+        method,
+        headers,
+        body: method === "POST" ? JSON.stringify({ eventId }) : undefined,
+      });
+      setFavorites(prev =>
+        prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]
+      );
+    } catch (err) {
+      console.error("Favorite toggle failed", err);
+    }
+  };
 
   // Combine events like EventsHome
   const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops,...booths];
@@ -189,6 +228,13 @@ const handleGymSessions = () => {
             Registered Events
           </button>
           <button
+            onClick={() => { navigate('/favorites'); closeSidebar(); }}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+          >
+            <Heart size={18} />
+            Favorites
+          </button>
+          <button
   onClick={handleCourtsAvailability}
   className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
 >
@@ -246,7 +292,7 @@ const handleGymSessions = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredEvents.map((e) => (
                 <div key={e._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-                  <div className="h-40 w-full bg-gray-200">
+                  <div className="h-40 w-full bg-gray-200 relative">
                     <img
   src={
     e.image ||
@@ -268,6 +314,18 @@ const handleGymSessions = () => {
         : workshopPlaceholder;
   }}
 />
+                    <button
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        toggleFavorite(e._id);
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
+                    >
+                      <Heart
+                        size={18}
+                        className={favorites.includes(e._id) ? "fill-red-500 text-red-500" : "text-gray-600"}
+                      />
+                    </button>
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-lg text-[#2f4156] truncate">

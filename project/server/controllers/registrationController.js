@@ -2,7 +2,7 @@
 // assuming registered events are trips/workshops
 const Trip = require("../models/Trips");
 const Workshop = require("../models/Workshop");
-
+const User = require("../models/User");        // Needed for name/email
 // Helper to get model by event type
 const getEventModel = (type) => {
   const models = {
@@ -26,30 +26,28 @@ exports.register = async (req, res) => {
     }
 
     // Find the event and determine its type
-    const eventFinders = [
-      { model: Trip, type: "trip" },
-      { model: Workshop, type: "workshop" },
-    ];
-
-    let event = null;
-    let eventType = null;
-
-    for (const finder of eventFinders) {
-      const foundEvent = await finder.model.findById(eventId);
-      if (foundEvent) {
-        event = foundEvent;
-        eventType = finder.type; // Store the type when the event is found
-        break;
-      }
+    let event = await Trip.findById(eventId);
+    let eventType = "trip";
+    if (!event) {
+      event = await Workshop.findById(eventId);
+      eventType = "workshop";
     }
-
     if (!event) {
       return res.status(404).json({ error: "Event not found" });
     }
 
+    // Fetch user for name/email
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const userEmail = user.email;
+    const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Guest";
+
     // Check 2: Check capacity
-    const isFull =
-      event.capacity > 0 && event.registeredUsers.length >= event.capacity;
+    const currentCount = event.registrations ? event.registrations.length : 0;
+    const isFull = event.capacity > 0 && currentCount >= event.capacity;
     if (isFull) {
       return res.status(400).json({ error: "Event is at full capacity" });
     }
@@ -82,6 +80,19 @@ exports.register = async (req, res) => {
 
     // Add user to the event and save
     event.registeredUsers.push(userId);
+    await event.save();
+    // Push to `registrations` (with name/email)
+    event.registrations.push({
+      userId: userId.toString(),
+      name: userName,
+      email: userEmail,
+      registeredAt: new Date(),
+    });
+    // Also keep `registeredUsers` for backward compatibility
+    if (!event.registeredUsers.includes(userId)) {
+      event.registeredUsers.push(userId);
+    }
+
     await event.save();
 
     res.status(200).json({ message: "Registered successfully" });

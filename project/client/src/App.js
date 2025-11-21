@@ -31,6 +31,7 @@ import EventsHome from "./pages/EventsHome";
 import EventList from "./pages/EventList";
 import EventRegistrationForm from "./pages/EventRegistrationForm";
 import RegisteredEvents from "./pages/RegisteredEvents"; // New page
+import FavoritesList from "./pages/FavoritesList";
 
 // Bazaar/Trip/Conference forms
 import BazaarForm from "./pages/BazaarForm";
@@ -104,6 +105,7 @@ function App() {
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
         <Route path="/events/choose-type" element={<ChooseEventType />} />
+        <Route path="/favorites" element={<FavoritesList />} />
         {/* Events - Registration */}
         <Route
           path="/events/register/:eventId"

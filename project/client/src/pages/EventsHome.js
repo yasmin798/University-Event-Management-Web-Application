@@ -1,10 +1,9 @@
+// client/src/pages/EventsHome.js
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Search } from "lucide-react";
-
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
-
 import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
 import { useServerEvents } from "../hooks/useServerEvents";
@@ -23,7 +22,6 @@ function formatDate(iso) {
     minute: "2-digit",
   });
 }
-
 function formatMoney(n) {
   if (n == null || n === "") return "—";
   const num = Number(n);
@@ -34,7 +32,6 @@ function formatMoney(n) {
     maximumFractionDigits: 0,
   }).format(num);
 }
-
 // editable if the event hasn't started yet
 function isEditable(startIso) {
   if (!startIso) return true;
@@ -49,11 +46,9 @@ export default function EventsHome() {
   const [currentPage, setCurrentPage] = useState(1);
   const [chooseOpen, setChooseOpen] = useState(false);
   const [chosenType, setChosenType] = useState("");
-
   const [workshops, setWorkshops] = useState([]);
   const [booths, setBooths] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [toast, setToast] = useState({ open: false, text: "" });
   const [confirm, setConfirm] = useState({
     open: false,
@@ -68,7 +63,6 @@ export default function EventsHome() {
     workshopId: null,
     message: "",
   });
-
   const {
     events: otherEvents,
     loading: otherLoading,
@@ -214,6 +208,47 @@ export default function EventsHome() {
       setToast({ open: true, text: "Network error: Could not send request" });
     }
   };
+const exportAttendees = async (eventId, eventType) => {
+  if (!eventId) return;
+
+  const typeMap = {
+    bazaars: "bazaars",
+    trips: "trips",
+    workshops: "workshops",
+    booths: "booths",
+  };
+
+  const apiPath = typeMap[eventType];
+  if (!apiPath) {
+    setToast({ open: true, text: "Export not supported" });
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/events/${eventId}/registrations?format=xlsx`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      setToast({ open: true, text: err || "Export failed" });
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `attendees_${eventType}_${eventId}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    setToast({ open: true, text: "Exported successfully!" });
+  } catch (e) {
+    setToast({ open: true, text: "Export error" });
+  }
+};
 
   // ====== Handlers for modals & buttons ======
   const handleDelete = (id, eventType) => {
@@ -258,6 +293,7 @@ export default function EventsHome() {
       message: "",
     });
   };
+
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
 ---------------------------------------------------- */
@@ -267,6 +303,7 @@ export default function EventsHome() {
     const matchType = filter === "All" || ev.type === filter;
     return matchSearch && matchType;
   });
+
   useEffect(() => {
     const urlFilter = params.get("filter");
     if (urlFilter) {
@@ -279,7 +316,7 @@ export default function EventsHome() {
   /* ----------------------------------------------------
    2) THEN: PAGINATION
 ---------------------------------------------------- */
-  const ITEMS_PER_PAGE = 6; // change number if you want more per page
+  const ITEMS_PER_PAGE = 6;
   const indexOfLast = currentPage * ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - ITEMS_PER_PAGE;
   const currentEvents = filteredEvents.slice(indexOfFirst, indexOfLast);
@@ -362,7 +399,6 @@ export default function EventsHome() {
             >
               Create Event
             </button>
-
             <button
               className="btn"
               style={{
@@ -397,7 +433,6 @@ export default function EventsHome() {
                   <h3 style={{ marginBottom: "15px", textAlign: "center" }}>
                     Select Event Type
                   </h3>
-
                   <select
                     style={{
                       width: "100%",
@@ -414,7 +449,6 @@ export default function EventsHome() {
                     <option value="conference">Conference</option>
                     <option value="trip">Trip</option>
                   </select>
-
                   <div style={{ display: "flex", gap: "10px" }}>
                     <button
                       className="btn btn-outline"
@@ -423,13 +457,11 @@ export default function EventsHome() {
                     >
                       Cancel
                     </button>
-
                     <button
                       className="btn"
                       style={{ flex: 1 }}
                       onClick={() => {
                         if (!chosenType) return alert("Pick a type");
-
                         if (chosenType === "bazaar")
                           navigate("/bazaars/create");
                         if (chosenType === "conference")
@@ -446,7 +478,6 @@ export default function EventsHome() {
           </div>
         </header>
 
-        {/* ---- Welcome & Overview ---- */}
         {/* ---- Welcome + Pagination Row ---- */}
         <div
           style={{
@@ -467,9 +498,8 @@ export default function EventsHome() {
                 marginBottom: "4px",
               }}
             >
-              Welcome back, Events Office 👋
+              Welcome back, Events Office
             </h1>
-
             <p
               className="eo-sub"
               style={{
@@ -480,10 +510,8 @@ export default function EventsHome() {
               Manage and organize all GUC events.
             </p>
           </div>
-
           {/* RIGHT: Pagination next to welcome */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {/* LEFT ARROW */}
             <button
               onClick={() => setCurrentPage((p) => p - 1)}
               disabled={currentPage === 1}
@@ -491,11 +519,7 @@ export default function EventsHome() {
             >
               ‹
             </button>
-
-            {/* CURRENT PAGE */}
             <div className="pg-btn current">{currentPage}</div>
-
-            {/* RIGHT ARROW */}
             <button
               onClick={() => setCurrentPage((p) => p + 1)}
               disabled={currentPage === totalPages}
@@ -522,7 +546,6 @@ export default function EventsHome() {
               const typeRaw = ev.type?.toUpperCase() || "EVENT";
               const title = ev.title || ev.name || "Untitled";
               const editable = isEditable(ev.startDateTime);
-
               const isWorkshop = typeRaw === "WORKSHOP";
               const isBooth = typeRaw === "BOOTH";
               const isBazaar = typeRaw === "BAZAAR";
@@ -563,7 +586,7 @@ export default function EventsHome() {
                     </div>
                   )}
 
-                  {/* ========================= WORKSHOP FIELDS ========================= */}
+                  {/* WORKSHOP FIELDS */}
                   {isWorkshop && (
                     <>
                       {ev.registrationDeadline && (
@@ -574,22 +597,18 @@ export default function EventsHome() {
                           </span>
                         </div>
                       )}
-
                       <div className="kv">
                         <span className="k">Capacity:</span>
                         <span className="v">{ev.capacity ?? "—"}</span>
                       </div>
-
                       <div className="kv">
                         <span className="k">Budget:</span>
                         <span className="v">{formatMoney(ev.budget)}</span>
                       </div>
-
                       <div className="kv">
                         <span className="k">Status:</span>
                         <span className="v">{ev.status}</span>
                       </div>
-
                       {ev.registrations?.length > 0 && (
                         <div className="kv">
                           <span className="k">Registered:</span>
@@ -601,7 +620,7 @@ export default function EventsHome() {
                     </>
                   )}
 
-                  {/* ========================= BOOTH FIELDS ========================= */}
+                  {/* BOOTH FIELDS */}
                   {isBooth && (
                     <>
                       <div className="kv">
@@ -634,7 +653,7 @@ export default function EventsHome() {
                     </>
                   )}
 
-                  {/* ========================= BAZAAR FIELDS ========================= */}
+                  {/* BAZAAR FIELDS */}
                   {isBazaar && (
                     <>
                       {ev.registrationDeadline && (
@@ -656,7 +675,7 @@ export default function EventsHome() {
                     </>
                   )}
 
-                  {/* ========================= CONFERENCE FIELDS ========================= */}
+                  {/* CONFERENCE FIELDS */}
                   {isConference && ev.website && (
                     <div className="kv">
                       <span className="k">Website:</span>
@@ -672,7 +691,7 @@ export default function EventsHome() {
                     </div>
                   )}
 
-                  {/* ========================= TRIP FIELDS ========================= */}
+                  {/* TRIP FIELDS */}
                   {isTrip && (
                     <>
                       {ev.price && (
@@ -690,7 +709,7 @@ export default function EventsHome() {
                     </>
                   )}
 
-                  {/* ========================= DESCRIPTION ========================= */}
+                  {/* DESCRIPTION */}
                   {(ev.description || ev.shortDescription) && (
                     <p
                       style={{
@@ -705,15 +724,12 @@ export default function EventsHome() {
                   )}
 
                   {/* ========================= ACTION BUTTONS ========================= */}
-                  <div className="actions" style={{ marginTop: "12px" }}>
-                    {/* ------ BAZAAR ------ */}
+                  <div className="actions" style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {/* BAZAAR */}
                     {isBazaar && (
                       <>
                         {editable ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/bazaars/${id}`)}
-                          >
+                          <button className="btn" onClick={() => navigate(`/bazaars/${id}`)}>
                             Edit
                           </button>
                         ) : (
@@ -721,7 +737,6 @@ export default function EventsHome() {
                             Edit
                           </button>
                         )}
-
                         <button
                           className="btn btn-danger"
                           disabled={ev.registrations?.length > 0}
@@ -734,27 +749,28 @@ export default function EventsHome() {
                         >
                           Delete
                         </button>
-
                         <button
                           className="btn"
                           style={{ background: "var(--teal)", color: "white" }}
-                          onClick={() =>
-                            navigate(`/bazaars/${id}/vendor-requests`)
-                          }
+                          onClick={() => navigate(`/bazaars/${id}/vendor-requests`)}
                         >
                           Vendor Requests
                         </button>
+                        <button
+                          className="btn"
+                          style={{ background: "#c88585", color: "white" }}
+                          onClick={() => exportAttendees(id, "bazaars")}
+                        >
+                          Export Excel
+                        </button>
                       </>
                     )}
 
-                    {/* ------ TRIP ------ */}
+                    {/* TRIP */}
                     {isTrip && (
                       <>
                         {editable ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/trips/${id}`)}
-                          >
+                          <button className="btn" onClick={() => navigate(`/trips/${id}`)}>
                             Edit
                           </button>
                         ) : (
@@ -762,23 +778,24 @@ export default function EventsHome() {
                             Edit
                           </button>
                         )}
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(id, "trips")}
-                        >
+                        <button className="btn btn-danger" onClick={() => handleDelete(id, "trips")}>
                           Delete
+                        </button>
+                        <button
+                          className="btn"
+                          style={{ background: "#c88585", color: "white" }}
+                          onClick={() => exportAttendees(id, "trips")}
+                        >
+                          Export Excel
                         </button>
                       </>
                     )}
 
-                    {/* ------ CONFERENCE ------ */}
+                    {/* CONFERENCE */}
                     {isConference && (
                       <>
                         {editable ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/conferences/${id}`)}
-                          >
+                          <button className="btn" onClick={() => navigate(`/conferences/${id}`)}>
                             Edit
                           </button>
                         ) : (
@@ -786,54 +803,54 @@ export default function EventsHome() {
                             Edit
                           </button>
                         )}
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(id, "conferences")}
-                        >
+                        <button className="btn btn-danger" onClick={() => handleDelete(id, "conferences")}>
                           Delete
                         </button>
                       </>
                     )}
 
-                    {/* ------ WORKSHOP ------ */}
+                    {/* WORKSHOP */}
                     {isWorkshop && (
                       <>
-                        {(ev.status === "pending" ||
-                          ev.status === "edits_requested") && (
+                        {(ev.status === "pending" || ev.status === "edits_requested") && (
                           <>
-                            <button
-                              className="btn btn-success"
-                              onClick={() => handleAccept(id)}
-                            >
+                            <button className="btn btn-success" onClick={() => handleAccept(id)}>
                               Accept & Publish
                             </button>
-
-                            <button
-                              className="btn btn-danger"
-                              onClick={() => handleReject(id)}
-                            >
+                            <button className="btn btn-danger" onClick={() => handleReject(id)}>
                               Reject
                             </button>
-
-                            <button
-                              className="btn btn-warning"
-                              onClick={() => handleRequestEdits(id)}
-                            >
+                            <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
                               Request Edits
                             </button>
                           </>
                         )}
+                        {ev.status === "published" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#c88585", color: "white" }}
+                            onClick={() => exportAttendees(id, "workshops")}
+                          >
+                            Export Excel
+                          </button>
+                        )}
                       </>
                     )}
 
-                    {/* ------ BOOTH ------ */}
+                    {/* BOOTH */}
                     {isBooth && (
-                      <button
-                        className="btn btn-danger"
-                        onClick={() => handleDelete(id, "booths")}
-                      >
-                        Delete
-                      </button>
+                      <>
+                        <button className="btn btn-danger" onClick={() => handleDelete(id, "booths")}>
+                          Delete
+                        </button>
+                        <button
+                          className="btn"
+                          style={{ background: "#c88585", color: "white" }}
+                          onClick={() => exportAttendees(id, "booths")}
+                        >
+                          Export Excel
+                        </button>
+                      </>
                     )}
                   </div>
                 </article>
