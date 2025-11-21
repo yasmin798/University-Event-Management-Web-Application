@@ -57,6 +57,21 @@ export default function AttendeesReport() {
     fetchReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Auto-search when typing in the eventName field
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      // If the search box is empty → reset the table
+      if (filters.eventName.trim() === "") {
+        fetchReport(); // no params → get all events
+        return;
+      }
+
+      // Otherwise fetch filtered results
+      fetchReport({ eventName: filters.eventName });
+    }, 400);
+
+    return () => clearTimeout(delay);
+  }, [filters.eventName]);
 
   return (
     <div
@@ -67,13 +82,22 @@ export default function AttendeesReport() {
       <Sidebar filter={filter} setFilter={setFilter} />
 
       {/* MAIN CONTENT */}
-      <main style={{ flex: 1, padding: "20px", marginLeft: "260px" }}>
-        <h1>Attendees Report</h1>
-
-        {/* FILTER BAR */}
+      {/* padding-top = 0 so the first card touches the top */}
+      <main
+        style={{
+          flex: 1,
+          padding: "0px", // REMOVE all padding
+          marginLeft: "260px",
+        }}
+      >
+        {/* TOP CARD: SEARCH + FILTERS (touching top) */}
         <div
-          className="bg-white p-4 rounded-xl shadow-sm border border-gray-200"
-          style={{ marginTop: "20px", marginBottom: "20px" }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200"
+          style={{
+            marginTop: 0, // IMPORTANT: no gap at top
+            padding: "20px 24px",
+            width: "100%",
+          }}
         >
           <div
             style={{
@@ -83,8 +107,8 @@ export default function AttendeesReport() {
               flexWrap: "wrap",
             }}
           >
-            {/* SEARCH BAR (MATCHES EVENTS HOME EXACTLY) */}
-            <div style={{ position: "relative", width: "350px" }}>
+            {/* SEARCH BAR */}
+            <div style={{ position: "relative", flex: "1 1 260px" }}>
               <Search
                 size={16}
                 style={{
@@ -149,21 +173,6 @@ export default function AttendeesReport() {
                 minWidth: "160px",
               }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                fill="#5a7184"
-                viewBox="0 0 24 24"
-              >
-                <path d="M7 11h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z" />
-                <path
-                  d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.66 0-3 1.34-3 3v12c0 1.66 1.34 3 3 
-                  3h14c1.66 0 3-1.34 3-3V7c0-1.66-1.34-3-3-3zm1 15c0 .55-.45 1-1 
-                  1H5c-.55 0-1-.45-1-1V10h16v9z"
-                />
-              </svg>
-
               <input
                 type="date"
                 value={filters.startDate}
@@ -192,21 +201,6 @@ export default function AttendeesReport() {
                 minWidth: "160px",
               }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                fill="#5a7184"
-                viewBox="0 0 24 24"
-              >
-                <path d="M7 11h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z" />
-                <path
-                  d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.66 0-3 1.34-3 
-                  3v12c0 1.66 1.34 3 3 3h14c1.66 0 3-1.34 3-3V7c0-1.66-1.34-3-3-3zm1 
-                  15c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V10h16v9z"
-                />
-              </svg>
-
               <input
                 type="date"
                 value={filters.endDate}
@@ -255,125 +249,127 @@ export default function AttendeesReport() {
           </div>
         </div>
 
-        {loading && <p>Loading…</p>}
+        {/* SECOND CARD: OVERVIEW + TABLE */}
+        <div
+          className="bg-white rounded-xl shadow-sm border border-gray-200"
+          style={{
+            marginTop: "20px",
+            padding: "24px",
+            width: "100%",
+          }}
+        >
+          {loading && <p>Loading…</p>}
 
-        {!loading && error && (
-          <div
-            className="bg-white p-4 rounded-xl shadow-sm border border-gray-200"
-            style={{ marginTop: "16px" }}
-          >
-            <pre style={{ color: "crimson", whiteSpace: "pre-wrap" }}>
-              {typeof error === "string"
-                ? error
-                : JSON.stringify(error, null, 2)}
-            </pre>
-          </div>
-        )}
-
-        {!loading && !error && (
-          <div
-            className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-            style={{ marginTop: "16px" }}
-          >
-            <div style={{ marginBottom: "12px" }}>
-              <h2 style={{ fontSize: "20px", fontWeight: 700 }}>Overview</h2>
-              <p style={{ marginTop: "4px", color: "#555" }}>
-                Total registered attendees across all events.
-              </p>
+          {!loading && error && (
+            <div style={{ marginTop: "8px" }}>
+              <pre style={{ color: "crimson", whiteSpace: "pre-wrap" }}>
+                {typeof error === "string"
+                  ? error
+                  : JSON.stringify(error, null, 2)}
+              </pre>
             </div>
+          )}
 
-            <div
-              style={{
-                marginBottom: "20px",
-                fontSize: "18px",
-                fontWeight: 700,
-              }}
-            >
-              Total Attendees:{" "}
-              <span style={{ color: "var(--teal)" }}>
-                {data.totalAttendees}
-              </span>
-            </div>
+          {!loading && !error && (
+            <>
+              <div style={{ marginBottom: "12px" }}>
+                <h2 style={{ fontSize: "20px", fontWeight: 700 }}>Overview</h2>
+                <p style={{ marginTop: "4px", color: "#555" }}>
+                  Total registered attendees across all events.
+                </p>
+              </div>
 
-            <hr style={{ margin: "16px 0" }} />
+              <div
+                style={{
+                  marginBottom: "20px",
+                  fontSize: "18px",
+                  fontWeight: 700,
+                }}
+              >
+                Total Attendees:{" "}
+                <span style={{ color: "var(--teal)" }}>
+                  {data.totalAttendees}
+                </span>
+              </div>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: 8 }}>
-              Breakdown by Event
-            </h3>
+              <hr style={{ margin: "16px 0" }} />
 
-            <div style={{ marginTop: 12 }}>
-              {data.breakdown && data.breakdown.length ? (
-                <div className="overflow-x-auto">
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <thead>
-                      <tr
-                        style={{
-                          backgroundColor: "#f7f7fb",
-                          borderBottom: "1px solid #e5e7eb",
-                        }}
-                      >
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: "10px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Type
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: "10px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Title
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "right",
-                            padding: "10px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Attendees
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.breakdown.map((b) => (
+              <div style={{ marginTop: 12 }}>
+                {data.breakdown && data.breakdown.length ? (
+                  <div className="overflow-x-auto">
+                    <table
+                      style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <thead>
                         <tr
-                          key={b.id}
                           style={{
-                            borderTop: "1px solid #eee",
-                            backgroundColor: "white",
+                            backgroundColor: "#f7f7fb",
+                            borderBottom: "1px solid #e5e7eb",
                           }}
                         >
-                          <td style={{ padding: "10px" }}>
-                            {b.eventType || "—"}
-                          </td>
-                          <td style={{ padding: "10px" }}>{b.title || "—"}</td>
-                          <td style={{ padding: "10px", textAlign: "right" }}>
-                            {b.count ?? 0}
-                          </td>
+                          <th
+                            style={{
+                              textAlign: "left",
+                              padding: "10px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Type
+                          </th>
+                          <th
+                            style={{
+                              textAlign: "left",
+                              padding: "10px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Title
+                          </th>
+                          <th
+                            style={{
+                              textAlign: "right",
+                              padding: "10px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Attendees
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p style={{ color: "#666" }}>No registrations found yet.</p>
-              )}
-            </div>
-          </div>
-        )}
+                      </thead>
+                      <tbody>
+                        {data.breakdown.map((b) => (
+                          <tr
+                            key={b.id}
+                            style={{
+                              borderTop: "1px solid #eee",
+                              backgroundColor: "white",
+                            }}
+                          >
+                            <td style={{ padding: "10px" }}>
+                              {b.eventType || "—"}
+                            </td>
+                            <td style={{ padding: "10px" }}>
+                              {b.title || "—"}
+                            </td>
+                            <td style={{ padding: "10px", textAlign: "right" }}>
+                              {b.count ?? 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p style={{ color: "#666" }}>No registrations found yet.</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
