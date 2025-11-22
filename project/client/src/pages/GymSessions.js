@@ -203,8 +203,8 @@ export default function GymManager() {
                         {session ? (
                           <div
                             style={{
-                              background: "#6C63FF",
-                              color: "white",
+                              background: "#e0e0e0",
+                              color: "#333",
                               padding: "10px",
                               borderRadius: "8px",
                               fontWeight: 600,
@@ -218,37 +218,40 @@ export default function GymManager() {
 
                             {/* EDIT + DELETE */}
                             <div
-                              style={{
-                                  display: "flex",
-                                  flexDirection: "row",
-                                  justifyContent: "center",
-                                  gap: "6px",
-                                  marginTop: "8px",
-                             }}
-                            >
-                              <button
                                 style={{
-                                  padding: "4px 10px",
-                                  fontSize: "12px",
-                                  background: "#ffc107",
-                                  border: "none",
-                                  borderRadius: "6px",
-                                  cursor: "pointer",
-                                  color: "black",
-                                }}
-                                onClick={() => startEdit(session)}
-                              >
-                                Edit
-                              </button>
+                                display: "flex",
+                                flexDirection: "row",
+                                justifyContent: "center",
+                                gap: "8px",
+                                marginTop: "10px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                          <button
+                              className="btn"
+                              style={{
+                              padding: "6px 14px",
+                              fontSize: "14px",
+                              borderRadius: "10px",
+                            }}
+                           onClick={() => startEdit(session)}
+                            >
+                          Edit
+                       </button>
 
-                              <button
-                                className="btn-danger"
-                                style={{ padding: "4px 10px", fontSize: "12px" }}
-                                onClick={() => handleDelete(session._id)}
-                              >
-                                Delete
-                              </button>
-                            </div>
+                       <button
+                          className="btn-danger"
+                           style={{
+                           padding: "6px 14px",
+                          fontSize: "14px",
+                           borderRadius: "10px",
+                            }}
+                           onClick={() => handleDelete(session._id)}
+                                >
+                            Delete
+                           </button>
+                          </div>
+
                           </div>
                         ) : (
                           <div
