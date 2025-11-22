@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -10,98 +10,45 @@ import {
   Map,
   Heart,
 } from "lucide-react";
-import { useServerEvents } from "../hooks/useServerEvents";
-import { workshopAPI } from "../api/workshopApi";
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
-import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
+// boothAPI not used when fetching unified server events
 
 import tripPlaceholder from "../images/trip.jpeg";
 import bazaarPlaceholder from "../images/bazaar.jpeg";
 import conferencePlaceholder from "../images/conference.jpg";
-const now = new Date();
+// server-side event dates will be parsed when needed
 const TaDashboard = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [workshops, setWorkshops] = useState([]);
-  const [workshopsLoading, setWorkshopsLoading] = useState(true);
+  // workshops/booths removed in favor of server-side unified events
   const [favorites, setFavorites] = useState([]);
-  const [booths, setBooths] = useState([]);
-  const [boothsLoading, setBoothsLoading] = useState(true);
 
-  // Use same hooks as EventsHome
-  const { events: otherEvents, loading: otherLoading } = useServerEvents({
-    refreshMs: 0,
-  });
-
-  const fetchBooths = useCallback(async () => {
-    setBoothsLoading(true);
-    try {
-      const data = await boothAPI.getAllBooths();
-
-      const normalizedBooths = data.map((b) => ({
-        _id: b._id,
-        type: "BOOTH",
-        title: b.attendees?.[0]?.name || `Booth ${b._id}`,
-        image: b.image || workshopPlaceholder,
-        description: b.description || "",
-        startDateTime: now.toISOString(),
-        startDate: now.toISOString(),
-        date: now.toISOString(),
-      }));
-
-      setBooths(normalizedBooths);
-    } catch (err) {
-      console.error("Error fetching booths:", err);
-      setBooths([]);
-    } finally {
-      setBoothsLoading(false);
-    }
-  }, []);
-
-  // Fetch workshops same way as EventsHome
-  const fetchWorkshops = useCallback(async () => {
-    setWorkshopsLoading(true);
-    try {
-      const data = await workshopAPI.getAllWorkshops();
-
-      const normalizedWorkshops = data
-        .filter((w) => w.status === "published")
-        .map((w) => {
-          const start = new Date(w.startDateTime);
-          const end = new Date(w.endDateTime);
-
-          return {
-            ...w,
-            _id: w._id,
-            type: "WORKSHOP",
-            title: w.workshopName,
-            name: w.workshopName,
-            startDateTime: start.toISOString(),
-            endDateTime: end.toISOString(),
-            startDate: start.toISOString(), // for compatibility
-            date: start.toISOString(),
-            image: w.image || workshopPlaceholder,
-            description: w.shortDescription,
-            professorsParticipating: w.professorsParticipating || "",
-          };
-        });
-
-      setWorkshops(normalizedWorkshops);
-    } catch (error) {
-      console.error("Error fetching workshops:", error);
-      setWorkshops([]);
-    } finally {
-      setWorkshopsLoading(false);
-    }
-  }, []);
+  const [allEvents, setAllEvents] = useState([]);
+  const [serverLoading, setServerLoading] = useState(true);
+  // Debounced inputs to avoid refetching on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
 
   useEffect(() => {
-    fetchWorkshops();
-    fetchBooths();
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    return () => clearTimeout(t);
+  }, [professorFilter]);
+
+  // server-side unified events will be fetched below
+
+  // local workshop/booth fetch removed (server provides unified endpoint)
+
+  useEffect(() => {
     const fetchFavorites = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -115,9 +62,42 @@ const TaDashboard = () => {
         console.error("Failed to fetch favorites", err);
       }
     };
-
     fetchFavorites();
-  }, [fetchWorkshops, fetchBooths]);
+  }, []);
+
+  // Fetch unified events from server with filters
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setServerLoading(true);
+      try {
+        const params = new URLSearchParams();
+        const searchValue = [debouncedSearch, debouncedProfessor]
+          .filter(Boolean)
+          .join(" ");
+        if (searchValue) params.append("search", searchValue);
+        if (locationFilter) params.append("location", locationFilter);
+        if (eventTypeFilter && eventTypeFilter !== "All")
+          params.append("type", eventTypeFilter);
+        params.append("sort", "startDateTime");
+        params.append("order", "asc");
+
+        const res = await fetch(`/api/events/all?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllEvents(data);
+        } else {
+          setAllEvents([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+        setAllEvents([]);
+      } finally {
+        setServerLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [debouncedSearch, eventTypeFilter, locationFilter, debouncedProfessor]);
 
   // Toggle favorite
   const toggleFavorite = async (eventId) => {
@@ -148,13 +128,7 @@ const TaDashboard = () => {
     }
   };
 
-  // Combine events like EventsHome
-  const allEvents = [
-    ...otherEvents.filter((e) => !e.status || e.status === "published"),
-    ...workshops,
-    ...booths,
-  ];
-  const loading = otherLoading || workshopsLoading || boothsLoading;
+  const loading = serverLoading;
 
   const formatEventDate = (dateTimeStr) => {
     if (!dateTimeStr) return "N/A";
@@ -165,7 +139,7 @@ const TaDashboard = () => {
       day: "numeric",
     });
   };
-  console.log("Booths fetched:", booths);
+  // server events used; local booth/workshop console logging removed
   // Filter events (only future published events)
   const filteredEvents = allEvents
     .filter((e) => {
@@ -176,16 +150,27 @@ const TaDashboard = () => {
       return eventDate > now;
     })
     .filter((e) => {
-      const name = e.title || e.name || e.workshopName || e.bazaarName;
+      const name = (
+        e.title ||
+        e.name ||
+        e.workshopName ||
+        e.bazaarName ||
+        ""
+      ).toLowerCase();
+      const profs = (e.professorsParticipating || "").toLowerCase();
       const matchesSearch =
-        name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (e.professorsParticipating
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()) ??
-          false);
+        name.includes(searchTerm.toLowerCase()) ||
+        profs.includes(searchTerm.toLowerCase());
+      const matchesProfessor =
+        !professorFilter || profs.includes(professorFilter.toLowerCase());
+      const matchesLocation =
+        !locationFilter ||
+        (e.location || "").toLowerCase().includes(locationFilter.toLowerCase());
       const matchesType =
         eventTypeFilter === "All" || e.type === eventTypeFilter;
-      return matchesSearch && matchesType;
+      return (
+        matchesSearch && matchesType && matchesProfessor && matchesLocation
+      );
     });
 
   const handleRegisteredEvents = () => {
@@ -315,6 +300,22 @@ const TaDashboard = () => {
             <EventTypeDropdown
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}
+            />
+          </div>
+          <div className="hidden md:flex md:items-center md:gap-2">
+            <input
+              type="text"
+              placeholder="Professor"
+              value={professorFilter}
+              onChange={(e) => setProfessorFilter(e.target.value)}
+              className="px-3 py-2 border border-[#c8d9e6] rounded-lg"
+            />
+            <input
+              type="text"
+              placeholder="Location"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="px-3 py-2 border border-[#c8d9e6] rounded-lg"
             />
           </div>
           <div className="flex items-center gap-2 md:gap-4 ml-4">

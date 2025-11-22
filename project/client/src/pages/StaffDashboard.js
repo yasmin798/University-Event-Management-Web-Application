@@ -1,8 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, Bell, User, LogOut, Calendar, Map, Heart } from "lucide-react";
-import { useServerEvents } from "../hooks/useServerEvents";
-import { workshopAPI } from "../api/workshopApi";
+import {
+  Search,
+  Menu,
+  Bell,
+  User,
+  LogOut,
+  Calendar,
+  Map,
+  Heart,
+} from "lucide-react";
+// server-side unified events used; individual workshop/booth APIs not required here
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
@@ -14,86 +22,27 @@ const StaffDashboard = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [workshops, setWorkshops] = useState([]);
-  const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
-const [booths, setBooths] = useState([]);
-const [boothsLoading, setBoothsLoading] = useState(true);
-
-  // Use same hooks as EventsHome
-  const { events: otherEvents, loading: otherLoading } = useServerEvents({ refreshMs: 0 });
-
-
-const fetchBooths = useCallback(async () => {
-  setBoothsLoading(true);
-  try {
-    const data = await boothAPI.getAllBooths();
-
-    const normalizedBooths = data.map(b => ({
-  _id: b._id,
-  type: "BOOTH",
-  title: b.attendees?.[0]?.name || `Booth ${b._id}`,
-  image: b.image || workshopPlaceholder,
-  description: b.description || "",
-  startDateTime: now.toISOString(),
-  startDate: now.toISOString(),
-  date: now.toISOString(),
-}));
-
-
-    setBooths(normalizedBooths);
-  } catch (err) {
-    console.error("Error fetching booths:", err);
-    setBooths([]);
-  } finally {
-    setBoothsLoading(false);
-  }
-}, []);
-  
-
-
-  // Fetch workshops same way as EventsHome
-  const fetchWorkshops = useCallback(async () => {
-  setWorkshopsLoading(true);
-  try {
-    const data = await workshopAPI.getAllWorkshops();
-
-    const normalizedWorkshops = data
-      .filter((w) => w.status === "published")
-      .map((w) => {
-        const start = new Date(w.startDateTime);
-        const end = new Date(w.endDateTime);
-
-        return {
-          ...w,
-          _id: w._id,
-          type: "WORKSHOP",
-          title: w.workshopName,
-          name: w.workshopName,
-          startDateTime: start.toISOString(),
-          endDateTime: end.toISOString(),
-          startDate: start.toISOString(), // for compatibility
-          date: start.toISOString(),
-          image: w.image || workshopPlaceholder,
-          description: w.shortDescription,
-          professorsParticipating: w.professorsParticipating || "",
-        };
-      });
-
-    setWorkshops(normalizedWorkshops);
-  } catch (error) {
-    console.error("Error fetching workshops:", error);
-    setWorkshops([]);
-  } finally {
-    setWorkshopsLoading(false);
-  }
-}, []);
-
+  // Debounced inputs to avoid refetching on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
 
   useEffect(() => {
-    fetchWorkshops();
-    fetchBooths();
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    return () => clearTimeout(t);
+  }, [professorFilter]);
+
+  // Fetch workshops/booths removed in favor of server-side unified events
+
+  useEffect(() => {
     // load user favorites
     const fetchFavorites = async () => {
       try {
@@ -102,7 +51,7 @@ const fetchBooths = useCallback(async () => {
         const res = await fetch("/api/users/me/favorites", { headers });
         if (res.ok) {
           const data = await res.json();
-          setFavorites(data.map(e => e._id));
+          setFavorites(data.map((e) => e._id));
         }
       } catch (err) {
         console.error("Failed to fetch favorites", err);
@@ -110,34 +59,76 @@ const fetchBooths = useCallback(async () => {
     };
 
     fetchFavorites();
-}, [fetchWorkshops, fetchBooths]);
+  }, []);
 
   // Toggle favorite
   const toggleFavorite = async (eventId) => {
     const method = favorites.includes(eventId) ? "DELETE" : "POST";
-    const url = `/api/users/me/favorites${method === "DELETE" ? `/${eventId}` : ""}`;
+    const url = `/api/users/me/favorites${
+      method === "DELETE" ? `/${eventId}` : ""
+    }`;
     try {
       const token = localStorage.getItem("token");
       const headers = token
-        ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+        ? {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          }
         : { "Content-Type": "application/json" };
       await fetch(url, {
         method,
         headers,
         body: method === "POST" ? JSON.stringify({ eventId }) : undefined,
       });
-      setFavorites(prev =>
-        prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]
+      setFavorites((prev) =>
+        prev.includes(eventId)
+          ? prev.filter((id) => id !== eventId)
+          : [...prev, eventId]
       );
     } catch (err) {
       console.error("Favorite toggle failed", err);
     }
   };
 
-  // Combine events like EventsHome
-  const allEvents = [...otherEvents.filter(e => !e.status || e.status === "published"), ...workshops,...booths];
-  const loading = otherLoading || workshopsLoading || boothsLoading;
+  // Use server-side unified events endpoint so filters behave consistently
+  const [allEvents, setAllEvents] = useState([]);
+  const [serverLoading, setServerLoading] = useState(true);
 
+  // Fetch unified events from server with filters
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setServerLoading(true);
+      try {
+        const params = new URLSearchParams();
+        const searchValue = [debouncedSearch, debouncedProfessor]
+          .filter(Boolean)
+          .join(" ");
+        if (searchValue) params.append("search", searchValue);
+        if (locationFilter) params.append("location", locationFilter);
+        if (eventTypeFilter && eventTypeFilter !== "All")
+          params.append("type", eventTypeFilter);
+        params.append("sort", "startDateTime");
+        params.append("order", "asc");
+
+        const res = await fetch(`/api/events/all?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllEvents(data);
+        } else {
+          setAllEvents([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+        setAllEvents([]);
+      } finally {
+        setServerLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [debouncedSearch, eventTypeFilter, locationFilter, debouncedProfessor]);
+
+  const loading = serverLoading;
 
   const formatEventDate = (dateTimeStr) => {
     if (!dateTimeStr) return "N/A";
@@ -148,23 +139,33 @@ const fetchBooths = useCallback(async () => {
       day: "numeric",
     });
   };
-console.log("Booths fetched:", booths);
+  // server events used; local booth/workshop console logging removed
   // Filter events (only future published events)
   const filteredEvents = allEvents
-  .filter((e) => {
-     if (e.type === "BOOTH") return true; // always show booths
-    if (!e.startDateTime && !e.startDate && !e.date) return false; // booths without dates
-    const now = new Date();
-    const eventDate = new Date(e.startDateTime || e.startDate || e.date);
-    return eventDate > now;
-  })
     .filter((e) => {
-      const name = e.title || e.name || e.workshopName || e.bazaarName;
+      if (e.type === "BOOTH") return true; // always show booths
+      if (!e.startDateTime && !e.startDate && !e.date) return false; // booths without dates
+      const now = new Date();
+      const eventDate = new Date(e.startDateTime || e.startDate || e.date);
+      return eventDate > now;
+    })
+    .filter((e) => {
+      const name = e.title || e.name || e.workshopName || e.bazaarName || "";
+      const profs = e.professorsParticipating || "";
       const matchesSearch =
-        name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (e.professorsParticipating?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-      const matchesType = eventTypeFilter === "All" || e.type === eventTypeFilter;
-      return matchesSearch && matchesType;
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        profs.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesProfessor =
+        !professorFilter ||
+        profs.toLowerCase().includes(professorFilter.toLowerCase());
+      const matchesLocation =
+        !locationFilter ||
+        (e.location || "").toLowerCase().includes(locationFilter.toLowerCase());
+      const matchesType =
+        eventTypeFilter === "All" || e.type === eventTypeFilter;
+      return (
+        matchesSearch && matchesType && matchesProfessor && matchesLocation
+      );
     });
 
   const handleRegisteredEvents = () => {
@@ -172,16 +173,16 @@ console.log("Booths fetched:", booths);
     closeSidebar();
   };
 
-// Update this function
-const handleCourtsAvailability = () => {
-  navigate("/courts-availability"); // Change this line from "/courts/availability" to "/courts-availability"
-  closeSidebar();
-};
+  // Update this function
+  const handleCourtsAvailability = () => {
+    navigate("/courts-availability"); // Change this line from "/courts/availability" to "/courts-availability"
+    closeSidebar();
+  };
 
-const handleGymSessions = () => {
-  navigate("/gym-sessions-register");
-  closeSidebar();
-};
+  const handleGymSessions = () => {
+    navigate("/gym-sessions-register");
+    closeSidebar();
+  };
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
@@ -207,15 +208,25 @@ const handleGymSessions = () => {
     <div className="flex h-screen bg-[#f5efeb]">
       {/* Sidebar - unchanged */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={closeSidebar}></div>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={closeSidebar}
+        ></div>
       )}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
             <span className="text-xl font-bold">EventHub</span>
           </div>
-          <button onClick={closeSidebar} className="p-2 hover:bg-[#567c8d] rounded-lg transition-colors">
+          <button
+            onClick={closeSidebar}
+            className="p-2 hover:bg-[#567c8d] rounded-lg transition-colors"
+          >
             <Menu size={20} />
           </button>
         </div>
@@ -228,26 +239,29 @@ const handleGymSessions = () => {
             Registered Events
           </button>
           <button
-            onClick={() => { navigate('/favorites'); closeSidebar(); }}
+            onClick={() => {
+              navigate("/favorites");
+              closeSidebar();
+            }}
             className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
           >
             <Heart size={18} />
             Favorites
           </button>
           <button
-  onClick={handleCourtsAvailability}
-  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
->
-  <Map size={18} />
-  Courts Availability
-</button>
-<button
-  onClick={handleGymSessions}
-  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
->
-  <Calendar size={18} />
-  Gym Sessions
-</button>
+            onClick={handleCourtsAvailability}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+          >
+            <Map size={18} />
+            Courts Availability
+          </button>
+          <button
+            onClick={handleGymSessions}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+          >
+            <Calendar size={18} />
+            Gym Sessions
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
@@ -260,11 +274,17 @@ const handleGymSessions = () => {
       {/* Main content - header unchanged */}
       <div className="flex-1 overflow-auto">
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          <button onClick={toggleSidebar} className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
+          >
             <Menu size={24} className="text-[#2f4156]" />
           </button>
           <div className="relative flex-1 max-w-md flex items-center">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]" size={20} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
+              size={20}
+            />
             <input
               type="text"
               placeholder="Search by name or professor"
@@ -272,7 +292,26 @@ const handleGymSessions = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
             />
-            <EventTypeDropdown selected={eventTypeFilter} onChange={setEventTypeFilter} />
+            <EventTypeDropdown
+              selected={eventTypeFilter}
+              onChange={setEventTypeFilter}
+            />
+            <div className="hidden md:flex md:items-center md:gap-2 ml-4">
+              <input
+                type="text"
+                placeholder="Professor"
+                value={professorFilter}
+                onChange={(e) => setProfessorFilter(e.target.value)}
+                className="px-3 py-2 border border-[#c8d9e6] rounded-lg"
+              />
+              <input
+                type="text"
+                placeholder="Location"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="px-3 py-2 border border-[#c8d9e6] rounded-lg"
+              />
+            </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4 ml-4">
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
@@ -285,35 +324,50 @@ const handleGymSessions = () => {
         </header>
 
         <main className="p-4 md:p-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">Available Events</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
+            Available Events
+          </h1>
           {filteredEvents.length === 0 ? (
             <p className="text-[#567c8d]">No events found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredEvents.map((e) => (
-                <div key={e._id} className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+                <div
+                  key={e._id}
+                  className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+                >
                   <div className="h-40 w-full bg-gray-200 relative">
                     <img
-  src={
-    e.image ||
-    (e.type === "TRIP" ? tripPlaceholder :
-     e.type === "BAZAAR" ? bazaarPlaceholder :
-     e.type === "CONFERENCE" ? conferencePlaceholder :
-     workshopPlaceholder)
-  }
-  alt={e.title || e.name || e.workshopName || e.bazaarName || e.tripName || e.conferenceName}
-  className="h-full w-full object-cover"
-  onError={(target) => {
-    target.target.src =
-      e.type === "TRIP"
-        ? tripPlaceholder
-        : e.type === "BAZAAR"
-        ? bazaarPlaceholder
-        : e.type === "CONFERENCE"
-        ? conferencePlaceholder
-        : workshopPlaceholder;
-  }}
-/>
+                      src={
+                        e.image ||
+                        (e.type === "TRIP"
+                          ? tripPlaceholder
+                          : e.type === "BAZAAR"
+                          ? bazaarPlaceholder
+                          : e.type === "CONFERENCE"
+                          ? conferencePlaceholder
+                          : workshopPlaceholder)
+                      }
+                      alt={
+                        e.title ||
+                        e.name ||
+                        e.workshopName ||
+                        e.bazaarName ||
+                        e.tripName ||
+                        e.conferenceName
+                      }
+                      className="h-full w-full object-cover"
+                      onError={(target) => {
+                        target.target.src =
+                          e.type === "TRIP"
+                            ? tripPlaceholder
+                            : e.type === "BAZAAR"
+                            ? bazaarPlaceholder
+                            : e.type === "CONFERENCE"
+                            ? conferencePlaceholder
+                            : workshopPlaceholder;
+                      }}
+                    />
                     <button
                       onClick={(ev) => {
                         ev.stopPropagation();
@@ -323,7 +377,11 @@ const handleGymSessions = () => {
                     >
                       <Heart
                         size={18}
-                        className={favorites.includes(e._id) ? "fill-red-500 text-red-500" : "text-gray-600"}
+                        className={
+                          favorites.includes(e._id)
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }
                       />
                     </button>
                   </div>
@@ -332,12 +390,21 @@ const handleGymSessions = () => {
                       {e.title || e.name || e.workshopName || "Untitled"}
                     </h3>
                     {e.professorsParticipating && (
-                      <p className="text-sm text-[#567c8d] truncate">Professors: {e.professorsParticipating}</p>
+                      <p className="text-sm text-[#567c8d] truncate">
+                        Professors: {e.professorsParticipating}
+                      </p>
                     )}
-                    <p className="text-sm text-[#567c8d] truncate">Type: {e.type || "N/A"}</p>
-                                <p className="text-sm text-[#567c8d] truncate">
-                      Date: {e.startDateTime || e.startDate || e.date ? formatEventDate(e.startDateTime || e.startDate || e.date) : "N/A"}
-                        </p>
+                    <p className="text-sm text-[#567c8d] truncate">
+                      Type: {e.type || "N/A"}
+                    </p>
+                    <p className="text-sm text-[#567c8d] truncate">
+                      Date:{" "}
+                      {e.startDateTime || e.startDate || e.date
+                        ? formatEventDate(
+                            e.startDateTime || e.startDate || e.date
+                          )
+                        : "N/A"}
+                    </p>
                     <div className="flex gap-2 mt-4">
                       <button
                         className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
@@ -358,9 +425,7 @@ const handleGymSessions = () => {
                 </div>
               ))}
             </div>
-            
           )}
-          
         </main>
       </div>
     </div>
