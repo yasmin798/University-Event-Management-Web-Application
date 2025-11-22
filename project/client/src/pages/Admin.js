@@ -34,6 +34,42 @@ export default function Admin() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+
+  // Debounced admin filters to avoid per-keystroke filtering
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [debouncedEventFilter, setDebouncedEventFilter] = useState(eventFilter);
+  const [debouncedProfessorFilter, setDebouncedProfessorFilter] =
+    useState(professorFilter);
+  const [debouncedLocationFilter, setDebouncedLocationFilter] =
+    useState(locationFilter);
+  const [debouncedDateFilter, setDebouncedDateFilter] = useState(dateFilter);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedEventFilter(eventFilter), 300);
+    return () => clearTimeout(t);
+  }, [eventFilter]);
+  useEffect(() => {
+    const t = setTimeout(
+      () => setDebouncedProfessorFilter(professorFilter),
+      300
+    );
+    return () => clearTimeout(t);
+  }, [professorFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocationFilter(locationFilter), 300);
+    return () => clearTimeout(t);
+  }, [locationFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDateFilter(dateFilter), 300);
+    return () => clearTimeout(t);
+  }, [dateFilter]);
 
   const API_ORIGIN = "http://localhost:3001";
 
@@ -204,54 +240,120 @@ export default function Admin() {
       }
       setVendorBoothRequests(boothArr || []);
       const start = new Date();
-      
-        const boothEvents = (boothArr || []).map((booth) => {
-  const durationWeeks = booth.duration || 1; 
-  const end = new Date(start.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000);
 
-  return {
-    ...booth,
-    _id:booth._id,
-    eventType: "booth",
-    title: booth.attendees?.[0]?.name || `Booth ${booth._id}`,
-    durationWeeks,
-    location: booth.platformSlot || booth.boothLocation || booth.locationName || "—",
-    startDateTime: start.toISOString(),
-    endDateTime: end.toISOString(),
-    registrations: booth.registrations || [],
-  };
-});
+      const boothEvents = (boothArr || []).map((booth) => {
+        const durationWeeks = booth.duration || 1;
+        const end = new Date(
+          start.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000
+        );
 
-      const eventEndpoints = [
-        { path: "/api/trips", type: "trip", key: "items" },
-        { path: "/api/conferences", type: "conference", key: "items" },
-        { path: "/api/bazaars", type: "bazaar", key: "items" },
-        { path: "/api/workshops", type: "workshop", key: "items" },
-         
-      ];
-       
+        return {
+          ...booth,
+          _id: booth._id,
+          eventType: "booth",
+          title: booth.attendees?.[0]?.name || `Booth ${booth._id}`,
+          durationWeeks,
+          location:
+            booth.platformSlot ||
+            booth.boothLocation ||
+            booth.locationName ||
+            "—",
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          registrations: booth.registrations || [],
+        };
+      });
 
-      const allEvents = [];
+      // Fetch events from unified endpoint with filters
+      let allEvents = [];
       const errors = [];
-      allEvents.push(...boothEvents);
-      for (const endpoint of eventEndpoints) {
-        const attempt = await tryFetchJson(`${API_ORIGIN}${endpoint.path}`);
-        if (attempt.ok && attempt.data) {
-          const data = Array.isArray(attempt.data)
-            ? attempt.data
-            : attempt.data[endpoint.key] || [];
-          allEvents.push(
-            ...data.map((event) => ({ ...event, eventType: endpoint.type }))
-          );
-         
+
+      try {
+        const params = new URLSearchParams();
+
+        // Combine search and professor filter into search param
+        const searchParts = [];
+        if (debouncedSearchQuery) searchParts.push(debouncedSearchQuery);
+        if (debouncedProfessorFilter)
+          searchParts.push(debouncedProfessorFilter);
+        if (searchParts.length > 0) {
+          params.append("search", searchParts.join(" "));
+        }
+
+        if (debouncedLocationFilter)
+          params.append("location", debouncedLocationFilter);
+        if (debouncedEventFilter && debouncedEventFilter !== "") {
+          params.append("type", debouncedEventFilter.toUpperCase());
+        }
+        if (debouncedDateFilter) params.append("date", debouncedDateFilter);
+
+        const unifiedAttempt = await tryFetchJson(
+          `${API_ORIGIN}/api/events/all?${params.toString()}`
+        );
+
+        if (unifiedAttempt.ok && unifiedAttempt.data) {
+          const unifiedEvents = Array.isArray(unifiedAttempt.data)
+            ? unifiedAttempt.data
+            : unifiedAttempt.data.events || [];
+          allEvents.push(...unifiedEvents);
         } else {
           errors.push(
-            `Failed to fetch ${endpoint.path}: ${attempt.status} ${
-              attempt.error || attempt.data || "No data"
+            `Failed to fetch unified events: ${unifiedAttempt.status} ${
+              unifiedAttempt.error || "No data"
             }`
           );
         }
+      } catch (err) {
+        console.error("Error fetching unified events:", err);
+        errors.push(`Error fetching events: ${err.message}`);
       }
+
+      // Apply client-side filtering to booth events since they're not in the unified endpoint
+      let filteredBoothEvents = boothEvents;
+
+      // Filter by type
+      if (
+        debouncedEventFilter &&
+        debouncedEventFilter !== "" &&
+        debouncedEventFilter.toLowerCase() !== "booth"
+      ) {
+        filteredBoothEvents = [];
+      } else {
+        // Filter by search/professor (title in booth events)
+        if (debouncedSearchQuery || debouncedProfessorFilter) {
+          const searchLower = (debouncedSearchQuery || "").toLowerCase();
+          const profLower = (debouncedProfessorFilter || "").toLowerCase();
+          filteredBoothEvents = filteredBoothEvents.filter((booth) => {
+            const title = (booth.title || "").toLowerCase();
+            const matchesSearch = !searchLower || title.includes(searchLower);
+            const matchesProf = !profLower || title.includes(profLower);
+            return matchesSearch && matchesProf;
+          });
+        }
+
+        // Filter by location
+        if (debouncedLocationFilter) {
+          const locLower = debouncedLocationFilter.toLowerCase();
+          filteredBoothEvents = filteredBoothEvents.filter((booth) =>
+            (booth.location || "").toLowerCase().includes(locLower)
+          );
+        }
+
+        // Filter by date
+        if (debouncedDateFilter) {
+          const filterDate = new Date(debouncedDateFilter);
+          const nextDay = new Date(filterDate);
+          nextDay.setDate(filterDate.getDate() + 1);
+          filteredBoothEvents = filteredBoothEvents.filter((booth) => {
+            if (!booth.startDateTime) return false;
+            const boothDate = new Date(booth.startDateTime);
+            return boothDate >= filterDate && boothDate < nextDay;
+          });
+        }
+      }
+
+      // Add filtered booth events to all events
+      allEvents.push(...filteredBoothEvents);
 
       console.log("Combined events:", allEvents);
       setEvents(allEvents);
@@ -274,7 +376,13 @@ export default function Admin() {
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    debouncedSearchQuery,
+    debouncedProfessorFilter,
+    debouncedLocationFilter,
+    debouncedEventFilter,
+    debouncedDateFilter,
+  ]);
 
   const handleDelete = async (userId) => {
     if (!window.confirm("Are you sure you want to DELETE this user?")) return;
@@ -298,7 +406,8 @@ export default function Admin() {
 
   const handleBlock = async (userId, currentStatus) => {
     const newStatus = currentStatus === "blocked" ? "active" : "blocked";
-    if (!window.confirm(`Are you sure you want to ${newStatus} this user?`)) return;
+    if (!window.confirm(`Are you sure you want to ${newStatus} this user?`))
+      return;
 
     try {
       const res = await fetch(`${API_ORIGIN}/api/admin/block/${userId}`, {
@@ -394,7 +503,6 @@ export default function Admin() {
       setMessage(`❌ Event not found for ID ${eventId}`);
       return;
     }
-  
 
     const hasRegistrations =
       Array.isArray(event.registrations) && event.registrations.length > 0;
@@ -451,7 +559,11 @@ export default function Admin() {
   };
 
   const handleCreateUser = async () => {
-    if (!createUserForm.name || !createUserForm.email || !createUserForm.password) {
+    if (
+      !createUserForm.name ||
+      !createUserForm.email ||
+      !createUserForm.password
+    ) {
       setMessage("❌ Please fill in all fields.");
       return;
     }
@@ -470,7 +582,11 @@ export default function Admin() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`✅ ${createUserRole.charAt(0).toUpperCase() + createUserRole.slice(1)} created successfully!`);
+        setMessage(
+          `✅ ${
+            createUserRole.charAt(0).toUpperCase() + createUserRole.slice(1)
+          } created successfully!`
+        );
         setShowCreateUserPopup(false);
         setCreateUserForm({ name: "", email: "", password: "" });
         await fetchUsers();
@@ -633,15 +749,35 @@ export default function Admin() {
             <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
               <input
                 type="text"
-                placeholder="Search by title, company, or name..."
+                placeholder="Search by title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/3"
+                className="px-3 py-2 border rounded-md w-full md:w-1/5"
+              />
+              <input
+                type="text"
+                placeholder="Filter by professor..."
+                value={professorFilter}
+                onChange={(e) => setProfessorFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/5"
+              />
+              <input
+                type="text"
+                placeholder="Filter by location..."
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/5"
+              />
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/6"
               />
               <select
                 value={eventFilter}
                 onChange={(e) => setEventFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/4"
+                className="px-3 py-2 border rounded-md w-full md:w-1/6"
               >
                 <option value="">All Types</option>
                 <option value="trip">Trip</option>
@@ -654,8 +790,8 @@ export default function Admin() {
 
             <SectionEvents
               events={events}
-              searchQuery={searchQuery}
-              eventFilter={eventFilter}
+              searchQuery={debouncedSearchQuery}
+              eventFilter={debouncedEventFilter}
               eventFetchErrors={eventFetchErrors}
               processingId={processingId}
               handleDeleteEvent={handleDeleteEvent}
@@ -724,7 +860,7 @@ function SectionVerified({ verifiedUsers, handleDelete, handleBlock }) {
                     </span>
                   )}
                 </td>
-                 <td style={tdStyle}>
+                <td style={tdStyle}>
                   <span
                     style={{
                       color: user.status === "blocked" ? "red" : "green",
@@ -736,9 +872,12 @@ function SectionVerified({ verifiedUsers, handleDelete, handleBlock }) {
                 </td>
                 <td style={tdStyle}>
                   <button
-                    onClick={() => handleBlock(user._id, user.status || "active")}
+                    onClick={() =>
+                      handleBlock(user._id, user.status || "active")
+                    }
                     style={{
-                      backgroundColor: user.status === "blocked" ? "#10B981" : "#EF4444",
+                      backgroundColor:
+                        user.status === "blocked" ? "#10B981" : "#EF4444",
                       color: "white",
                       border: "none",
                       borderRadius: 6,
@@ -793,7 +932,7 @@ function SectionPending({
             <th style={thStyle}>Name / Company</th>
             <th style={thStyle}>Email</th>
             <th style={thStyle}>Current Role</th>
-             <th style={thStyle}>ID</th>
+            <th style={thStyle}>ID</th>
             <th style={thStyle}>Assigned Role</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
@@ -808,7 +947,7 @@ function SectionPending({
                 </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
-                   <td style={tdStyle}>
+                <td style={tdStyle}>
                   {user.roleSpecificId || (
                     <span style={{ color: "#6B7280", fontStyle: "italic" }}>
                       N/A
@@ -848,9 +987,12 @@ function SectionPending({
                 </td>
                 <td style={tdStyle}>
                   <button
-                    onClick={() => handleBlock(user._id, user.status || "active")}
+                    onClick={() =>
+                      handleBlock(user._id, user.status || "active")
+                    }
                     style={{
-                      backgroundColor: user.status === "blocked" ? "#10B981" : "#EF4444",
+                      backgroundColor:
+                        user.status === "blocked" ? "#10B981" : "#EF4444",
                       color: "white",
                       border: "none",
                       borderRadius: 6,
@@ -1173,12 +1315,8 @@ function SectionEvents({
   handleDeleteEvent,
 }) {
   const navigate = useNavigate();
-  const filteredEvents = events
-    .filter((event) => (eventFilter ? event.eventType === eventFilter : true))
-    .filter((event) => {
-      const title = event.title || event.name || "";
-      return title.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+  // Server already filtered events, so just use them directly
+  const filteredEvents = events;
 
   return (
     <>
@@ -1208,11 +1346,16 @@ function SectionEvents({
               return (
                 <tr key={event._id} style={trStyle}>
                   <td style={tdStyle}>
-                    {event.eventType.charAt(0).toUpperCase() +
-                      event.eventType.slice(1)}
+                    {(event.type || event.eventType || "event")
+                      .charAt(0)
+                      .toUpperCase() +
+                      (event.type || event.eventType || "event").slice(1)}
                   </td>
                   <td style={tdStyle}>
-                    {event.title || event.name || event.workshopName||"Untitled"}
+                    {event.title ||
+                      event.name ||
+                      event.workshopName ||
+                      "Untitled"}
                   </td>
                   <td style={tdStyle}>
                     {event.location || event.venue || "—"}
@@ -1244,7 +1387,10 @@ function SectionEvents({
                     </button>
                     <button
                       onClick={() =>
-                        handleDeleteEvent(event._id, event.eventType)
+                        handleDeleteEvent(
+                          event._id,
+                          event.type || event.eventType
+                        )
                       }
                       style={{
                         ...deleteBtnStyle,
@@ -1253,7 +1399,9 @@ function SectionEvents({
                           : {}),
                       }}
                       disabled={processingId === event._id}
-                      title={`Delete this ${event.eventType}`}
+                      title={`Delete this ${
+                        event.type || event.eventType || "event"
+                      }`}
                     >
                       {processingId === event._id ? "Processing..." : "Delete"}
                     </button>
@@ -1315,7 +1463,14 @@ function MailPopup({ onClose, onSend, sending, mailTarget, previewLink }) {
   );
 }
 
-function CreateUserPopup({ role, formData, setFormData, onClose, onCreate, sending }) {
+function CreateUserPopup({
+  role,
+  formData,
+  setFormData,
+  onClose,
+  onCreate,
+  sending,
+}) {
   return (
     <div style={popupOverlayStyle}>
       <div style={popupHeaderStyle}>
@@ -1337,9 +1492,7 @@ function CreateUserPopup({ role, formData, setFormData, onClose, onCreate, sendi
           <input
             type="text"
             value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             style={inputStyle}
             placeholder="Enter full name"
           />

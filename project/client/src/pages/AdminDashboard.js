@@ -2,27 +2,78 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, Bell, User, LogOut } from "lucide-react";
 import workshopPlaceholder from "../images/workshop.png";
-import { workshopAPI } from "../api/workshopApi";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [workshops, setWorkshops] = useState([]);
+  const [allEvents, setAllEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Debounced search to avoid filtering on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
+  const [debouncedLocation, setDebouncedLocation] = useState(locationFilter);
+  const [debouncedDate, setDebouncedDate] = useState(dateFilter);
+
   useEffect(() => {
-    const fetchWorkshops = async () => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    return () => clearTimeout(t);
+  }, [professorFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocation(locationFilter), 300);
+    return () => clearTimeout(t);
+  }, [locationFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
+    return () => clearTimeout(t);
+  }, [dateFilter]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
       try {
-        const data = await workshopAPI.getAllWorkshops();
-        setWorkshops(data);
+        const params = new URLSearchParams();
+
+        // Combine search and professor filter into search param
+        const searchParts = [];
+        if (debouncedSearch) searchParts.push(debouncedSearch);
+        if (debouncedProfessor) searchParts.push(debouncedProfessor);
+        if (searchParts.length > 0) {
+          params.append("search", searchParts.join(" "));
+        }
+
+        if (debouncedLocation) params.append("location", debouncedLocation);
+        if (eventTypeFilter !== "All") {
+          params.append("type", eventTypeFilter.toUpperCase());
+        }
+        if (debouncedDate) params.append("date", debouncedDate);
+
+        const response = await fetch(
+          `http://localhost:3001/api/events/all?${params.toString()}`
+        );
+        const data = await response.json();
+        setAllEvents(Array.isArray(data) ? data : data.events || []);
       } catch (error) {
-        console.error("Error fetching workshops:", error);
+        console.error("Error fetching events:", error);
+        setAllEvents([]);
       }
     };
-    fetchWorkshops();
-  }, []);
+    fetchEvents();
+  }, [
+    debouncedSearch,
+    debouncedProfessor,
+    debouncedLocation,
+    eventTypeFilter,
+    debouncedDate,
+  ]);
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
@@ -31,18 +82,8 @@ const AdminDashboard = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  // Filter workshops based on search and type
-  const filteredWorkshops = workshops.filter((w) => {
-    const matchesSearch =
-      w.workshopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.professorsParticipating.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (w.type?.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    const matchesType =
-      eventTypeFilter === "All" || (w.type || "N/A") === eventTypeFilter;
-
-    return matchesSearch && matchesType;
-  });
+  // Server already filtered events based on debounced params
+  const filteredEvents = allEvents;
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
@@ -96,23 +137,44 @@ const AdminDashboard = () => {
           </button>
 
           {/* Search + filter */}
-          <div className="relative flex-1 max-w-md flex items-center">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
-              size={20}
+          <div className="relative flex-1 max-w-2xl flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Professor..."
+              value={professorFilter}
+              onChange={(e) => setProfessorFilter(e.target.value)}
+              className="px-3 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] w-32"
             />
             <input
               type="text"
-              placeholder="Search by workshop or professor"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+              placeholder="Location..."
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="px-3 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] w-32"
             />
-
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+            />
             <EventTypeDropdown
-  selected={eventTypeFilter}
-  onChange={setEventTypeFilter}
-/>
+              selected={eventTypeFilter}
+              onChange={setEventTypeFilter}
+            />
           </div>
 
           {/* Notification bell & user */}
@@ -126,118 +188,61 @@ const AdminDashboard = () => {
           </div>
         </header>
 
-        {/* Workshops grid */}
+        {/* Events grid */}
         <main className="p-4 md:p-8">
           <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
             Available Events
           </h1>
-          <main className="p-4 md:p-8">
-  <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
-    Available Events
-  </h1>
 
-  {/* Search and Type Filter */}
-  <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-    <input
-      type="text"
-      placeholder="Search by name, professor, or type"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      className="flex-1 border border-[#c8d9e6] rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
-    />
-
-    <div className="flex gap-2 flex-wrap">
-      {["All", "Workshop", "Trip", "Bazaar", "Conference"].map((type) => (
-        <button
-          key={type}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            eventTypeFilter === type
-              ? "bg-[#567c8d] text-white"
-              : "bg-[#f5efeb] text-[#567c8d] border border-[#c8d9e6]"
-          }`}
-          onClick={() => setEventTypeFilter(type)}
-        >
-          {type}
-        </button>
-      ))}
-    </div>
-  </div>
-
-  {/* Filtered events grid */}
-  {filteredWorkshops.length === 0 ? (
-    <p className="text-[#567c8d]">No events found.</p>
-  ) : (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-      {filteredWorkshops.map((w) => (
-        <div
-          key={w._id}
-          className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
-        >
-          <div className="h-40 w-full bg-gray-200">
-            <img
-              src={w.image || workshopPlaceholder}
-              alt={w.workshopName}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="p-4">
-            <h3 className="font-semibold text-lg text-[#2f4156] truncate">
-              {w.workshopName}
-            </h3>
-            <p className="text-sm text-[#567c8d] truncate">
-              Professors: {w.professorsParticipating}
-            </p>
-            <p className="text-sm text-[#567c8d] truncate">
-              Type: {w.type || "N/A"}
-            </p>
-            <p className="text-sm text-[#567c8d] truncate">
-              Date: {new Date(w.startDate).toLocaleDateString()}
-            </p>
-
-            {/* Details Button */}
-            <button
-              onClick={() => navigate(`/events/${w._id}`)}
-              className="mt-2 w-full bg-[#c88585] hover:bg-[#b87575] text-white py-2 rounded-lg font-medium transition-colors"
-            >
-              Details
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</main>
-
-
-          {filteredWorkshops.length === 0 ? (
+          {/* Filtered events grid */}
+          {filteredEvents.length === 0 ? (
             <p className="text-[#567c8d]">No events found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredWorkshops.map((w) => (
+              {filteredEvents.map((event) => (
                 <div
-                  key={w._id}
+                  key={event._id}
                   className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <div className="h-40 w-full bg-gray-200">
                     <img
-                      src={w.image || workshopPlaceholder}
-                      alt={w.workshopName}
+                      src={event.image || workshopPlaceholder}
+                      alt={event.title || event.name || event.workshopName}
                       className="h-full w-full object-cover"
                     />
                   </div>
                   <div className="p-4">
+                    <div className="text-xs font-semibold text-[#567c8d] mb-1">
+                      {event.type?.toUpperCase() || "EVENT"}
+                    </div>
                     <h3 className="font-semibold text-lg text-[#2f4156] truncate">
-                      {w.workshopName}
+                      {event.title ||
+                        event.name ||
+                        event.workshopName ||
+                        "Untitled"}
                     </h3>
+                    {event.professorsParticipating && (
+                      <p className="text-sm text-[#567c8d] truncate">
+                        Professors: {event.professorsParticipating}
+                      </p>
+                    )}
                     <p className="text-sm text-[#567c8d] truncate">
-                      Professors: {w.professorsParticipating}
+                      Location: {event.location || event.venue || "N/A"}
                     </p>
                     <p className="text-sm text-[#567c8d] truncate">
-                      Type: {w.type || "N/A"}
+                      Date:{" "}
+                      {event.startDateTime
+                        ? new Date(event.startDateTime).toLocaleDateString()
+                        : "N/A"}
                     </p>
-                    <p className="text-sm text-[#567c8d] truncate">
-                      Date: {new Date(w.startDate).toLocaleDateString()}
-                    </p>
+
+                    {/* Details Button */}
+                    <button
+                      onClick={() => navigate(`/events/${event._id}`)}
+                      className="mt-2 w-full bg-[#c88585] hover:bg-[#b87575] text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Details
+                    </button>
                   </div>
                 </div>
               ))}
