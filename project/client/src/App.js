@@ -20,6 +20,7 @@ import EventDetails from "./pages/EventDetails";
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
 import GymSessionsForRegister from "./pages/GymSessionsForRegister";
+import VerifiedUsersPage from "./pages/VerifiedUsers";
 
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
@@ -85,6 +86,7 @@ function App() {
         <Route path="/signup/vendor" element={<VendorSignup />} />
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/verified-users" element={<VerifiedUsersPage />} />
         {/* New Admin Users View Page */}
         <Route path="/admin/users" element={<UsersView />} />
         {/* Dashboards */}

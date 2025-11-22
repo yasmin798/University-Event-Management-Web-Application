@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu } from "lucide-react";
+import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
 
 export default function Admin() {
-  const navigate = useNavigate();
-
-  // ===== Sidebar UI state =====
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const closeSidebar = () => setIsSidebarOpen(false);
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+  // Sidebar is provided by FixedSidebarAdmin (shared design with Events office)
 
   // ===== State =====
   const [verifiedUsers, setVerifiedUsers] = useState([]);
@@ -447,11 +443,7 @@ export default function Admin() {
     setPreviewLink(`${API_ORIGIN}/api/verify/${token}-for-${userId}`);
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/");
-    }
-  };
+  // Logout is handled inside the FixedSidebarAdmin component
 
   const handleCreateUser = async () => {
     if (
@@ -505,72 +497,16 @@ export default function Admin() {
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Overlay for Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="px-4 pb-4">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4">
-          {/* Admin quick links */}
-          <div className="mt-2 flex flex-col gap-2">
-            <button
-              onClick={() => navigate("/admin/attendees-report")}
-              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
-              title="View attendees report"
-            >
-              Attendees Report
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/sales-report")}
-              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
-              title="View sales report"
-            >
-              Sales Report
-            </button>
-          </div>
-        </nav>
-      </div>
+      {/* Fixed admin sidebar (shared design with events office) */}
+      <FixedSidebarAdmin />
 
       {/* Main Section */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" style={{ marginLeft: "260px" }}>
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={toggleSidebar}
+                onClick={() => {}}
                 className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
               >
                 <Menu size={24} className="text-[#2f4156]" />
@@ -629,12 +565,6 @@ export default function Admin() {
                 Errors fetching events: {eventFetchErrors.join("; ")}
               </p>
             )}
-
-            <SectionVerified
-              verifiedUsers={verifiedUsers}
-              handleDelete={handleDelete}
-              handleBlock={handleBlock}
-            />
 
             <SectionPending
               pendingUsers={pendingUsers}

@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Search } from "lucide-react";
+import /* useNavigate */ "react-router-dom";
+import { Menu, Search } from "lucide-react";
+import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
 import "../events.theme.css";
 
 const API_ORIGIN =
   process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
 
 export default function AdminAttendeesReport() {
-  const navigate = useNavigate();
   const [data, setData] = useState({ totalAttendees: 0, breakdown: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // fixed sidebar used (shared admin sidebar component)
   const [filters, setFilters] = useState({
     eventType: "",
     eventName: "",
@@ -32,11 +32,32 @@ export default function AdminAttendeesReport() {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      const txt = await res.text().catch(() => null);
+      let body = null;
+      try {
+        body = txt ? JSON.parse(txt) : null;
+      } catch (err) {
+        body = null;
+      }
+
       if (!res.ok) {
-        const txt = await res.text().catch(() => null);
+        if (res.status === 401 || res.status === 403) {
+          const detected = body?.detectedRole || null;
+          if (detected) {
+            localStorage.removeItem("token");
+            setError(
+              `Access denied: your account role is '${detected}'. Please log in as admin or staff to view this page.`
+            );
+            setLoading(false);
+            return;
+          }
+        }
+
         throw new Error(`${res.status} ${txt || res.statusText}`);
       }
-      const reportData = await res.json();
+
+      const reportData = body || (await res.json());
       setData(reportData);
       setError(null);
     } catch (err) {
@@ -63,84 +84,19 @@ export default function AdminAttendeesReport() {
     return () => clearTimeout(delay);
   }, [filters.eventName]);
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/");
-    }
-  };
+  // logout handled by FixedSidebarAdmin
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Overlay for Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="px-4 pb-4">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4">
-          <div className="mt-4">
-            <button
-              onClick={() => navigate("/admin")}
-              className="w-full text-left bg-transparent text-white py-2 px-3 rounded hover:bg-[#3b4f63] mb-2"
-            >
-              Admin Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/admin/attendees-report")}
-              className="w-full text-left bg-transparent text-white py-2 px-3 rounded hover:bg-[#3b4f63] font-semibold mb-2"
-            >
-              Attendees Report
-            </button>
-            <button
-              onClick={() => navigate("/admin/sales-report")}
-              className="w-full text-left bg-transparent text-white py-2 px-3 rounded hover:bg-[#3b4f63]"
-            >
-              Sales Report
-            </button>
-          </div>
-        </nav>
-      </div>
+      {/* Fixed admin sidebar (shared component) */}
+      <FixedSidebarAdmin />
 
       {/* Main Section */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" style={{ marginLeft: "260px" }}>
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-              >
+              <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
                 <Menu size={24} className="text-[#2f4156]" />
               </button>
               <h1 className="text-xl font-bold text-[#2f4156]">
