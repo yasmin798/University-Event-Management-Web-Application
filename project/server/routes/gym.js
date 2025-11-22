@@ -2,6 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const GymSession = require("../models/GymSession");
+const sendEmail = require("../models/Email");
+
 
 // GET all sessions
 router.get("/", async (req, res) => {
@@ -25,35 +27,68 @@ router.post("/", async (req, res) => {
   }
 });
 
-// DELETE a session by ID
-router.delete("/:id", async (req, res) => {
+// ----------------------------------------
+// EDIT SESSION
+// ----------------------------------------
+router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await GymSession.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ error: "Gym session not found" });
-    res.json({ success: true, message: "🗑️ Gym session deleted successfully!" });
+
+    const updated = await GymSession.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+
+    if (!updated) return res.status(404).json({ error: "Session not found" });
+
+    // Notify all registered users
+    if (updated.registeredUsers && updated.registeredUsers.length > 0) {
+      for (const user of updated.registeredUsers) {
+
+        await sendEmail(
+          user.email,
+          "Gym Session Updated",
+          `The gym session you registered for has been updated.\n\nNew Details:\nDate: ${updated.date}\nTime: ${updated.time}\nDuration: ${updated.duration} mins\nType: ${updated.type}`
+        );
+
+      }
+    }
+
+    res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: "Failed to delete gym session" });
+    console.error("Edit error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 
-// UPDATE a session by ID
-router.put("/:id", async (req, res) => {
+// ----------------------------------------
+// DELETE SESSION
+// ----------------------------------------
+router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { date, time, duration } = req.body;
 
-    const updated = await GymSession.findByIdAndUpdate(
-      id,
-      { date, time, duration },
-      { new: true }
-    );
+    const session = await GymSession.findById(id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
 
-    if (!updated) return res.status(404).json({ error: "Gym session not found" });
-    res.json(updated);
+
+    // Notify before deleting
+    if (session.registeredUsers && session.registeredUsers.length > 0) {
+      for (const user of session.registeredUsers) {
+        await sendEmail(
+          user.email,
+          "Gym Session Cancelled",
+          `The gym session you registered for has been cancelled.\n\nDetails:\nDate: ${session.date}\nTime: ${session.time}\nType: ${session.type}`
+        );
+      }
+    }
+
+    await GymSession.findByIdAndDelete(id);
+
+    res.json({ message: "Session deleted and emails sent" });
   } catch (err) {
-    res.status(500).json({ error: "Failed to update gym session" });
+    console.error("Delete error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
