@@ -647,7 +647,26 @@ export default function Admin() {
           </button>
         </div>
 
-        <nav className="flex-1 px-4"></nav>
+        <nav className="flex-1 px-4">
+          {/* Admin quick links */}
+          <div className="mt-2 flex flex-col gap-2">
+            <button
+              onClick={() => navigate("/admin/attendees-report")}
+              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
+              title="View attendees report"
+            >
+              Attendees Report
+            </button>
+
+            <button
+              onClick={() => navigate("/admin/sales-report")}
+              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
+              title="View sales report"
+            >
+              Sales Report
+            </button>
+          </div>
+        </nav>
       </div>
 
       {/* Main Section */}
