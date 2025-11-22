@@ -169,10 +169,10 @@ const StudentDashboard = () => {
   };
 
   const handleCourtsAvailability = () => {
-    navigate("/courts-availability");
-
+    navigate("/student/courts-availability");
     closeSidebar();
-  };
+};
+
 
   const handleGymSessions = () => {
     navigate("/gym-sessions");
