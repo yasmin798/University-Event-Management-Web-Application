@@ -1221,6 +1221,29 @@ export default function EventsHome() {
               ×
             </button>
 
+            {/* ADD THIS BUTTON — SEE ALL REVIEWS */}
+<button
+  onClick={() => {
+    const reviewsUrl = `/event-reviews/${viewEvent._id}`;
+    window.open(reviewsUrl, "_blank");
+  }}
+  style={{
+    position: "absolute",
+    top: "10px",
+    right: "50px",
+    background: "#567c8d",
+    color: "white",
+    border: "none",
+    padding: "8px 16px",
+    borderRadius: "8px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    fontSize: "14px",
+  }}
+>
+  Ratings & Reviews
+</button>
+
             <h2 style={{ fontWeight: 800, marginBottom: "10px" }}>
               {viewEvent.title || viewEvent.name}
             </h2>

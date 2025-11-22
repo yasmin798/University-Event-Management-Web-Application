@@ -74,6 +74,8 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 
 import CreatePoll from "./pages/CreatePollFromBooths";
 
+import EventReviewsPage from "./pages/EventReviewsPage";  // Adjust path if needed (e.g., "../pages/EventReviewsPage")
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -182,6 +184,8 @@ function App() {
         />
         
         <Route path="/create-poll" element={<CreatePoll />} />
+
+        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
 
 
         {/* 404 */}
