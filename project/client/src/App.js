@@ -66,6 +66,9 @@ import MyApplications from "./pages/MyApplications";
 
 import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
 
+
+import CreatePoll from "./pages/CreatePollFromBooths";
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -167,6 +170,10 @@ function App() {
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
         />
+        
+        <Route path="/create-poll" element={<CreatePoll />} />
+
+
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

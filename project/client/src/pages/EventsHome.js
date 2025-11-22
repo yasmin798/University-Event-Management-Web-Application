@@ -575,6 +575,21 @@ export default function EventsHome() {
             >
               Create Gym
             </button>
+            {/* NEW BUTTON — CREATE POLL */}
+  <button
+    className="btn"
+    style={{
+      background: "var(--teal)",   // Purple to stand out
+      color: "white",
+      borderRadius: "10px",
+      fontWeight: "700",
+      padding: "8px 14px",
+      boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
+    }}
+    onClick={() => navigate("/create-poll")}
+  >
+    Create Poll
+  </button>
             {chooseOpen && (
               <div
                 className="confirm-overlay"

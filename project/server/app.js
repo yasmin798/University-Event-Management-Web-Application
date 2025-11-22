@@ -465,8 +465,12 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Internal Server Error" });
 });
 
+// app.js or server.js – put it with your other routes
+app.use("/api/polls", require("./routes/pollRoutes"));
+
 /* ---------------- Start ---------------- */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Backend running at http://localhost:${PORT}`)
 );
+
