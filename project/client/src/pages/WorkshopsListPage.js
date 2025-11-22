@@ -102,66 +102,64 @@ const currentProfessorId = user?.id;
       </div>
 
       <div className="max-w-6xl mx-auto p-8">
-        {/* 🔹 Filter controls */}
-        <div className="flex flex-wrap gap-4 mb-6">
-          {/* All / Mine / Others */}
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filter === 'all'
-                ? 'bg-[#567c8d] text-white'
-                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-            }`}
-          >
-            All ({workshops.length})
-          </button>
-          <button
-            onClick={() => setFilter('mine')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filter === 'mine'
-                ? 'bg-[#567c8d] text-white'
-                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-            }`}
-          >
-            My Workshops ({workshops.filter((w) => w.createdBy === currentProfessorId).length})
-          </button>
-          <button
-            onClick={() => setFilter('others')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filter === 'others'
-                ? 'bg-[#567c8d] text-white'
-                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-            }`}
-          >
-            Other Professors ({workshops.filter((w) => w.createdBy !== currentProfessorId).length})
-          </button>
+        {/* 🔹 Filter controls - UPDATED (counts removed) */}
+<div className="flex flex-wrap gap-4 mb-6">
+  <button
+    onClick={() => setFilter('all')}
+    className={`px-4 py-2 rounded-lg transition-colors ${
+      filter === 'all'
+        ? 'bg-[#567c8d] text-white'
+        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+    }`}
+  >
+    All
+  </button>
+  <button
+    onClick={() => setFilter('mine')}
+    className={`px-4 py-2 rounded-lg transition-colors ${
+      filter === 'mine'
+        ? 'bg-[#567c8d] text-white'
+        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+    }`}
+  >
+    My Workshops
+  </button>
+  <button
+    onClick={() => setFilter('others')}
+    className={`px-4 py-2 rounded-lg transition-colors ${
+      filter === 'others'
+        ? 'bg-[#567c8d] text-white'
+        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+    }`}
+  >
+    Other Professors
+  </button>
 
-          {/* 🔹 Location dropdown */}
-          <select
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
-          >
-            {uniqueLocations.map((loc) => (
-              <option key={loc} value={loc}>
-                {loc === 'all' ? 'All Locations' : loc}
-              </option>
-            ))}
-          </select>
+  {/* Location & Faculty dropdowns stay the same */}
+  <select
+    value={locationFilter}
+    onChange={(e) => setLocationFilter(e.target.value)}
+    className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+  >
+    {uniqueLocations.map((loc) => (
+      <option key={loc} value={loc}>
+        {loc === 'all' ? 'All Locations' : loc}
+      </option>
+    ))}
+  </select>
 
-          {/* 🔹 Faculty dropdown */}
-          <select
-            value={facultyFilter}
-            onChange={(e) => setFacultyFilter(e.target.value)}
-            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
-          >
-            {faculties.map((fac) => (
-              <option key={fac.value} value={fac.value}>
-                {fac.label}
-              </option>
-            ))}
-          </select>
-        </div>
+  <select
+    value={facultyFilter}
+    onChange={(e) => setFacultyFilter(e.target.value)}
+    className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+  >
+    {faculties.map((fac) => (
+      <option key={fac.value} value={fac.value}>
+        {fac.label}
+      </option>
+    ))}
+  </select>
+</div>
 
         {/* 🔹 Workshop Cards */}
         {filteredWorkshops.length === 0 ? (
@@ -194,22 +192,28 @@ const currentProfessorId = user?.id;
                     </h3>
                     <p className="text-[#567c8d] mb-4">{workshop.shortDescription}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
-                      className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
-                      title="Edit"
-                    >
-                      <Edit size={18} className="text-[#567c8d]" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(workshop._id)}
-                      className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={18} className="text-red-500" />
-                    </button>
-                  </div>
+                  {/* Edit / Delete buttons - show ONLY when filter === 'mine' OR when the workshop belongs to the current user */}
+<div className="flex gap-2">
+  {/* Show buttons only for the current professor's workshops */}
+  {workshop.createdBy === currentProfessorId && (
+    <>
+      <button
+        onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
+        className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
+        title="Edit"
+      >
+        <Edit size={18} className="text-[#567c8d]" />
+      </button>
+      <button
+        onClick={() => handleDelete(workshop._id)}
+        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+        title="Delete"
+      >
+        <Trash2 size={18} className="text-red-500" />
+      </button>
+    </>
+  )}
+</div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
