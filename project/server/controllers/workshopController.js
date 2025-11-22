@@ -4,19 +4,54 @@ const Notification = require("../models/Notification");
 const User = require("../models/User"); // Add this import
 
 // CREATE Workshop
+// CREATE Workshop + SEND NOTIFICATIONS TO BOTH SIDES
 exports.createWorkshop = async (req, res) => {
   try {
-    // Make sure protect middleware has run and attached req.user
     const workshop = new Workshop({
       ...req.body,
-      createdBy: req.user._id, // ✅ store as ObjectId
-      status: "pending",       // optional: default status
+      createdBy: req.user._id,
+      status: "pending",
     });
 
     await workshop.save();
 
+    // Get professor name
+    const professor = await User.findById(req.user._id).select("name");
+    const profName = professor?.name || "A professor";
+
+    // Get all events officers
+    const eventsOfficers = await User.find({ role: "events_officer" });
+
+    const notificationsToCreate = [];
+
+    // 1. Notify every Events Officer
+    for (const officer of eventsOfficers) {
+      notificationsToCreate.push({
+        userId: officer._id,
+        message: `New workshop submitted: "${workshop.workshopName}" by Prof. ${profName}`,
+        type: "workshop_submission",
+        workshopId: workshop._id,
+        unread: true,
+      });
+    }
+
+    // 2. Notify the Professor himself (confirmation)
+    notificationsToCreate.push({
+      userId: req.user._id,
+      message: `Your workshop "${workshop.workshopName}" has been submitted and is pending approval`,
+      type: "workshop_submitted",
+      workshopId: workshop._id,
+      unread: true,
+    });
+
+    // Save all notifications at once
+    if (notificationsToCreate.length > 0) {
+      await Notification.insertMany(notificationsToCreate);
+    }
+
     res.status(201).json(workshop);
   } catch (err) {
+    console.error("CREATE WORKSHOP ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };

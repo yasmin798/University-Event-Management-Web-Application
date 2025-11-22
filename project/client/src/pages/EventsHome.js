@@ -1,7 +1,7 @@
 // client/src/pages/EventsHome.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, Bell, X } from "lucide-react";
 
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
@@ -58,8 +58,15 @@ export default function EventsHome() {
   const navigate = useNavigate();
   const [viewEvent, setViewEvent] = useState(null);
   const [conferences, setConferences] = useState([]);
+  // ────────────────────── NOTIFICATIONS ──────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef(null);
 
+  
   const [searchTerm, setSearchTerm] = useState("");
+  
   const [filter, setFilter] = useState("All");
   const [params] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
@@ -147,6 +154,7 @@ export default function EventsHome() {
           image: conferenceImg,
         }));
       setConferences(normalizedConferences);
+      
 
       setWorkshops(normalized);
     } catch (err) {
@@ -186,12 +194,9 @@ export default function EventsHome() {
       setLoading(false)
     );
   }, [fetchWorkshops, fetchBooths]);
+  
 
-  const refreshAll = useCallback(() => {
-    fetchWorkshops();
-    fetchBooths();
-    refreshEvents();
-  }, [fetchWorkshops, fetchBooths, refreshEvents]);
+ 
   function normalizeConferenceFields(conf) {
     return {
       ...conf,
@@ -203,6 +208,68 @@ export default function EventsHome() {
       extraResources: conf.extraResources || "",
     };
   }
+
+  // FETCH NOTIFICATIONS (optimized + no spam)
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+        setUnreadCount(data.filter(n => n.unread).length);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  }, []);
+  const refreshAll = useCallback(() => {
+    if (document.visibilityState === "visible") {
+      fetchWorkshops();
+      fetchBooths();
+      refreshEvents();
+      fetchNotifications();
+    }
+  }, [fetchWorkshops, fetchBooths, refreshEvents, fetchNotifications]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshAll();
+    }, 8000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshAll(); // instant refresh when user comes back
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshAll]);
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Initial load (only once)
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+  
 
   const allEvents = [
     ...otherEvents.filter((e) => !["CONFERENCE"].includes(e.type)),
@@ -223,7 +290,9 @@ export default function EventsHome() {
         return;
       }
       setToast({ open: true, text: "Event deleted successfully!" });
-      refreshAll();
+      fetchWorkshops();
+fetchBooths();
+refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Delete error:", e);
       setToast({ open: true, text: "Network error: Could not delete" });
@@ -243,7 +312,9 @@ export default function EventsHome() {
         return;
       }
       setToast({ open: true, text: `Workshop ${newStatus} successfully!` });
-      refreshAll();
+    fetchWorkshops();
+fetchBooths();
+refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Update error:", e);
       setToast({ open: true, text: "Network error: Could not update" });
@@ -271,7 +342,9 @@ export default function EventsHome() {
       }
       setToast({ open: true, text: "Edit request sent successfully!" });
       setEditRequest({ open: false, workshopId: null, message: "" });
-      refreshAll();
+   fetchWorkshops();
+fetchBooths();
+refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Edit request error:", e);
       setToast({ open: true, text: "Network error: Could not send request" });
@@ -459,7 +532,92 @@ export default function EventsHome() {
           </div>
 
           {/* RIGHT: action buttons */}
-          <div style={{ display: "flex", gap: "10px" }}>
+                    {/* RIGHT: Bell + Action Buttons */}
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            {/* BELL ICON WITH BADGE */}
+            <div ref={bellRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowNotifications(prev => !prev)}
+                style={{ background: "none", border: "none", cursor: "pointer" }}
+              >
+                <Bell size={28} color="#2f4156" />
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: "-6px",
+                    right: "-6px",
+                    background: "#e74c3c",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "22px",
+                    height: "22px",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* NOTIFICATION DROPDOWN */}
+              {showNotifications && (
+                <div style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "100%",
+                  width: "380px",
+                  background: "white",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+                  marginTop: "8px",
+                  zIndex: 1000,
+                  maxHeight: "80vh",
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    padding: "14px 16px",
+                    background: "#2f4156",
+                    color: "white",
+                    fontWeight: "bold",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}>
+                    Notifications
+                    <button onClick={() => setShowNotifications(false)} style={{ background: "none", border: "none", color: "white", cursor: "pointer" }}>
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
+                        No new notifications
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div key={n._id} style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid #eee",
+                          backgroundColor: n.unread ? "#fff4f0" : "white",
+                        }}>
+                          <p style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: n.unread ? "600" : "500" }}>
+                            {n.message}
+                          </p>
+                          <p style={{ margin: 0, fontSize: "11px", color: "#888" }}>
+                            {new Date(n.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Original buttons */}
             <button
               className="btn"
               style={{
@@ -486,70 +644,32 @@ export default function EventsHome() {
             >
               Create Gym
             </button>
-            {chooseOpen && (
-              <div
-                className="confirm-overlay"
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <div
-                  style={{
-                    background: "white",
-                    padding: "20px",
-                    borderRadius: "12px",
-                    width: "320px",
-                    boxShadow: "var(--shadow)",
-                  }}
-                >
-                  <h3 style={{ marginBottom: "15px", textAlign: "center" }}>
-                    Select Event Type
-                  </h3>
-                  <select
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      marginBottom: "15px",
-                    }}
-                    value={chosenType}
-                    onChange={(e) => setChosenType(e.target.value)}
-                  >
-                    <option value="">-- choose --</option>
-                    <option value="bazaar">Bazaar</option>
-                    <option value="conference">Conference</option>
-                    <option value="trip">Trip</option>
-                  </select>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button
-                      className="btn btn-outline"
-                      style={{ flex: 1 }}
-                      onClick={() => setChooseOpen(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="btn"
-                      style={{ flex: 1 }}
-                      onClick={() => {
-                        if (!chosenType) return alert("Pick a type");
-                        if (chosenType === "bazaar")
-                          navigate("/bazaars/create");
-                        if (chosenType === "conference")
-                          navigate("/conferences/create");
-                        if (chosenType === "trip") navigate("/trips/create");
-                      }}
-                    >
-                      Continue
-                    </button>
-                  </div>
+          </div>
+
+          {/* Keep your chooseOpen modal exactly as it is */}
+          {chooseOpen && (
+            <div className="confirm-overlay" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <div style={{ background: "white", padding: "20px", borderRadius: "12px", width: "320px", boxShadow: "var(--shadow)" }}>
+                <h3 style={{ marginBottom: "15px", textAlign: "center" }}>Select Event Type</h3>
+                <select style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ccc", marginBottom: "15px" }}
+                  value={chosenType} onChange={(e) => setChosenType(e.target.value)}>
+                  <option value="">-- choose --</option>
+                  <option value="bazaar">Bazaar</option>
+                  <option value="conference">Conference</option>
+                  <option value="trip">Trip</option>
+                </select>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setChooseOpen(false)}>Cancel</button>
+                  <button className="btn" style={{ flex: 1 }} onClick={() => {
+                    if (!chosenType) return alert("Pick a type");
+                    if (chosenType === "bazaar") navigate("/bazaars/create");
+                    if (chosenType === "conference") navigate("/conferences/create");
+                    if (chosenType === "trip") navigate("/trips/create");
+                  }}>Continue</button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </header>
 
         {/* ---- Welcome + Pagination Row ---- */}
