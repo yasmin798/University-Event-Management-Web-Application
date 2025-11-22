@@ -394,7 +394,7 @@ const StudentDashboard = () => {
               }
               className="px-4 py-2 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg transition-colors whitespace-nowrap"
             >
-              Sort {sortOrder === "asc" ? "Ascending" : "Descending"} Date
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
             </button>
           </div>
 

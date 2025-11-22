@@ -24,6 +24,7 @@ const StaffDashboard = () => {
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [locationFilter, setLocationFilter] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [favorites, setFavorites] = useState([]);
   // Debounced inputs to avoid refetching on every keystroke
@@ -108,7 +109,7 @@ const StaffDashboard = () => {
         if (eventTypeFilter && eventTypeFilter !== "All")
           params.append("type", eventTypeFilter);
         params.append("sort", "startDateTime");
-        params.append("order", "asc");
+        params.append("order", sortOrder);
 
         const res = await fetch(`/api/events/all?${params}`);
         if (res.ok) {
@@ -126,7 +127,13 @@ const StaffDashboard = () => {
     };
 
     fetchEvents();
-  }, [debouncedSearch, eventTypeFilter, locationFilter, debouncedProfessor]);
+  }, [
+    debouncedSearch,
+    eventTypeFilter,
+    locationFilter,
+    debouncedProfessor,
+    sortOrder,
+  ]);
 
   const loading = serverLoading;
 
@@ -311,6 +318,14 @@ const StaffDashboard = () => {
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="px-3 py-2 border border-[#c8d9e6] rounded-lg"
               />
+              <button
+                onClick={() =>
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
+                className="px-4 py-2 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg transition-colors whitespace-nowrap"
+              >
+                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4 ml-4">

@@ -12,6 +12,7 @@ const AdminDashboard = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Debounced search to avoid filtering on every keystroke
@@ -55,6 +56,8 @@ const AdminDashboard = () => {
           params.append("type", eventTypeFilter.toUpperCase());
         }
         if (debouncedDate) params.append("date", debouncedDate);
+        params.append("sort", "startDateTime");
+        params.append("order", sortOrder);
 
         const response = await fetch(
           `http://localhost:3001/api/events/all?${params.toString()}`
@@ -73,6 +76,7 @@ const AdminDashboard = () => {
     debouncedLocation,
     eventTypeFilter,
     debouncedDate,
+    sortOrder,
   ]);
 
   const handleLogout = () => {
@@ -175,6 +179,14 @@ const AdminDashboard = () => {
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}
             />
+            <button
+              onClick={() =>
+                setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+            >
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+            </button>
           </div>
 
           {/* Notification bell & user */}

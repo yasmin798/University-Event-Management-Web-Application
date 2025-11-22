@@ -24,6 +24,7 @@ const TaDashboard = () => {
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [locationFilter, setLocationFilter] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // workshops/booths removed in favor of server-side unified events
   const [favorites, setFavorites] = useState([]);
@@ -79,7 +80,7 @@ const TaDashboard = () => {
         if (eventTypeFilter && eventTypeFilter !== "All")
           params.append("type", eventTypeFilter);
         params.append("sort", "startDateTime");
-        params.append("order", "asc");
+        params.append("order", sortOrder);
 
         const res = await fetch(`/api/events/all?${params}`);
         if (res.ok) {
@@ -97,7 +98,13 @@ const TaDashboard = () => {
     };
 
     fetchEvents();
-  }, [debouncedSearch, eventTypeFilter, locationFilter, debouncedProfessor]);
+  }, [
+    debouncedSearch,
+    eventTypeFilter,
+    locationFilter,
+    debouncedProfessor,
+    sortOrder,
+  ]);
 
   // Toggle favorite
   const toggleFavorite = async (eventId) => {
@@ -317,6 +324,14 @@ const TaDashboard = () => {
               onChange={(e) => setLocationFilter(e.target.value)}
               className="px-3 py-2 border border-[#c8d9e6] rounded-lg"
             />
+            <button
+              onClick={() =>
+                setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+            >
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+            </button>
           </div>
           <div className="flex items-center gap-2 md:gap-4 ml-4">
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
