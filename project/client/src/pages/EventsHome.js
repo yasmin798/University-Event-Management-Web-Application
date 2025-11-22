@@ -48,6 +48,7 @@ function isEditable(startIso) {
 export default function EventsHome() {
   const navigate = useNavigate();
   const [viewEvent, setViewEvent] = useState(null);
+  const [conferences, setConferences] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("All");
@@ -86,19 +87,58 @@ export default function EventsHome() {
       const data = await workshopAPI.getAllWorkshops();
       const normalized = data.map((w) => ({
         _id: w._id,
-        title: w.workshopName,
-        description: w.shortDescription || w.description || "",
-        location: w.location || "",
-        startDateTime: w.startDate,
-        endDateTime: w.endDate,
+        title: w.workshopName || w.title,
+        type: "WORKSHOP",
+
+        // WORKSHOP FIELDS
+        location: w.location,
+        startDateTime: w.startDateTime, // ← REAL BACKEND FIELD
+        endDateTime: w.endDateTime, // ← REAL BACKEND FIELD
         registrationDeadline: w.registrationDeadline,
         capacity: w.capacity,
-        budget: w.budget,
+
+        description: w.shortDescription || "",
+        agenda: w.fullAgenda || w.agenda,
+        facultyResponsible: w.facultyResponsible,
+        professorsParticipating: w.professorsParticipating,
+        budget: w.requiredBudget || w.budget,
+        fundingSource: w.fundingSource,
+        extraResources: w.extraResources,
+
         status: w.status,
         registrations: w.registeredUsers || [],
-        type: "WORKSHOP",
         image: w.image || workshopPlaceholder,
       }));
+      const normalizedConferences = otherEvents
+        .filter((ev) => ev.type === "CONFERENCE")
+        .map((c) => ({
+          _id: c._id,
+          type: "CONFERENCE",
+
+          title: c.name || c.title,
+          name: c.name || c.title,
+
+          location: c.location,
+          startDateTime: c.startDateTime, // ← correct backend field
+          endDateTime: c.endDateTime, // ← correct backend field
+
+          shortDescription: c.shortDescription,
+          description: c.shortDescription, // for view modal fallback
+
+          agenda: c.fullAgenda || c.agenda,
+          website: c.website,
+
+          budget: c.requiredBudget || c.budget,
+          fundingSource: c.fundingSource,
+          extraResources: c.extraResources,
+
+          registrations: c.registeredUsers || [],
+          status: c.status,
+
+          image: conferenceImg,
+        }));
+      setConferences(normalizedConferences);
+
       setWorkshops(normalized);
     } catch (err) {
       console.error("Error fetching workshops:", err);
@@ -111,12 +151,14 @@ export default function EventsHome() {
       const data = await boothAPI.getAllBooths();
       const normalized = data.map((b) => ({
         _id: b._id,
-        title: b.name || `Booth ${b._id}`,
+        title: b.attendees?.[0]?.name || `Booth ${b._id}`,
+
         description: b.description || "",
         startDateTime: b.startDate,
         endDateTime: b.endDate,
         boothSize: b.boothSize,
-        duration: b.duration,
+        duration: b.durationWeeks,
+
         platformSlot: b.platformSlot,
         status: b.status,
         attendees: b.attendees,
@@ -141,9 +183,21 @@ export default function EventsHome() {
     fetchBooths();
     refreshEvents();
   }, [fetchWorkshops, fetchBooths, refreshEvents]);
+  function normalizeConferenceFields(conf) {
+    return {
+      ...conf,
+      shortDescription: conf.shortDescription || "",
+      fullAgenda: conf.fullAgenda || "",
+      website: conf.website || "",
+      requiredBudget: conf.requiredBudget || "",
+      fundingSource: conf.fundingSource || "",
+      extraResources: conf.extraResources || "",
+    };
+  }
 
   const allEvents = [
-    ...otherEvents.filter((e) => !e.status || e.status === "published"),
+    ...otherEvents.filter((e) => !["CONFERENCE"].includes(e.type)),
+    ...conferences,
     ...workshops,
     ...booths,
   ];
@@ -623,6 +677,14 @@ export default function EventsHome() {
                     {/* BAZAAR */}
                     {isBazaar && (
                       <>
+                        {/* VIEW + EXPORT (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
                         {editable ? (
                           <button
                             className="btn"
@@ -635,6 +697,7 @@ export default function EventsHome() {
                             Edit
                           </button>
                         )}
+
                         <button
                           className="btn btn-danger"
                           disabled={ev.registrations?.length > 0}
@@ -647,6 +710,7 @@ export default function EventsHome() {
                         >
                           Delete
                         </button>
+
                         <button
                           className="btn"
                           style={{ background: "var(--teal)", color: "white" }}
@@ -656,13 +720,7 @@ export default function EventsHome() {
                         >
                           Vendor Requests
                         </button>
-                        {/* VIEW + EXPORT */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
@@ -676,6 +734,14 @@ export default function EventsHome() {
                     {/* TRIP */}
                     {isTrip && (
                       <>
+                        {/* VIEW + EXPORT (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
                         {editable ? (
                           <button
                             className="btn"
@@ -688,19 +754,14 @@ export default function EventsHome() {
                             Edit
                           </button>
                         )}
+
                         <button
                           className="btn btn-danger"
                           onClick={() => handleDelete(id, "trips")}
                         >
                           Delete
                         </button>
-                        {/* VIEW + EXPORT */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
@@ -714,6 +775,14 @@ export default function EventsHome() {
                     {/* CONFERENCE */}
                     {isConference && (
                       <>
+                        {/* VIEW ONLY (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
                         {editable ? (
                           <button
                             className="btn"
@@ -726,18 +795,12 @@ export default function EventsHome() {
                             Edit
                           </button>
                         )}
+
                         <button
                           className="btn btn-danger"
                           onClick={() => handleDelete(id, "conferences")}
                         >
                           Delete
-                        </button>
-                        {/* VIEW ONLY (no export here in your code) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
                         </button>
                       </>
                     )}
@@ -745,6 +808,14 @@ export default function EventsHome() {
                     {/* WORKSHOP */}
                     {isWorkshop && (
                       <>
+                        {/* VIEW ALWAYS (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
                         {(ev.status === "pending" ||
                           ev.status === "edits_requested") && (
                           <>
@@ -768,13 +839,7 @@ export default function EventsHome() {
                             </button>
                           </>
                         )}
-                        {/* VIEW ALWAYS */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+
                         {ev.status === "published" && (
                           <button
                             className="btn"
@@ -790,18 +855,19 @@ export default function EventsHome() {
                     {/* BOOTH */}
                     {isBooth && (
                       <>
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(id, "booths")}
-                        >
-                          Delete
-                        </button>
-                        {/* VIEW + EXPORT */}
+                        {/* VIEW + EXPORT (View first) */}
                         <button
                           className="btn btn-outline"
                           onClick={() => setViewEvent(ev)}
                         >
                           View Details
+                        </button>
+
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "booths")}
+                        >
+                          Delete
                         </button>
                         <button
                           className="btn"
@@ -953,85 +1019,205 @@ export default function EventsHome() {
               </div>
             )}
 
-            {viewEvent.location && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Location:</strong> {viewEvent.location}
-              </div>
+            {/* ==================== BAZAAR ==================== */}
+            {viewEvent.type === "BAZAAR" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+                <div>
+                  <strong>Registered:</strong>{" "}
+                  {viewEvent.registrations?.length || 0}
+                </div>
+
+                {viewEvent.description && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.description}</p>
+                  </div>
+                )}
+              </>
             )}
 
-            {viewEvent.startDateTime && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
-              </div>
+            {/* ==================== CONFERENCE ==================== */}
+            {viewEvent.type === "CONFERENCE" && (
+              <>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Full Agenda:</strong> {viewEvent.agenda || "—"}
+                </div>
+
+                <div>
+                  <strong>Conference Website:</strong>{" "}
+                  {viewEvent.website ? (
+                    <a
+                      href={viewEvent.website}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {viewEvent.website}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </div>
+
+                <div>
+                  <strong>Required Budget:</strong>{" "}
+                  {formatMoney(viewEvent.budget)}
+                </div>
+                <div>
+                  <strong>Funding Source:</strong>{" "}
+                  {viewEvent.fundingSource || "—"}
+                </div>
+                <div>
+                  <strong>Extra Resources:</strong>{" "}
+                  {viewEvent.extraResources || "—"}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Short Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
             )}
 
-            {viewEvent.endDateTime && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
-              </div>
+            {/* ==================== TRIP ==================== */}
+            {viewEvent.type === "TRIP" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Price:</strong> {formatMoney(viewEvent.price)}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+                </div>
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
             )}
 
-            {viewEvent.registrationDeadline && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Registration Deadline:</strong>{" "}
-                {formatDate(viewEvent.registrationDeadline)}
-              </div>
+            {/* ==================== WORKSHOP ==================== */}
+            {viewEvent.type === "WORKSHOP" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Full Agenda:</strong> {viewEvent.agenda || "—"}
+                </div>
+                <div>
+                  <strong>Faculty Responsible:</strong>{" "}
+                  {viewEvent.facultyResponsible || "—"}
+                </div>
+                <div>
+                  <strong>Professors Participating:</strong>{" "}
+                  {viewEvent.professorsParticipating || "—"}
+                </div>
+                <div>
+                  <strong>Required Budget:</strong>{" "}
+                  {formatMoney(viewEvent.budget)}
+                </div>
+                <div>
+                  <strong>Funding Source:</strong>{" "}
+                  {viewEvent.fundingSource || "—"}
+                </div>
+                <div>
+                  <strong>Extra Resources:</strong>{" "}
+                  {viewEvent.extraResources || "—"}
+                </div>
+                <div>
+                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+                </div>
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
             )}
 
-            {viewEvent.capacity && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Capacity:</strong> {viewEvent.capacity}
-              </div>
-            )}
+            {/* ==================== BOOTH ==================== */}
+            {viewEvent.type === "BOOTH" && (
+              <>
+                <div>
+                  <strong>Booth Size:</strong> {viewEvent.boothSize || "—"}
+                </div>
+                <div>
+                  <strong>Platform Slot:</strong>{" "}
+                  {viewEvent.platformSlot || "—"}
+                </div>
+                <div>
+                  <strong>Status:</strong> {viewEvent.status || "—"}
+                </div>
 
-            {viewEvent.boothSize && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Booth Size:</strong> {viewEvent.boothSize}
-              </div>
-            )}
+                <div>
+                  <strong>Attendee Names:</strong>{" "}
+                  {viewEvent.attendees?.length
+                    ? viewEvent.attendees.map((a) => a.name || "—").join(", ")
+                    : "None"}
+                </div>
 
-            {viewEvent.duration && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Duration:</strong> {viewEvent.duration}
-              </div>
-            )}
+                <div>
+                  <strong>Attendee Emails:</strong>{" "}
+                  {viewEvent.attendees?.length
+                    ? viewEvent.attendees.map((a) => a.email).join(", ")
+                    : "None"}
+                </div>
 
-            {viewEvent.platformSlot && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Platform Slot:</strong> {viewEvent.platformSlot}
-              </div>
-            )}
-
-            {viewEvent.price && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Price:</strong> {formatMoney(viewEvent.price)}
-              </div>
-            )}
-
-            {viewEvent.budget && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Budget:</strong> {formatMoney(viewEvent.budget)}
-              </div>
-            )}
-
-            {viewEvent.status && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Status:</strong> {viewEvent.status}
-              </div>
-            )}
-
-            {viewEvent.registrations && viewEvent.registrations.length > 0 && (
-              <div style={{ marginBottom: "10px" }}>
-                <strong>Registered Participants:</strong>{" "}
-                {viewEvent.registrations.length}
-              </div>
-            )}
-
-            {viewEvent.description && (
-              <div style={{ marginTop: "10px" }}>
-                <strong>Description:</strong>
-                <p>{viewEvent.description}</p>
-              </div>
+                {viewEvent.description && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.description}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
