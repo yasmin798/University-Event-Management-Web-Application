@@ -25,6 +25,9 @@ const vendorApplicationsRoute = require("./routes/vendorApplications");
 const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
 const reservationRoutes = require("./routes/reservationRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const stripeWebhook = require("./webhooks/stripeWebhook");
+const reviewsRouter = require("./routes/reviews"); // or whatever the file is called
 // Models
 const User = require("./models/User");
 
