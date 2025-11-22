@@ -44,19 +44,32 @@ exports.login = async (req, res) => {
 
     // Find user
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user) {
+      console.log(`Login attempt for non-existent email: ${email}`);
+      return res.status(400).json({ message: "User not found" });
+    }
 
     // Check verification for non-vendors
     if (
-  !user.isVerified &&
-  !["vendor", "admin", "events_office"].includes(user.role)
-) {
-  return res.status(401).json({ message: "User not verified" });
-}
+      !user.isVerified &&
+      !["vendor", "admin", "events_office"].includes(user.role)
+    ) {
+      console.log(`Unverified login attempt for ${email} (role: ${user.role})`);
+      return res.status(401).json({ message: "User not verified" });
+    }
+
+    // Block check: Reject if status is blocked
+    if (user.status === "blocked") {
+      console.log(`Blocked user login attempt: ${email}`);
+      return res.status(403).json({ error: "Account is blocked. Please contact admin." });
+    }
 
     // Check password
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+    if (!isMatch) {
+      console.log(`Invalid password attempt for ${email}`);
+      return res.status(400).json({ message: "Incorrect password" });
+    }
 
     // Create JWT token
     const token = jwt.sign(
@@ -64,6 +77,8 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
+
+    console.log(`Successful login for ${email} (role: ${user.role})`);
 
     res.status(200).json({
       token,
@@ -76,10 +91,10 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // ================= Logout =================
 // In JWT auth, logout is handled on the client side by deleting the token
