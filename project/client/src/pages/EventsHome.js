@@ -1,14 +1,19 @@
 // client/src/pages/EventsHome.js
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { LogOut, Search } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search } from "lucide-react";
+
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
 import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
 import { useServerEvents } from "../hooks/useServerEvents";
 import Sidebar from "../components/Sidebar";
-import { useSearchParams } from "react-router-dom";
+
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 
 // --- helpers (put above the component) ---
 function formatDate(iso) {
@@ -22,6 +27,7 @@ function formatDate(iso) {
     minute: "2-digit",
   });
 }
+
 function formatMoney(n) {
   if (n == null || n === "") return "—";
   const num = Number(n);
@@ -32,6 +38,7 @@ function formatMoney(n) {
     maximumFractionDigits: 0,
   }).format(num);
 }
+
 // editable if the event hasn't started yet
 function isEditable(startIso) {
   if (!startIso) return true;
@@ -40,6 +47,8 @@ function isEditable(startIso) {
 
 export default function EventsHome() {
   const navigate = useNavigate();
+  const [viewEvent, setViewEvent] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("All");
   const [params] = useSearchParams();
@@ -63,6 +72,7 @@ export default function EventsHome() {
     workshopId: null,
     message: "",
   });
+
   const {
     events: otherEvents,
     loading: otherLoading,
@@ -140,10 +150,6 @@ export default function EventsHome() {
 
   const isLoading = loading || otherLoading;
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) navigate("/");
-  };
-
   // ====== API actions ======
   const doDelete = async (id, eventType) => {
     try {
@@ -208,47 +214,51 @@ export default function EventsHome() {
       setToast({ open: true, text: "Network error: Could not send request" });
     }
   };
-const exportAttendees = async (eventId, eventType) => {
-  if (!eventId) return;
 
-  const typeMap = {
-    bazaars: "bazaars",
-    trips: "trips",
-    workshops: "workshops",
-    booths: "booths",
-  };
+  const exportAttendees = async (eventId, eventType) => {
+    if (!eventId) return;
 
-  const apiPath = typeMap[eventType];
-  if (!apiPath) {
-    setToast({ open: true, text: "Export not supported" });
-    return;
-  }
+    const typeMap = {
+      bazaars: "bazaars",
+      trips: "trips",
+      workshops: "workshops",
+      booths: "booths",
+    };
 
-  try {
-    const res = await fetch(`/api/events/${eventId}/registrations?format=xlsx`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      setToast({ open: true, text: err || "Export failed" });
+    const apiPath = typeMap[eventType];
+    if (!apiPath) {
+      setToast({ open: true, text: "Export not supported" });
       return;
     }
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `attendees_${eventType}_${eventId}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    setToast({ open: true, text: "Exported successfully!" });
-  } catch (e) {
-    setToast({ open: true, text: "Export error" });
-  }
-};
+    try {
+      const res = await fetch(
+        `/api/events/${eventId}/registrations?format=xlsx`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.text();
+        setToast({ open: true, text: err || "Export failed" });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendees_${eventType}_${eventId}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setToast({ open: true, text: "Exported successfully!" });
+    } catch (e) {
+      setToast({ open: true, text: "Export error" });
+    }
+  };
 
   // ====== Handlers for modals & buttons ======
   const handleDelete = (id, eventType) => {
@@ -296,11 +306,12 @@ const exportAttendees = async (eventId, eventType) => {
 
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
----------------------------------------------------- */
+  ---------------------------------------------------- */
   const filteredEvents = allEvents.filter((ev) => {
     const title = ev.title?.toLowerCase() || "";
     const matchSearch = title.includes(searchTerm.toLowerCase());
     const matchType = filter === "All" || ev.type === filter;
+
     return matchSearch && matchType;
   });
 
@@ -315,7 +326,7 @@ const exportAttendees = async (eventId, eventType) => {
 
   /* ----------------------------------------------------
    2) THEN: PAGINATION
----------------------------------------------------- */
+  ---------------------------------------------------- */
   const ITEMS_PER_PAGE = 6;
   const indexOfLast = currentPage * ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - ITEMS_PER_PAGE;
@@ -323,7 +334,7 @@ const exportAttendees = async (eventId, eventType) => {
 
   /* ----------------------------------------------------
    3) NUMBER OF PAGES
----------------------------------------------------- */
+  ---------------------------------------------------- */
   const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
 
   return (
@@ -540,8 +551,21 @@ const exportAttendees = async (eventId, eventType) => {
             No events found.
           </p>
         ) : (
-          <div className="grid">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "24px",
+              alignItems: "stretch",
+            }}
+          >
             {currentEvents.map((ev) => {
+              let cardImage = workshopImg;
+              if (ev.type === "TRIP") cardImage = tripImg;
+              if (ev.type === "BAZAAR") cardImage = bazaarImg;
+              if (ev.type === "CONFERENCE") cardImage = conferenceImg;
+              if (ev.type === "WORKSHOP") cardImage = workshopImg;
+
               const id = ev._id;
               const typeRaw = ev.type?.toUpperCase() || "EVENT";
               const title = ev.title || ev.name || "Untitled";
@@ -553,183 +577,57 @@ const exportAttendees = async (eventId, eventType) => {
               const isConference = typeRaw === "CONFERENCE";
 
               return (
-                <article key={id} className="card">
-                  <div className="chip">{typeRaw}</div>
+                <article
+                  key={id}
+                  className="card"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    height: "430px", // 🔥 all cards same height
+                  }}
+                >
+                  {/* TOP CONTENT */}
+                  <div style={{ flexGrow: 1 }}>
+                    <img
+                      src={cardImage}
+                      alt={ev.title}
+                      style={{
+                        width: "100%",
+                        height: "150px",
+                        objectFit: "cover",
+                        borderRadius: "12px",
+                        marginBottom: "12px",
+                      }}
+                    />
 
-                  {/* NAME */}
-                  <div className="kv">
-                    <span className="k">Name:</span>
-                    <span className="v">{title}</span>
+                    <div className="chip">{typeRaw}</div>
+
+                    {/* NAME ONLY on card */}
+                    <div className="kv">
+                      <span className="k">Name:</span>
+                      <span className="v">{title}</span>
+                    </div>
                   </div>
 
-                  {/* LOCATION */}
-                  {ev.location && (
-                    <div className="kv">
-                      <span className="k">Location:</span>
-                      <span className="v">{ev.location}</span>
-                    </div>
-                  )}
-
-                  {/* START */}
-                  {ev.startDateTime && (
-                    <div className="kv kv-date">
-                      <span className="k">Starts:</span>
-                      <span className="v">{formatDate(ev.startDateTime)}</span>
-                    </div>
-                  )}
-
-                  {/* END */}
-                  {ev.endDateTime && (
-                    <div className="kv kv-date">
-                      <span className="k">Ends:</span>
-                      <span className="v">{formatDate(ev.endDateTime)}</span>
-                    </div>
-                  )}
-
-                  {/* WORKSHOP FIELDS */}
-                  {isWorkshop && (
-                    <>
-                      {ev.registrationDeadline && (
-                        <div className="kv kv-date">
-                          <span className="k">Registration Deadline:</span>
-                          <span className="v">
-                            {formatDate(ev.registrationDeadline)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="kv">
-                        <span className="k">Capacity:</span>
-                        <span className="v">{ev.capacity ?? "—"}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Budget:</span>
-                        <span className="v">{formatMoney(ev.budget)}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Status:</span>
-                        <span className="v">{ev.status}</span>
-                      </div>
-                      {ev.registrations?.length > 0 && (
-                        <div className="kv">
-                          <span className="k">Registered:</span>
-                          <span className="v">
-                            {ev.registrations.length} participants
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* BOOTH FIELDS */}
-                  {isBooth && (
-                    <>
-                      <div className="kv">
-                        <span className="k">Booth Size:</span>
-                        <span className="v">{ev.boothSize || "—"}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Duration:</span>
-                        <span className="v">
-                          {ev.duration || ev.durationWeeks} week(s)
-                        </span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Platform Slot:</span>
-                        <span className="v">{ev.platformSlot || "—"}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Status:</span>
-                        <span className="v">{ev.status || "—"}</span>
-                      </div>
-                      {Array.isArray(ev.attendees) &&
-                        ev.attendees.length > 0 && (
-                          <div className="kv">
-                            <span className="k">Attendees:</span>
-                            <span className="v">
-                              {ev.attendees.map((a) => a.name || a).join(", ")}
-                            </span>
-                          </div>
-                        )}
-                    </>
-                  )}
-
-                  {/* BAZAAR FIELDS */}
-                  {isBazaar && (
-                    <>
-                      {ev.registrationDeadline && (
-                        <div className="kv kv-date">
-                          <span className="k">Registration Deadline:</span>
-                          <span className="v">
-                            {formatDate(ev.registrationDeadline)}
-                          </span>
-                        </div>
-                      )}
-                      {ev.registrations?.length > 0 && (
-                        <div className="kv">
-                          <span className="k">Registered:</span>
-                          <span className="v">
-                            {ev.registrations.length} participants
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* CONFERENCE FIELDS */}
-                  {isConference && ev.website && (
-                    <div className="kv">
-                      <span className="k">Website:</span>
-                      <span className="v">
-                        <a
-                          href={ev.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {ev.website}
-                        </a>
-                      </span>
-                    </div>
-                  )}
-
-                  {/* TRIP FIELDS */}
-                  {isTrip && (
-                    <>
-                      {ev.price && (
-                        <div className="kv">
-                          <span className="k">Price:</span>
-                          <span className="v">{formatMoney(ev.price)}</span>
-                        </div>
-                      )}
-                      {ev.capacity && (
-                        <div className="kv">
-                          <span className="k">Capacity:</span>
-                          <span className="v">{ev.capacity}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* DESCRIPTION */}
-                  {(ev.description || ev.shortDescription) && (
-                    <p
-                      style={{
-                        marginTop: "8px",
-                        fontSize: "14px",
-                        lineHeight: "1.4",
-                        color: "var(--text-normal)",
-                      }}
-                    >
-                      {ev.description || ev.shortDescription}
-                    </p>
-                  )}
-
                   {/* ========================= ACTION BUTTONS ========================= */}
-                  <div className="actions" style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <div
+                    className="actions"
+                    style={{
+                      marginTop: "12px",
+                      display: "flex",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     {/* BAZAAR */}
                     {isBazaar && (
                       <>
                         {editable ? (
-                          <button className="btn" onClick={() => navigate(`/bazaars/${id}`)}>
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/bazaars/${id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -752,9 +650,18 @@ const exportAttendees = async (eventId, eventType) => {
                         <button
                           className="btn"
                           style={{ background: "var(--teal)", color: "white" }}
-                          onClick={() => navigate(`/bazaars/${id}/vendor-requests`)}
+                          onClick={() =>
+                            navigate(`/bazaars/${id}/vendor-requests`)
+                          }
                         >
                           Vendor Requests
+                        </button>
+                        {/* VIEW + EXPORT */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
                         </button>
                         <button
                           className="btn"
@@ -770,7 +677,10 @@ const exportAttendees = async (eventId, eventType) => {
                     {isTrip && (
                       <>
                         {editable ? (
-                          <button className="btn" onClick={() => navigate(`/trips/${id}`)}>
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/trips/${id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -778,8 +688,18 @@ const exportAttendees = async (eventId, eventType) => {
                             Edit
                           </button>
                         )}
-                        <button className="btn btn-danger" onClick={() => handleDelete(id, "trips")}>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "trips")}
+                        >
                           Delete
+                        </button>
+                        {/* VIEW + EXPORT */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
                         </button>
                         <button
                           className="btn"
@@ -795,7 +715,10 @@ const exportAttendees = async (eventId, eventType) => {
                     {isConference && (
                       <>
                         {editable ? (
-                          <button className="btn" onClick={() => navigate(`/conferences/${id}`)}>
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/conferences/${id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -803,8 +726,18 @@ const exportAttendees = async (eventId, eventType) => {
                             Edit
                           </button>
                         )}
-                        <button className="btn btn-danger" onClick={() => handleDelete(id, "conferences")}>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "conferences")}
+                        >
                           Delete
+                        </button>
+                        {/* VIEW ONLY (no export here in your code) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
                         </button>
                       </>
                     )}
@@ -812,19 +745,36 @@ const exportAttendees = async (eventId, eventType) => {
                     {/* WORKSHOP */}
                     {isWorkshop && (
                       <>
-                        {(ev.status === "pending" || ev.status === "edits_requested") && (
+                        {(ev.status === "pending" ||
+                          ev.status === "edits_requested") && (
                           <>
-                            <button className="btn btn-success" onClick={() => handleAccept(id)}>
+                            <button
+                              className="btn btn-success"
+                              onClick={() => handleAccept(id)}
+                            >
                               Accept & Publish
                             </button>
-                            <button className="btn btn-danger" onClick={() => handleReject(id)}>
+                            <button
+                              className="btn btn-danger"
+                              onClick={() => handleReject(id)}
+                            >
                               Reject
                             </button>
-                            <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
+                            <button
+                              className="btn btn-warning"
+                              onClick={() => handleRequestEdits(id)}
+                            >
                               Request Edits
                             </button>
                           </>
                         )}
+                        {/* VIEW ALWAYS */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
                         {ev.status === "published" && (
                           <button
                             className="btn"
@@ -840,8 +790,18 @@ const exportAttendees = async (eventId, eventType) => {
                     {/* BOOTH */}
                     {isBooth && (
                       <>
-                        <button className="btn btn-danger" onClick={() => handleDelete(id, "booths")}>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "booths")}
+                        >
                           Delete
+                        </button>
+                        {/* VIEW + EXPORT */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
                         </button>
                         <button
                           className="btn"
@@ -940,6 +900,140 @@ const exportAttendees = async (eventId, eventType) => {
           >
             ×
           </button>
+        </div>
+      )}
+
+      {/* ===== VIEW DETAILS MODAL ===== */}
+      {viewEvent && (
+        <div
+          className="confirm-overlay"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              background: "white",
+              padding: "24px",
+              width: "500px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              borderRadius: "12px",
+              position: "relative",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+            }}
+          >
+            {/* CLOSE BUTTON */}
+            <button
+              onClick={() => setViewEvent(null)}
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "10px",
+                fontSize: "20px",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
+
+            <h2 style={{ fontWeight: 800, marginBottom: "10px" }}>
+              {viewEvent.title || viewEvent.name}
+            </h2>
+
+            {viewEvent.type && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Type:</strong> {viewEvent.type}
+              </div>
+            )}
+
+            {viewEvent.location && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Location:</strong> {viewEvent.location}
+              </div>
+            )}
+
+            {viewEvent.startDateTime && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+              </div>
+            )}
+
+            {viewEvent.endDateTime && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+              </div>
+            )}
+
+            {viewEvent.registrationDeadline && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Registration Deadline:</strong>{" "}
+                {formatDate(viewEvent.registrationDeadline)}
+              </div>
+            )}
+
+            {viewEvent.capacity && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Capacity:</strong> {viewEvent.capacity}
+              </div>
+            )}
+
+            {viewEvent.boothSize && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Booth Size:</strong> {viewEvent.boothSize}
+              </div>
+            )}
+
+            {viewEvent.duration && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Duration:</strong> {viewEvent.duration}
+              </div>
+            )}
+
+            {viewEvent.platformSlot && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Platform Slot:</strong> {viewEvent.platformSlot}
+              </div>
+            )}
+
+            {viewEvent.price && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Price:</strong> {formatMoney(viewEvent.price)}
+              </div>
+            )}
+
+            {viewEvent.budget && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Budget:</strong> {formatMoney(viewEvent.budget)}
+              </div>
+            )}
+
+            {viewEvent.status && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Status:</strong> {viewEvent.status}
+              </div>
+            )}
+
+            {viewEvent.registrations && viewEvent.registrations.length > 0 && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Registered Participants:</strong>{" "}
+                {viewEvent.registrations.length}
+              </div>
+            )}
+
+            {viewEvent.description && (
+              <div style={{ marginTop: "10px" }}>
+                <strong>Description:</strong>
+                <p>{viewEvent.description}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
