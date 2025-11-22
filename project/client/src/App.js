@@ -65,6 +65,9 @@ import MyApplications from "./pages/MyApplications";
 
 import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
 
+import PaymentPage from "./pages/PaymentPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -152,6 +155,9 @@ function App() {
         <Route path="/gym-sessions" element={<GymSessions />} />
         <Route path="/gym-sessions-register" element={<GymSessionsForRegister />} />
         <Route path="/gym-manager" element={<GymManager />} />
+        <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<div>Payment Cancelled</div>} />
 
         <Route
           path="/my-applications/:status"

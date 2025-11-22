@@ -25,6 +25,8 @@ const vendorApplicationsRoute = require("./routes/vendorApplications");
 const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
 const reservationRoutes = require("./routes/reservationRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const stripeWebhook = require("./webhooks/stripeWebhook");
 // Models
 const User = require("./models/User");
 
@@ -79,6 +81,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
 
 app.use("/api/reservations", reservationRoutes);
+app.use("/api/payments", paymentRoutes);// Raw body needed for Stripe signature
+app.post("/webhook/stripe", express.raw({ type: "application/json" }), stripeWebhook);
 
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";

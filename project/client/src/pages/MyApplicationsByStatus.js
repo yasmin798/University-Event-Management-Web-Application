@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import "../events.theme.css";
+import { CheckCircle } from "lucide-react";
 
 const API_ORIGIN = "http://localhost:3001";
 
@@ -56,7 +57,9 @@ export default function MyApplicationsByStatus() {
   }, [email, status]);
 
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
+const handlePayment = (applicationId, type) => {
+  navigate(`/payment?appId=${applicationId}&type=${type}`);
+};
   return (
     <div className="events-theme">
       <div className="container">
@@ -102,54 +105,84 @@ export default function MyApplicationsByStatus() {
         ) : (
           <>
             <section className="mb-8">
-              <h2 className="text-xl font-semibold mb-3">
-                Bazaar Applications
-              </h2>
-              {bazaars.length === 0 ? (
-                <p>No {status} bazaar applications found.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {bazaars.map((app) => (
-                    <li key={app._id} className="bg-white p-4 rounded shadow">
-                      <div className="font-semibold">
-                        {app.bazaar?.title || "Bazaar"}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {app.bazaar?.location} • Booth Size: {app.boothSize}
-                      </div>
-                      <div className="mt-1 text-sm">
-                        <strong>Status:</strong> {app.status}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+  <h2 className="text-xl font-semibold mb-3">
+    Bazaar Applications
+  </h2>
+  {bazaars.length === 0 ? (
+    <p>No {status} bazaar applications found.</p>
+  ) : (
+    <ul className="space-y-3">
+      {/* Bazaar Applications */}
+{bazaars.map((app) => (
+  <li key={app._id} className="bg-white p-4 rounded shadow">
+    <div className="font-semibold">{app.bazaar?.title || "Bazaar"}</div>
+    <div className="text-sm text-gray-600">
+      {app.bazaar?.location} • Booth Size: {app.boothSize}
+    </div>
+    <div className="mt-2 text-sm">
+      <strong>Status:</strong> <span className="text-green-600 font-medium">Accepted</span>
+    </div>
 
-            <section>
-              <h2 className="text-xl font-semibold mb-3">Booth Applications</h2>
-              {booths.length === 0 ? (
-                <p>No {status} booth applications found.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {booths.map((b) => (
-                    <li key={b._id} className="bg-white p-4 rounded shadow">
-                      <div className="font-semibold">
-                        {b.vendorName || "Booth"}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        <strong>Location:</strong> {b.platformSlot || "—"} •{" "}
-                        <strong>Duration:</strong> {b.durationWeeks || "—"}{" "}
-                        {" weeks"}
-                      </div>
-                      <div className="mt-1 text-sm">
-                        <strong>Status:</strong> {b.status}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+    {/* Pay Button Logic */}
+    <div className="mt-4">
+      {app.paid ? (
+        <button disabled className="bg-emerald-100 text-emerald-700 font-medium py-2 px-6 rounded-lg cursor-not-allowed flex items-center gap-2">
+          <CheckCircle size={18} />
+          Already Paid
+        </button>
+      ) : (
+        <button
+          onClick={() => handlePayment(app._id, "bazaar")}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-6 rounded-lg transition shadow-md"
+        >
+          Pay Now
+        </button>
+      )}
+    </div>
+  </li>
+))}
+    </ul>
+  )}
+</section>
+
+<section>
+  <h2 className="text-xl font-semibold mb-3">Booth Applications</h2>
+  {booths.length === 0 ? (
+    <p>No {status} booth applications found.</p>
+  ) : (
+    <ul className="space-y-3">
+      {/* Booth Applications */}
+{booths.map((b) => (
+  <li key={b._id} className="bg-white p-4 rounded shadow">
+    <div className="font-semibold">{b.vendorName || "Booth Application"}</div>
+    <div className="text-sm text-gray-600">
+      <strong>Location:</strong> {b.platformSlot || "—"} •{" "}
+      <strong>Duration:</strong> {b.durationWeeks || "—"} weeks
+    </div>
+    <div className="mt-2 text-sm">
+      <strong>Status:</strong> <span className="text-green-600 font-medium">Accepted</span>
+    </div>
+
+    <div className="mt-4">
+      {b.paid ? (
+        <button disabled className="bg-emerald-100 text-emerald-700 font-medium py-2 px-6 rounded-lg cursor-not-allowed flex items-center gap-2">
+          <CheckCircle size={18} />
+          Already Paid
+        </button>
+      ) : (
+        <button
+          onClick={() => handlePayment(b._id, "booth")}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-6 rounded-lg transition shadow-md"
+        >
+          Pay Now
+        </button>
+      )}
+    </div>
+  </li>
+))}
+    </ul>
+  )}
+</section>
           </>
         )}
       </div>
