@@ -7,7 +7,6 @@ import Sidebar from "../components/Sidebar";
 export default function GymManager() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
-
   const [sessions, setSessions] = useState([]);
 
   const fetchSessions = async () => {
@@ -28,9 +27,9 @@ export default function GymManager() {
   // ------------------------
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date();
-    const day = today.getDay(); // 0=Sunday
+    const day = today.getDay();
     const diff = today.getDate() - day;
-    return new Date(today.setDate(diff)); // Week start (Sun)
+    return new Date(today.setDate(diff)); // Week start (Sunday)
   });
 
   function formatDate(d) {
@@ -43,9 +42,7 @@ export default function GymManager() {
     return newDate;
   }
 
-  // ------------------------
-  // 🔵 Build 7-day visible week
-  // ------------------------
+  // Build 7-day week
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     return {
@@ -55,101 +52,99 @@ export default function GymManager() {
     };
   });
 
-  // ------------------------
-  // 🔵 Extract unique time slots
-  // ------------------------
+  // Unique time slots
   const timeSlots = Array.from(
     new Set(sessions.map((s) => s.time.slice(0, 5)))
   ).sort();
 
-  // ------------------------
-  // 🔵 Build timetable structure
-  // ------------------------
+  // Create timetable grid
   const timetable = {};
   days.forEach((d) => {
-    timetable[d.label] = {}; // FIXED
-    timeSlots.forEach((t) => {
-      timetable[d.label][t] = null; // FIXED
-    });
+    timetable[d.label] = {};
+    timeSlots.forEach((t) => (timetable[d.label][t] = null));
   });
 
-  // ------------------------
-  // 🔵 Insert sessions into table
-  // ------------------------
+  // Insert sessions
   sessions.forEach((s) => {
     const iso = s.date.split("T")[0];
     const time = s.time.slice(0, 5);
-
     const dayObj = days.find((d) => d.iso === iso);
-
-    if (dayObj) {
-      timetable[dayObj.label][time] = s; // FIXED
-    }
+    if (dayObj) timetable[dayObj.label][time] = s;
   });
 
+  // ------------------------
+  // DELETE
+  // ------------------------
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure?")) return;
     await axios.delete(`http://localhost:3000/api/gym/${id}`);
     fetchSessions();
   };
 
+  // ------------------------
+  // EDIT STATE
+  // ------------------------
+  const [editing, setEditing] = useState(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+
+  const startEdit = (session) => {
+    setEditing(session._id);
+    setEditDate(session.date.split("T")[0]);
+    setEditTime(session.time);
+    setEditDuration(session.duration);
+  };
+
+  const saveEdit = async () => {
+    await axios.put(`http://localhost:3000/api/gym/${editing}`, {
+      date: editDate,
+      time: editTime,
+      duration: editDuration,
+    });
+
+    setEditing(null);
+    fetchSessions();
+  };
+
   return (
-    <div
-      className="events-theme"
-      style={{ display: "flex", minHeight: "100vh" }}
-    >
+    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar filter={filter} setFilter={setFilter} />
 
-      {/* ===================== MAIN CONTENT ===================== */}
+      {/* MAIN CONTENT */}
       <main style={{ flex: 1, marginLeft: "260px", padding: "10px 24px" }}>
-        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>
-          Weekly Gym Timetable
-        </h1>
+        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>Weekly Gym Timetable</h1>
 
-        {/* 🔵 Month Header */}
+        {/* Month Header */}
         <div
           style={{
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             marginBottom: "8px",
-
             gap: "20px",
           }}
         >
           <button
             onClick={() => setWeekStart(addDays(weekStart, -7))}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: "22px",
-              cursor: "pointer",
-            }}
+            style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer" }}
           >
             ❮
           </button>
 
           <h2 style={{ margin: 0 }}>
-            {weekStart.toLocaleString("en-US", {
-              month: "long",
-              year: "numeric",
-            })}
+            {weekStart.toLocaleString("en-US", { month: "long", year: "numeric" })}
           </h2>
 
           <button
             onClick={() => setWeekStart(addDays(weekStart, 7))}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: "22px",
-              cursor: "pointer",
-            }}
+            style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer" }}
           >
             ❯
           </button>
         </div>
 
-        {/* ===================== TIMETABLE GRID ===================== */}
+        {/* TIMETABLE GRID */}
         <div style={{ overflowX: "auto", marginTop: "20px" }}>
           <table
             style={{
@@ -160,21 +155,13 @@ export default function GymManager() {
               overflow: "hidden",
             }}
           >
-            {/* HEADER ROW */}
             <thead>
               <tr style={{ background: "#e9f5ff" }}>
-                <th style={{ padding: "6px", border: "1px solid #ddd" }}>
-                  Day
-                </th>
-
+                <th style={{ padding: "6px", border: "1px solid #ddd" }}>Day</th>
                 {timeSlots.map((t) => (
                   <th
                     key={t}
-                    style={{
-                      padding: "6px",
-                      border: "1px solid #ddd",
-                      fontWeight: "700",
-                    }}
+                    style={{ padding: "6px", border: "1px solid #ddd", fontWeight: "700" }}
                   >
                     {t}
                   </th>
@@ -182,11 +169,10 @@ export default function GymManager() {
               </tr>
             </thead>
 
-            {/* BODY ROWS */}
             <tbody>
               {days.map((day) => (
                 <tr key={day.iso}>
-                  {/* Day + Date */}
+                  {/* Day */}
                   <td
                     style={{
                       padding: "6px",
@@ -195,13 +181,12 @@ export default function GymManager() {
                       background: "#f7faff",
                     }}
                   >
-                    {day.label} <br />
-                    <span style={{ fontSize: "14px", color: "#666" }}>
-                      {day.dateNum}
-                    </span>
+                    {day.label}
+                    <br />
+                    <span style={{ fontSize: "14px", color: "#666" }}>{day.dateNum}</span>
                   </td>
 
-                  {/* Timeslots */}
+                  {/* Sessions */}
                   {timeSlots.map((t) => {
                     const session = timetable[day.label][t];
 
@@ -223,7 +208,6 @@ export default function GymManager() {
                               padding: "10px",
                               borderRadius: "8px",
                               fontWeight: 600,
-                              cursor: "pointer",
                             }}
                           >
                             {session.type.toUpperCase()} <br />
@@ -231,17 +215,40 @@ export default function GymManager() {
                             <br />
                             Max: {session.maxParticipants}
                             <br />
-                            <button
-                              className="btn-danger"
+
+                            {/* EDIT + DELETE */}
+                            <div
                               style={{
-                                marginTop: "8px",
-                                padding: "4px 10px",
-                                fontSize: "12px",
-                              }}
-                              onClick={() => handleDelete(session._id)}
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  justifyContent: "center",
+                                  gap: "6px",
+                                  marginTop: "8px",
+                             }}
                             >
-                              Delete
-                            </button>
+                              <button
+                                style={{
+                                  padding: "4px 10px",
+                                  fontSize: "12px",
+                                  background: "#ffc107",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  color: "black",
+                                }}
+                                onClick={() => startEdit(session)}
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                className="btn-danger"
+                                style={{ padding: "4px 10px", fontSize: "12px" }}
+                                onClick={() => handleDelete(session._id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div
@@ -264,6 +271,123 @@ export default function GymManager() {
             </tbody>
           </table>
         </div>
+
+        {/* ---------------------------- */}
+        {/* EDIT POPUP MODAL */}
+        {/* ---------------------------- */}
+        {editing && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      background: "rgba(0,0,0,0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 999,
+    }}
+  >
+    <div
+      style={{
+        background: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        width: "340px",
+        boxShadow: "0 4px 15px rgba(0,0,0,0.25)",
+        animation: "fadeIn 0.2s ease",
+      }}
+    >
+      <h3 style={{ marginTop: 0, marginBottom: "15px" }}>Edit Session</h3>
+
+      <label style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>
+        Date
+      </label>
+      <input
+        type="date"
+        value={editDate}
+        onChange={(e) => setEditDate(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          borderRadius: "6px",
+          border: "1px solid #aaa",
+          marginBottom: "12px",
+          fontSize: "14px",
+        }}
+      />
+
+      <label style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>
+        Time
+      </label>
+      <input
+        type="time"
+        value={editTime}
+        onChange={(e) => setEditTime(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          borderRadius: "6px",
+          border: "1px solid #aaa",
+          marginBottom: "12px",
+          fontSize: "14px",
+        }}
+      />
+
+      <label style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>
+        Duration (minutes)
+      </label>
+      <input
+        type="number"
+        value={editDuration}
+        onChange={(e) => setEditDuration(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          borderRadius: "6px",
+          border: "1px solid #aaa",
+          marginBottom: "16px",
+          fontSize: "14px",
+        }}
+      />
+
+      <button
+        style={{
+          background: "#6C63FF",
+          padding: "10px",
+          border: "none",
+          color: "white",
+          borderRadius: "6px",
+          cursor: "pointer",
+          width: "100%",
+          marginBottom: "10px",
+          fontWeight: "600",
+        }}
+        onClick={saveEdit}
+      >
+        Save
+      </button>
+
+      <button
+        style={{
+          background: "#ddd",
+          padding: "10px",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+          width: "100%",
+          fontWeight: "600",
+        }}
+        onClick={() => setEditing(null)}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
       </main>
     </div>
   );
