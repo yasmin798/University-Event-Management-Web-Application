@@ -254,7 +254,7 @@ const ProfessorDashboard = () => {
     .sort((a, b) => {
       const dateA = new Date(a.startDateTime || a.startDate || a.date);
       const dateB = new Date(b.startDateTime || b.startDate || b.date);
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
     });
 
   const handleGymSessions = () => {

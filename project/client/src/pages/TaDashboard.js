@@ -80,7 +80,7 @@ const TaDashboard = () => {
         if (eventTypeFilter && eventTypeFilter !== "All")
           params.append("type", eventTypeFilter);
         params.append("sort", "startDateTime");
-        params.append("order", sortOrder);
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
         const res = await fetch(`/api/events/all?${params}`);
         if (res.ok) {
