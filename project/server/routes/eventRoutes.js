@@ -1,7 +1,7 @@
-// server/routes/eventRoutes.js
 const express = require("express");
 const router = express.Router();
 const ExcelJS = require("exceljs");
+const nodemailer = require("nodemailer");
 
 // Models
 const Bazaar = require("../models/Bazaar");
@@ -499,6 +499,58 @@ router.get("/events/:id", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch event" });
+  }
+});
+
+/* ------------------- SEND VENDOR NOTIFICATION ------------------- */
+router.post("/admin/send-vendor-notification", async (req, res) => {
+  try {
+    const { email, requestId, status, type, details } = req.body;
+
+    // Validate input
+    if (!email || !status || !type) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Set up Nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER, // eventitynotifications@gmail.com
+        pass: process.env.EMAIL_PASS, // App Password
+      },
+    });
+
+    // Email content
+    const isAccepted = status === 'accepted';
+    const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1);
+    let detailsString = Object.entries(details).map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`).join('\n');
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: `Your ${typeCapitalized} Vendor Request Has Been ${isAccepted ? 'Accepted' : 'Rejected'}`,
+      text: `
+        Dear Vendor,
+
+        Your ${type} vendor request (ID: ${requestId}) has been ${status}.
+
+        Details:
+        ${detailsString}
+
+        ${isAccepted ? 'We look forward to your participation!' : 'If you have any questions, please contact support.'}
+
+        — Admin Team
+      `,
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+
+    res.json({ message: 'Notification sent successfully' });
+  } catch (error) {
+    console.error('Error sending vendor notification:', error);
+    res.status(500).json({ error: 'Failed to send notification' });
   }
 });
 
