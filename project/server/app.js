@@ -24,6 +24,7 @@ const reportsRoutes = require("./routes/reports");
 const vendorApplicationsRoute = require("./routes/vendorApplications");
 const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
+const reservationRoutes = require("./routes/reservationRoutes");
 // Models
 const User = require("./models/User");
 
@@ -76,6 +77,8 @@ app.use("/api/booths", require("./routes/booths"));
 // Events routes (keep generic last)
 app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
+
+app.use("/api/reservations", reservationRoutes);
 
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";

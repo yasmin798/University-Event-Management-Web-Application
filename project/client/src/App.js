@@ -53,6 +53,9 @@ import SalesReport from "./pages/SalesReport";
 
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
+import ReserveCourt from "./pages/ReserveCourt";
+import CourtsAvailabilityWrapper from "./pages/CourtsAvailabilityWrapper";
+
 
 import BazaarApplicationForm from "./pages/BazaarApplicationForm";
 import BoothApplicationForm from "./pages/BoothApplicationForm";
@@ -141,7 +144,9 @@ function App() {
         <Route path="/vendors" element={<VendorsPage />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
-        <Route path="/courts-availability" element={<CourtsAvailability />} />
+        <Route path="/student/courts-availability"element={<CourtsAvailabilityWrapper />}/>
+        <Route path="/reserve/:courtId" element={<ReserveCourt />} />
+
         <Route path="/apply-booth" element={<BoothApplicationForm />} />
         <Route path="/gym-sessions" element={<GymSessions />} />
         <Route path="/gym-manager" element={<GymManager />} />
