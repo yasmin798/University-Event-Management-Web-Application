@@ -45,9 +45,12 @@ router.post("/bazaars", async (req, res) => {
     const b = req.body || {};
     const title = normTitle(b);
     if (!title) return res.status(400).json({ error: "title is required" });
-    if (!b.location) return res.status(400).json({ error: "location is required" });
+    if (!b.location)
+      return res.status(400).json({ error: "location is required" });
     if (!b.startDateTime || !b.endDateTime)
-      return res.status(400).json({ error: "startDateTime and endDateTime are required" });
+      return res
+        .status(400)
+        .json({ error: "startDateTime and endDateTime are required" });
 
     const doc = await Bazaar.create({
       type: "bazaar",
@@ -56,7 +59,9 @@ router.post("/bazaars", async (req, res) => {
       shortDescription: b.shortDescription || "",
       startDateTime: new Date(b.startDateTime),
       endDateTime: new Date(b.endDateTime),
-      registrationDeadline: b.registrationDeadline ? new Date(b.registrationDeadline) : undefined,
+      registrationDeadline: b.registrationDeadline
+        ? new Date(b.registrationDeadline)
+        : undefined,
       price: b.price != null ? Number(b.price) : 0,
       capacity: b.capacity != null ? Number(b.capacity) : 0,
       status: "published",
@@ -73,10 +78,14 @@ router.put("/bazaars/:id", async (req, res) => {
     const updates = {
       ...(b.title || b.name ? { title: b.title || b.name } : {}),
       ...(b.location ? { location: b.location } : {}),
-      ...(b.shortDescription !== undefined ? { shortDescription: b.shortDescription } : {}),
+      ...(b.shortDescription !== undefined
+        ? { shortDescription: b.shortDescription }
+        : {}),
       ...(b.startDateTime ? { startDateTime: new Date(b.startDateTime) } : {}),
       ...(b.endDateTime ? { endDateTime: new Date(b.endDateTime) } : {}),
-      ...(b.registrationDeadline ? { registrationDeadline: new Date(b.registrationDeadline) } : {}),
+      ...(b.registrationDeadline
+        ? { registrationDeadline: new Date(b.registrationDeadline) }
+        : {}),
       ...(b.price != null ? { price: Number(b.price) } : {}),
       ...(b.capacity != null ? { capacity: Number(b.capacity) } : {}),
     };
@@ -95,8 +104,13 @@ router.delete("/bazaars/:id", async (req, res) => {
   try {
     const bazaar = await Bazaar.findById(req.params.id);
     if (!bazaar) return res.status(404).json({ error: "Bazaar not found" });
-    if (Array.isArray(bazaar.registrations) && bazaar.registrations.length > 0) {
-      return res.status(403).json({ error: "Cannot delete: participants registered" });
+    if (
+      Array.isArray(bazaar.registrations) &&
+      bazaar.registrations.length > 0
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Cannot delete: participants registered" });
     }
     await Bazaar.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Bazaar deleted successfully" });
@@ -109,9 +123,15 @@ router.delete("/bazaars/:id", async (req, res) => {
 router.get("/trips", async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "50", 10))
+    );
     const [items, total] = await Promise.all([
-      Trip.find().sort({ startDateTime: 1 }).skip((page - 1) * limit).limit(limit),
+      Trip.find()
+        .sort({ startDateTime: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
       Trip.countDocuments(),
     ]);
     res.json({ items, total, page, pages: Math.ceil(total / limit) });
@@ -135,9 +155,12 @@ router.post("/trips", async (req, res) => {
     const b = req.body || {};
     const title = normTitle(b);
     if (!title) return res.status(400).json({ error: "title is required" });
-    if (!b.location) return res.status(400).json({ error: "location is required" });
+    if (!b.location)
+      return res.status(400).json({ error: "location is required" });
     if (!b.startDateTime || !b.endDateTime)
-      return res.status(400).json({ error: "startDateTime and endDateTime are required" });
+      return res
+        .status(400)
+        .json({ error: "startDateTime and endDateTime are required" });
 
     const doc = await Trip.create({
       type: "trip",
@@ -177,7 +200,9 @@ router.delete("/trips/:id", async (req, res) => {
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ error: "Trip not found" });
     if (Array.isArray(trip.registrations) && trip.registrations.length > 0) {
-      return res.status(403).json({ error: "Cannot delete: participants registered" });
+      return res
+        .status(403)
+        .json({ error: "Cannot delete: participants registered" });
     }
     await Trip.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Trip deleted successfully" });
@@ -190,9 +215,15 @@ router.delete("/trips/:id", async (req, res) => {
 router.get("/conferences", async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "50", 10))
+    );
     const [items, total] = await Promise.all([
-      Conference.find().sort({ startDateTime: 1 }).skip((page - 1) * limit).limit(limit),
+      Conference.find()
+        .sort({ startDateTime: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
       Conference.countDocuments(),
     ]);
     res.json({ items, total, page, pages: Math.ceil(total / limit) });
@@ -217,10 +248,15 @@ router.post("/conferences", async (req, res) => {
     const title = normTitle(b);
     if (!title) return res.status(400).json({ error: "title is required" });
     if (!b.startDateTime || !b.endDateTime)
-      return res.status(400).json({ error: "startDateTime and endDateTime are required" });
-    if (!b.requiredBudget) return res.status(400).json({ error: "requiredBudget is required" });
-    if (!b.fundingSource) return res.status(400).json({ error: "fundingSource is required" });
-    if (!b.website) return res.status(400).json({ error: "website is required" });
+      return res
+        .status(400)
+        .json({ error: "startDateTime and endDateTime are required" });
+    if (!b.requiredBudget)
+      return res.status(400).json({ error: "requiredBudget is required" });
+    if (!b.fundingSource)
+      return res.status(400).json({ error: "fundingSource is required" });
+    if (!b.website)
+      return res.status(400).json({ error: "website is required" });
 
     const doc = await Conference.create({
       type: "conference",
@@ -245,17 +281,26 @@ router.post("/conferences", async (req, res) => {
 router.put("/conferences/:id", async (req, res) => {
   try {
     const b = req.body || {};
-    if (b.website === undefined) return res.status(400).json({ error: "website is required" });
+    if (b.website === undefined)
+      return res.status(400).json({ error: "website is required" });
     const updates = {
-      ...(b.title || b.name ? { title: b.title || b.name, name: b.title || b.name } : {}),
-      ...(b.shortDescription !== undefined ? { shortDescription: b.shortDescription } : {}),
+      ...(b.title || b.name
+        ? { title: b.title || b.name, name: b.title || b.name }
+        : {}),
+      ...(b.shortDescription !== undefined
+        ? { shortDescription: b.shortDescription }
+        : {}),
       ...(b.startDateTime ? { startDateTime: new Date(b.startDateTime) } : {}),
       ...(b.endDateTime ? { endDateTime: new Date(b.endDateTime) } : {}),
       ...(b.website !== undefined ? { website: b.website } : {}),
       ...(b.fullAgenda !== undefined ? { fullAgenda: b.fullAgenda } : {}),
-      ...(b.requiredBudget != null ? { requiredBudget: Number(b.requiredBudget) } : {}),
+      ...(b.requiredBudget != null
+        ? { requiredBudget: Number(b.requiredBudget) }
+        : {}),
       ...(b.fundingSource ? { fundingSource: b.fundingSource } : {}),
-      ...(b.extraResources !== undefined ? { extraResources: b.extraResources } : {}),
+      ...(b.extraResources !== undefined
+        ? { extraResources: b.extraResources }
+        : {}),
     };
     const doc = await Conference.findByIdAndUpdate(req.params.id, updates, {
       new: true,
@@ -271,9 +316,15 @@ router.put("/conferences/:id", async (req, res) => {
 router.delete("/conferences/:id", async (req, res) => {
   try {
     const conference = await Conference.findById(req.params.id);
-    if (!conference) return res.status(404).json({ error: "Conference not found" });
-    if (Array.isArray(conference.registrations) && conference.registrations.length > 0) {
-      return res.status(403).json({ error: "Cannot delete: participants registered" });
+    if (!conference)
+      return res.status(404).json({ error: "Conference not found" });
+    if (
+      Array.isArray(conference.registrations) &&
+      conference.registrations.length > 0
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Cannot delete: participants registered" });
     }
     await Conference.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Conference deleted successfully" });
@@ -302,7 +353,11 @@ router.get("/all", async (req, res) => {
 
     const query = {};
 
-    if (type) query.type = type.toUpperCase();
+    // Don't add a `type` field to the Mongo query because individual
+    // models (Workshop, Bazaar, Trip, Conference, BoothApplication)
+    // don't store a `type` field. Instead use `type` to decide which
+    // models to query.
+    const typeUpper = type ? type.toUpperCase() : null;
     if (location) query.location = new RegExp(location, "i");
 
     if (search) {
@@ -324,12 +379,21 @@ router.get("/all", async (req, res) => {
       query.startDateTime = { $gte: day, $lt: next };
     }
 
+    // Decide which models to fetch based on `type` parameter.
+    const fetchWorkshops = !typeUpper || typeUpper === "WORKSHOP";
+    const fetchBazaars = !typeUpper || typeUpper === "BAZAAR";
+    const fetchTrips = !typeUpper || typeUpper === "TRIP";
+    const fetchConferences = !typeUpper || typeUpper === "CONFERENCE";
+    const fetchBooths = !typeUpper || typeUpper === "BOOTH";
+
     const [workshops, bazaars, trips, conferences, booths] = await Promise.all([
-      Workshop.find(query).lean(),
-      Bazaar.find(query).lean(),
-      Trip.find(query).lean(),
-      Conference.find(query).lean(),
-      BoothApplication.find({ ...query, status: "accepted" }).lean(),
+      fetchWorkshops ? Workshop.find(query).lean() : [],
+      fetchBazaars ? Bazaar.find(query).lean() : [],
+      fetchTrips ? Trip.find(query).lean() : [],
+      fetchConferences ? Conference.find(query).lean() : [],
+      fetchBooths
+        ? BoothApplication.find({ ...query, status: "accepted" }).lean()
+        : [],
     ]);
 
     const normalize = (doc, type) => ({
@@ -388,9 +452,12 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     let attendees = [];
 
     // 1. Try Workshop (has registeredUsers as User refs)
-    event = await Workshop.findById(id).populate("registeredUsers", "firstName lastName email");
+    event = await Workshop.findById(id).populate(
+      "registeredUsers",
+      "firstName lastName email"
+    );
     if (event && event.registeredUsers) {
-      attendees = event.registeredUsers.map(u => ({
+      attendees = event.registeredUsers.map((u) => ({
         name: `${u.firstName} ${u.lastName}`,
         email: u.email,
       }));
@@ -400,7 +467,7 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     if (!attendees.length) {
       event = await Bazaar.findById(id);
       if (event && event.registrations) {
-        attendees = event.registrations.map(r => ({
+        attendees = event.registrations.map((r) => ({
           name: r.name || "—",
           email: r.email || "—",
         }));
@@ -411,7 +478,7 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     if (!attendees.length) {
       event = await Trip.findById(id);
       if (event && event.registrations) {
-        attendees = event.registrations.map(r => ({
+        attendees = event.registrations.map((r) => ({
           name: r.name || "—",
           email: r.email || "—",
         }));
@@ -422,7 +489,7 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     if (!attendees.length) {
       event = await BoothApplication.findById(id);
       if (event && event.attendees) {
-        attendees = event.attendees.map(a => ({
+        attendees = event.attendees.map((a) => ({
           name: a.name || "—",
           email: a.email || "—",
         }));
@@ -445,13 +512,16 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
         { header: "Name", key: "name", width: 30 },
         { header: "Email", key: "email", width: 35 },
       ];
-      attendees.forEach(att => sheet.addRow(att));
+      attendees.forEach((att) => sheet.addRow(att));
 
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader("Content-Disposition", `attachment; filename=attendees_${id}.xlsx`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=attendees_${id}.xlsx`
+      );
       await workbook.xlsx.write(res);
       res.end();
     } else {
@@ -468,7 +538,8 @@ router.get("/events/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { type } = req.query;
-    if (!id || !type) return res.status(400).json({ error: "Missing id or type" });
+    if (!id || !type)
+      return res.status(400).json({ error: "Missing id or type" });
 
     let event;
     if (type === "¿workshop") event = await Workshop.findById(id);
@@ -509,12 +580,12 @@ router.post("/admin/send-vendor-notification", async (req, res) => {
 
     // Validate input
     if (!email || !status || !type) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     // Set up Nodemailer transporter
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER, // eventitynotifications@gmail.com
         pass: process.env.EMAIL_PASS, // App Password
@@ -522,14 +593,21 @@ router.post("/admin/send-vendor-notification", async (req, res) => {
     });
 
     // Email content
-    const isAccepted = status === 'accepted';
+    const isAccepted = status === "accepted";
     const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1);
-    let detailsString = Object.entries(details).map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`).join('\n');
+    let detailsString = Object.entries(details)
+      .map(
+        ([key, value]) =>
+          `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`
+      )
+      .join("\n");
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: `Your ${typeCapitalized} Vendor Request Has Been ${isAccepted ? 'Accepted' : 'Rejected'}`,
+      subject: `Your ${typeCapitalized} Vendor Request Has Been ${
+        isAccepted ? "Accepted" : "Rejected"
+      }`,
       text: `
         Dear Vendor,
 
@@ -538,7 +616,11 @@ router.post("/admin/send-vendor-notification", async (req, res) => {
         Details:
         ${detailsString}
 
-        ${isAccepted ? 'We look forward to your participation!' : 'If you have any questions, please contact support.'}
+        ${
+          isAccepted
+            ? "We look forward to your participation!"
+            : "If you have any questions, please contact support."
+        }
 
         — Admin Team
       `,
@@ -547,10 +629,10 @@ router.post("/admin/send-vendor-notification", async (req, res) => {
     // Send email
     await transporter.sendMail(mailOptions);
 
-    res.json({ message: 'Notification sent successfully' });
+    res.json({ message: "Notification sent successfully" });
   } catch (error) {
-    console.error('Error sending vendor notification:', error);
-    res.status(500).json({ error: 'Failed to send notification' });
+    console.error("Error sending vendor notification:", error);
+    res.status(500).json({ error: "Failed to send notification" });
   }
 });
 

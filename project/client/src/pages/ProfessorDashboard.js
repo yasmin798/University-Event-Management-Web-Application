@@ -37,9 +37,16 @@ const ProfessorDashboard = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [booths, setBooths] = useState([]);
   const [boothsLoading, setBoothsLoading] = useState(true);
+  // Debounced inputs to avoid refetching on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   // Use same hooks as EventsHome
   const { events: otherEvents, loading: otherLoading } = useServerEvents({
@@ -73,31 +80,31 @@ const ProfessorDashboard = () => {
 
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
-  setWorkshopsLoading(true);
-  try {
-    const data = await workshopAPI.getAllWorkshops();
+    setWorkshopsLoading(true);
+    try {
+      const data = await workshopAPI.getAllWorkshops();
 
-    const normalizedWorkshops = data
-      .filter((w) => w.status === "published")
-      .map((w) => ({
-        ...w,
-        type: "WORKSHOP",
-        title: w.workshopName,
-        startDateTime: new Date(w.startDateTime).toISOString(),
-        endDateTime: new Date(w.endDateTime).toISOString(),
-        date: new Date(w.startDateTime).toISOString().split("T")[0],
-        image: w.image || workshopPlaceholder,
-        description: w.shortDescription,
-      }));
+      const normalizedWorkshops = data
+        .filter((w) => w.status === "published")
+        .map((w) => ({
+          ...w,
+          type: "WORKSHOP",
+          title: w.workshopName,
+          startDateTime: new Date(w.startDateTime).toISOString(),
+          endDateTime: new Date(w.endDateTime).toISOString(),
+          date: new Date(w.startDateTime).toISOString().split("T")[0],
+          image: w.image || workshopPlaceholder,
+          description: w.shortDescription,
+        }));
 
-    setWorkshops(normalizedWorkshops);
-  } catch (err) {
-    console.error("Error fetching workshops:", err);
-    setWorkshops([]);
-  } finally {
-    setWorkshopsLoading(false);
-  }
-}, []);
+      setWorkshops(normalizedWorkshops);
+    } catch (err) {
+      console.error("Error fetching workshops:", err);
+      setWorkshops([]);
+    } finally {
+      setWorkshopsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchWorkshops();
@@ -156,7 +163,6 @@ const ProfessorDashboard = () => {
     ...workshops,
     ...booths,
   ];
-  const loading = otherLoading || workshopsLoading;
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -244,6 +250,11 @@ const ProfessorDashboard = () => {
       const matchesType =
         eventTypeFilter === "All" || e.type === eventTypeFilter;
       return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.startDateTime || a.startDate || a.date);
+      const dateB = new Date(b.startDateTime || b.startDate || b.date);
+      return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
     });
 
   const handleGymSessions = () => {
@@ -306,7 +317,7 @@ const ProfessorDashboard = () => {
   };
 
   useEffect(() => {
-    const term = searchTerm.toLowerCase().trim();
+    const term = debouncedSearch.toLowerCase().trim();
 
     if (!term) {
       setFilteredWorkshops(workshops);
@@ -333,7 +344,7 @@ const ProfessorDashboard = () => {
     });
 
     setFilteredWorkshops(results);
-  }, [searchTerm, workshops]);
+  }, [debouncedSearch, workshops]);
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -687,6 +698,14 @@ const ProfessorDashboard = () => {
                 selected={eventTypeFilter}
                 onChange={setEventTypeFilter}
               />
+              <button
+                onClick={() =>
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
+                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+              >
+                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              </button>
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
@@ -769,7 +788,6 @@ const ProfessorDashboard = () => {
                 </h1>
               </div>
 
-              
               <h2 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
                 Available Events
               </h2>
@@ -846,8 +864,9 @@ const ProfessorDashboard = () => {
                         )}
                         <p className="text-sm text-[#567c8d] truncate">
                           <p className="text-sm text-[#567c8d] truncate">
-  Type: {e.workshopName ? "WORKSHOP" : e.type || "N/A"}
-</p>
+                            Type:{" "}
+                            {e.workshopName ? "WORKSHOP" : e.type || "N/A"}
+                          </p>
                         </p>
                         <p className="text-sm text-[#567c8d] truncate">
                           Date:{" "}

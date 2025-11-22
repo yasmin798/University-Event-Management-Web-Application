@@ -85,6 +85,10 @@ app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
 
 app.use("/api/reservations", reservationRoutes);
+app.use("/api/payments", paymentRoutes);// Raw body needed for Stripe signature
+app.post("/webhook/stripe", express.raw({ type: "application/json" }), stripeWebhook);
+
+app.use("/api/events", reviewsRouter);
 
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
