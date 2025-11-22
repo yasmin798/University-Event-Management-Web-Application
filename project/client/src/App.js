@@ -43,6 +43,8 @@ import ConferenceForm from "./pages/ConferenceForm";
 import VendorRequests from "./pages/VendorRequests";
 import VendorRequestsBooth from "./pages/VendorRequestsBooth";
 import VendorsPage from "./pages/Vendorspage";
+import LoyaltyVendors from "./pages/LoyaltyVendors";
+import Notifications from "./pages/Notifications";
 
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
@@ -143,6 +145,8 @@ function App() {
         <Route path="/conferences/:id" element={<ConferenceForm />} />
         {/* Vendors */}
         <Route path="/vendors" element={<VendorsPage />} />
+        <Route path="/vendors/loyalty" element={<LoyaltyVendors />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
         <Route path="/student/courts-availability"element={<CourtsAvailabilityWrapper />}/>
