@@ -7,6 +7,27 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionId = searchParams.get("session_id");
+useEffect(() => {
+  const sessionId = searchParams.get("session_id");
+  const appId = searchParams.get("appId");
+  const type = searchParams.get("type");
+
+  if (!sessionId || !appId || !type) return;
+
+  const confirmPayment = async () => {
+    try {
+      await fetch("http://localhost:3001/api/payments/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, appId, type }),
+      });
+    } catch (err) {
+      console.error("Payment confirm failed:", err);
+    }
+  };
+
+  confirmPayment();
+}, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -167,60 +167,98 @@ export default function VendorRequestsBooth() {
     fetchRequests();
   }, [bazaarId]);
   // ---------- PATCH STATUS ----------
-  const updateStatusOnServer = async (appId, newStatus) => {
-    const urls = [
-      `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
-      `${API_ORIGIN}/api/booth-applications/${appId}`,
-      `${API_ORIGIN}/api/booth-vendor-requests/${appId}`,
-    ];
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        });
-        if (res.ok) return true;
-      } catch {}
-    }
-    throw new Error("Failed update");
-  };
-  const handleSendVendorMail = async () => {
-    if (!vendorTarget) return;
-    setSending(true);
-    setProcessingId(vendorTarget.requestId);
+  const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
+  const urls = [
+    `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
+    `${API_ORIGIN}/api/booth-applications/${appId}`,
+    `${API_ORIGIN}/api/booth-vendor-requests/${appId}`,
+  ];
+
+  const payload = { status: newStatus, ...extraPayload };
+
+  for (const url of urls) {
     try {
-      await updateStatusOnServer(vendorTarget.requestId, vendorTarget.newStatus);
-      const mailRes = await fetch(`${API_ORIGIN}/api/admin/send-vendor-notification`, {
-        method: "POST",
+      const res = await fetch(url, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: vendorTarget.vendorEmail,
-          requestId: vendorTarget.requestId,
-          status: vendorTarget.newStatus,
-          type: vendorTarget.type,
-          details: vendorTarget.details,
-        }),
+        body: JSON.stringify(payload),
       });
-      const mailData = await mailRes.json();
-      if (mailRes.ok) {
-        setRequests((prev) =>
-          prev.map((r) => (r._id === vendorTarget.requestId ? { ...r, status: vendorTarget.newStatus } : r))
-        );
-        alert(`✅ Vendor request ${vendorTarget.newStatus} and notification sent successfully!`);
-      } else {
-        alert(`✅ Vendor request ${vendorTarget.newStatus}, but email failed: ${mailData.error || "Unknown error"}`);
-      }
-    } catch (err) {
-      console.error("Error handling vendor request:", err);
-      alert("❌ Server error during request handling");
-    } finally {
-      setSending(false);
-      setShowVendorMailPopup(false);
-      setVendorTarget(null);
-      setProcessingId(null);
+      if (res.ok) return true;
+    } catch (e) {
+      console.log("Failed endpoint:", url);
     }
-  };
+  }
+  throw new Error("All endpoints failed");
+};
+  const handleSendVendorMail = async () => {
+  if (!vendorTarget) return;
+  setSending(true);
+  setProcessingId(vendorTarget.requestId);
+
+  try {
+    // 1. Update status + add payment deadline (only on accept)
+    const updatePayload = {
+      status: vendorTarget.newStatus,
+    };
+
+    // ONLY ADD DEADLINE IF ACCEPTED
+    if (vendorTarget.newStatus === "accepted") {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 3); // 3 days from now
+      updatePayload.paymentDeadline = deadline.toISOString();
+    }
+
+    // Try multiple endpoints (same as before)
+    await updateStatusOnServer(vendorTarget.requestId, vendorTarget.newStatus, updatePayload);
+
+    // 2. Send email notification
+    const mailRes = await fetch(`${API_ORIGIN}/api/admin/send-vendor-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: vendorTarget.vendorEmail,
+        requestId: vendorTarget.requestId,
+        status: vendorTarget.newStatus,
+        type: vendorTarget.type,
+        details: vendorTarget.details,
+      }),
+    });
+
+    const mailData = await mailRes.json();
+
+    if (mailRes.ok) {
+      setRequests((prev) =>
+        prev.map((r) =>
+          r._id === vendorTarget.requestId
+            ? { 
+                ...r, 
+                status: vendorTarget.newStatus,
+                paymentDeadline: vendorTarget.newStatus === "accepted" 
+                  ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) 
+                  : r.paymentDeadline 
+              }
+            : r
+        )
+      );
+      alert(`Vendor request ${vendorTarget.newStatus} and notification sent!`);
+      
+      // If accepted, show friendly reminder
+      if (vendorTarget.newStatus === "accepted") {
+        alert("Payment deadline set: 3 days from now");
+      }
+    } else {
+      alert(`Request ${vendorTarget.newStatus}, but email failed: ${mailData.error || "Unknown"}`);
+    }
+  } catch (err) {
+    console.error("Error:", err);
+    alert("Server error");
+  } finally {
+    setSending(false);
+    setShowVendorMailPopup(false);
+    setVendorTarget(null);
+    setProcessingId(null);
+  }
+};
   const openConfirm = (id, status) => {
     setConfirmData({
       requestId: id,

@@ -10,6 +10,45 @@ const BoothApplication = require("../models/BoothApplication");
 // POST /api/payments/create-session
 router.post("/create-session", async (req, res) => {
   const { applicationId, type } = req.body;
+  // POST /api/payments/confirm
+router.post("/confirm", async (req, res) => {
+  const { sessionId, appId, type } = req.body;
+
+  try {
+    if (!sessionId || !appId || !type) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    // 1. Retrieve Stripe session
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (!session || session.payment_status !== "paid") {
+      return res.status(400).json({ error: "Payment not confirmed" });
+    }
+
+    // 2. Select correct model
+    const Model = type === "bazaar" ? BazaarApplication : BoothApplication;
+
+    // 3. Mark as PAID
+    const updated = await Model.findByIdAndUpdate(
+      appId,
+      {
+        paid: true,
+        paymentDate: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    res.json({ success: true, paid: updated.paid });
+  } catch (err) {
+    console.error("Payment confirm error:", err);
+    res.status(500).json({ error: "Server error confirming payment" });
+  }
+});
+
 
   try {
     let application;
@@ -29,12 +68,16 @@ router.post("/create-session", async (req, res) => {
     }
 
     if (application.status !== "accepted") {
-      return res.status(400).json({ error: "Only accepted applications can be paid" });
-    }
+  return res.status(400).json({ error: "Only accepted applications can be paid" });
+}
 
-    if (application.paid) {
-      return res.status(400).json({ error: "Already paid" });
-    }
+if (application.paid) {
+  return res.status(400).json({ error: "Already paid" });
+}
+
+if (application.paymentDeadline && new Date() > application.paymentDeadline) {
+  return res.status(400).json({ error: "Payment deadline has expired (3 days after acceptance)" });
+}
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
