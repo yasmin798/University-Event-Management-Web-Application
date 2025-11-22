@@ -25,6 +25,7 @@ const vendorApplicationsRoute = require("./routes/vendorApplications");
 const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
 const reservationRoutes = require("./routes/reservationRoutes");
+const reviewsRouter = require("./routes/reviews");
 // Models
 const User = require("./models/User");
 
@@ -79,6 +80,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
 
 app.use("/api/reservations", reservationRoutes);
+
+app.use("/api/events", reviewsRouter);
 
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";

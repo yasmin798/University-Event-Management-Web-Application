@@ -237,13 +237,7 @@ const StudentDashboard = () => {
     });
   };
 
-  const filteredEvents = allEvents.filter((e) => {
-    if (e.type === "BOOTH") return true;
-
-    const eventDate = new Date(e.startDateTime || e.startDate || e.date);
-
-    return eventDate > now;
-  });
+  const filteredEvents = allEvents;
 
   if (loading) {
     return (
