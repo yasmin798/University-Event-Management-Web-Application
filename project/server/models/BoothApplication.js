@@ -5,6 +5,9 @@ const mongoose = require("mongoose");
 const AttendeeSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, trim: true },
+  // Path to uploaded ID document for attendee
+  idDocument: { type: String, required: true },
+  attendingEntireDuration: { type: Boolean, default: true },
 });
 
 // Reusable Review Schema (same as all other events)

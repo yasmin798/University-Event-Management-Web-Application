@@ -6,6 +6,10 @@ const AttendeeSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, trim: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  // Path to uploaded ID document (stored in server uploads)
+  idDocument: { type: String, required: true },
+  // Whether this attendee will attend for the entire duration (vendors must upload IDs for full duration)
+  attendingEntireDuration: { type: Boolean, default: true },
 });
 
 const BazaarApplicationSchema = new mongoose.Schema(

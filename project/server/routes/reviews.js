@@ -4,12 +4,14 @@ const router = express.Router();
 const { protect } = require("../middleware/auth");
 const User = require("../models/User");
 
+// Event models
 const Workshop         = require("../models/Workshop");
 const Trip             = require("../models/Trips");
 const Conference       = require("../models/Conference");
 const Bazaar           = require("../models/Bazaar");
 const BoothApplication = require("../models/BoothApplication");
 
+// Helper: find any event by ID
 const findEventById = async (id) => {
   const models = [Workshop, Trip, Conference, Bazaar, BoothApplication];
   for (const Model of models) {
@@ -19,23 +21,24 @@ const findEventById = async (id) => {
   return { event: null, Model: null };
 };
 
-// GET reviews
+// GET /api/events/:id/reviews
 router.get("/:id/reviews", async (req, res) => {
   try {
     const { event } = await findEventById(req.params.id);
     if (!event) return res.status(404).json({ error: "Event not found" });
 
     const reviews = (event.reviews || [])
+      .slice()
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json(reviews);
   } catch (err) {
-    console.error("Get reviews error:", err);
+    console.error("GET reviews error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// POST review — NOW BAZAARS & BOOTHS CAN BE REVIEWED BY ANYONE
+// POST /api/events/:id/reviews
 router.post("/:id/reviews", protect, async (req, res) => {
   const { rating, comment } = req.body;
   const userId = req.user._id.toString();
@@ -49,73 +52,62 @@ router.post("/:id/reviews", protect, async (req, res) => {
     if (!event) return res.status(404).json({ error: "Event not found" });
 
     const eventDate = event.startDateTime || event.endDateTime || event.startDate;
-    const hasPassed = new Date(eventDate) < new Date();
-
-    if (!hasPassed) {
+    if (!eventDate || isNaN(new Date(eventDate).getTime())) {
+      return res.status(400).json({ error: "Event date is invalid or missing" });
+    }
+    if (new Date(eventDate) >= new Date()) {
       return res.status(403).json({ error: "You can only review past events" });
     }
 
-    // Prevent duplicate reviews
-    const alreadyReviewed = event.reviews?.some(r => r.userId.toString() === userId);
-    if (alreadyReviewed) {
-      return res.status(400).json({ error: "You have already reviewed this event" });
+    // Prevent duplicate review
+    if (event.reviews?.some(r => r.userId?.toString() === userId)) {
+      return res.status(400).json({ error: "You already reviewed this event" });
     }
 
-    // SPECIAL RULE: Bazaars & Booths → anyone can review
-    const isBazaar = event.type === "bazaar" || event.collection?.collectionName === "bazaars";
-    const isBooth = event.__t === "BoothApplication" || event.platformSlot; // BoothApplication has platformSlot
-
-    let hasAttended = true; // default allow
+    // Check if user is allowed to review
+    const isBazaar = event.type === "bazaar";
+    const isBooth = event.__t === "BoothApplication" || !!event.platformSlot;
 
     if (!isBazaar && !isBooth) {
-      // Only check registration for Workshops, Trips, Conferences
-      let attendees = [];
-      if (event.registeredUsers) attendees.push(...event.registeredUsers);
-      if (event.registrations) attendees.push(...event.registrations.map(r => r.userId || r.email));
-      if (event.attendees) attendees.push(...event.attendees);
-
-      hasAttended = attendees.some(id => id && id.toString() === userId);
-      if (!hasAttended) {
-        return res.status(403).json({ error: "You must have registered to review this event" });
+      const attendees = [
+        ...(event.registeredUsers || []),
+        ...(event.registrations?.map(r => r.userId || r.email) || []),
+        ...(event.attendees || []),
+      ];
+      if (!attendees.some(id => id && id.toString() === userId)) {
+        return res.status(403).json({ error: "You must have attended or registered to review" });
       }
     }
 
-    // Get user's name
-    const user = await User.findById(userId).select("name");
-    const userName = user?.name || "Student";
+    // Initialize reviews array if missing
+    if (!Array.isArray(event.reviews)) event.set("reviews", []);
 
-    // Add the review
+    // Get user name
+    const user = await User.findById(userId).select("name");
+
+    // Push review
     event.reviews.push({
-      userId,
-      userName,
+      userId: userId,
+      userName: user?.name || "Student",
       rating: Number(rating),
       comment: comment?.trim() || null,
+      createdAt: new Date(),
     });
 
-    await event.save();
+    event.markModified("reviews");
 
-    const sorted = event.reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json(sorted);
+    // SAVE without validating other fields (prevents Bazaar registration errors)
+    await event.save({ validateBeforeSave: false });
+
+    const sorted = event.reviews
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.status(201).json(sorted);
+
   } catch (err) {
-    console.error("Submit review error:", err);
-    res.status(500).json({ error: "Failed to submit review" });
-  }
-});
-
-// GET attendees (optional — used by frontend)
-router.get("/:id/attendees", protect, async (req, res) => {
-  try {
-    const { event } = await findEventById(req.params.id);
-    if (!event) return res.status(404).json({ error: "Event not found" });
-
-    let attendees = [];
-    if (event.registeredUsers) attendees.push(...event.registeredUsers);
-    if (event.registrations) attendees.push(...event.registrations.map(r => r.userId || r.email));
-    if (event.attendees) attendees.push(...event.attendees);
-
-    res.json(attendees);
-  } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    console.error("POST review error:", err);
+    res.status(500).json({ error: "Server error — check logs" });
   }
 });
 

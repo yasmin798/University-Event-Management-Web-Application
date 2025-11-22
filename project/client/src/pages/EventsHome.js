@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
@@ -572,7 +573,13 @@ export default function EventsHome() {
           </div>
 
           {/* RIGHT: action buttons */}
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: 'center' }}>
+            {/* Notifications dropdown placed to the LEFT of Create Event */}
+            <div>
+              <React.Suspense fallback={null}>
+                <NotificationsDropdown />
+              </React.Suspense>
+            </div>
             <button
               className="btn"
               style={{

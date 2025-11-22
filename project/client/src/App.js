@@ -43,6 +43,8 @@ import ConferenceForm from "./pages/ConferenceForm";
 import VendorRequests from "./pages/VendorRequests";
 import VendorRequestsBooth from "./pages/VendorRequestsBooth";
 import VendorsPage from "./pages/Vendorspage";
+import LoyaltyVendors from "./pages/LoyaltyVendors";
+import Notifications from "./pages/Notifications";
 
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
@@ -65,6 +67,9 @@ import ChooseEventType from "./pages/ChooseEventType";
 import MyApplications from "./pages/MyApplications";
 
 import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
+
+import PaymentPage from "./pages/PaymentPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 // Simple 404
 function NotFound() {
@@ -149,6 +154,8 @@ function App() {
         <Route path="/conferences/:id" element={<ConferenceForm />} />
         {/* Vendors */}
         <Route path="/vendors" element={<VendorsPage />} />
+        <Route path="/vendors/loyalty" element={<LoyaltyVendors />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
         <Route
@@ -163,6 +170,9 @@ function App() {
           element={<GymSessionsForRegister />}
         />
         <Route path="/gym-manager" element={<GymManager />} />
+        <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<div>Payment Cancelled</div>} />
         <Route
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
