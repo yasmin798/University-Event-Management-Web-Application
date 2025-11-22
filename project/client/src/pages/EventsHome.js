@@ -47,12 +47,10 @@ function isEditable(startIso) {
 
 // Check if an event has already ended
 function isPastEvent(ev) {
-  const endDate =
-    ev.endDateTime || ev.endDate || ev.endDateTime; // support all types
+  const endDate = ev.endDateTime || ev.endDate || ev.endDateTime; // support all types
   if (!endDate) return false;
   return new Date(endDate).getTime() < Date.now();
 }
-
 
 export default function EventsHome() {
   const navigate = useNavigate();
@@ -60,8 +58,35 @@ export default function EventsHome() {
   const [conferences, setConferences] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [filter, setFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [params] = useSearchParams();
+
+  // Debounced filters
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
+  const [debouncedLocation, setDebouncedLocation] = useState(locationFilter);
+  const [debouncedDate, setDebouncedDate] = useState(dateFilter);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    return () => clearTimeout(t);
+  }, [professorFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocation(locationFilter), 300);
+    return () => clearTimeout(t);
+  }, [locationFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
+    return () => clearTimeout(t);
+  }, [dateFilter]);
   const [currentPage, setCurrentPage] = useState(1);
   const [chooseOpen, setChooseOpen] = useState(false);
   const [chosenType, setChosenType] = useState("");
@@ -370,13 +395,40 @@ export default function EventsHome() {
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
   ---------------------------------------------------- */
-  const filteredEvents = allEvents.filter((ev) => {
-    const title = ev.title?.toLowerCase() || "";
-    const matchSearch = title.includes(searchTerm.toLowerCase());
-    const matchType = filter === "All" || ev.type === filter;
+  const filteredEvents = allEvents
+    .filter((ev) => {
+      const title = ev.title?.toLowerCase() || "";
+      const professors = ev.professorsParticipating?.toLowerCase() || "";
+      const location = ev.location?.toLowerCase() || "";
 
-    return matchSearch && matchType;
-  });
+      const matchSearch =
+        !debouncedSearch || title.includes(debouncedSearch.toLowerCase());
+      const matchProfessor =
+        !debouncedProfessor ||
+        professors.includes(debouncedProfessor.toLowerCase());
+      const matchLocation =
+        !debouncedLocation ||
+        location.includes(debouncedLocation.toLowerCase());
+      const matchType = filter === "All" || ev.type === filter;
+
+      let matchDate = true;
+      if (debouncedDate) {
+        const filterDate = new Date(debouncedDate);
+        const nextDay = new Date(filterDate);
+        nextDay.setDate(filterDate.getDate() + 1);
+        const eventDate = new Date(ev.startDateTime || ev.startDate || ev.date);
+        matchDate = eventDate >= filterDate && eventDate < nextDay;
+      }
+
+      return (
+        matchSearch && matchProfessor && matchLocation && matchType && matchDate
+      );
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.startDateTime || a.startDate || a.date);
+      const dateB = new Date(b.startDateTime || b.startDate || b.date);
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
 
   useEffect(() => {
     const urlFilter = params.get("filter");
@@ -430,8 +482,15 @@ export default function EventsHome() {
           }}
         >
           {/* LEFT: search + filter */}
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <div style={{ position: "relative", width: "620px" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ position: "relative", width: "180px" }}>
               <Search
                 size={16}
                 style={{
@@ -444,7 +503,7 @@ export default function EventsHome() {
               />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder="Search by title"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -456,6 +515,60 @@ export default function EventsHome() {
                 }}
               />
             </div>
+            <input
+              type="text"
+              placeholder="Professor"
+              value={professorFilter}
+              onChange={(e) => setProfessorFilter(e.target.value)}
+              style={{
+                width: "130px",
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(47,65,86,0.2)",
+                fontSize: "13px",
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Location"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              style={{
+                width: "130px",
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(47,65,86,0.2)",
+                fontSize: "13px",
+              }}
+            />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{
+                width: "150px",
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(47,65,86,0.2)",
+                fontSize: "13px",
+              }}
+            />
+            <button
+              onClick={() =>
+                setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              style={{
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(47,65,86,0.2)",
+                background: "white",
+                fontSize: "13px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+            </button>
           </div>
 
           {/* RIGHT: action buttons */}
@@ -695,7 +808,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {editable && !archived? (
+                        {editable && !archived ? (
                           <button
                             className="btn"
                             onClick={() => navigate(`/bazaars/${id}`)}
@@ -745,11 +858,14 @@ export default function EventsHome() {
                           Export Excel
                         </button>
                         {/* Optional ARCHIVED badge */}
-   {archived && (
-      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
-        ARCHIVED
-      </div>
-    )}
+                        {archived && (
+                          <div
+                            className="chip"
+                            style={{ background: "#aaa", marginTop: "4px" }}
+                          >
+                            ARCHIVED
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -764,7 +880,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {editable && !archived? (
+                        {editable && !archived ? (
                           <button
                             className="btn"
                             onClick={() => navigate(`/trips/${id}`)}
@@ -781,7 +897,11 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           disabled={archived}
                           onClick={() => handleDelete(id, "trips")}
-                          title={archived ? "Cannot delete: event archived" : "Delete this trip"}
+                          title={
+                            archived
+                              ? "Cannot delete: event archived"
+                              : "Delete this trip"
+                          }
                         >
                           Delete
                         </button>
@@ -796,11 +916,14 @@ export default function EventsHome() {
                           Export Excel
                         </button>
                         {/* Optional ARCHIVED badge */}
-    {archived && (
-      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
-        ARCHIVED
-      </div>
-    )}
+                        {archived && (
+                          <div
+                            className="chip"
+                            style={{ background: "#aaa", marginTop: "4px" }}
+                          >
+                            ARCHIVED
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -815,7 +938,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {editable && !archived? (
+                        {editable && !archived ? (
                           <button
                             className="btn"
                             onClick={() => navigate(`/conferences/${id}`)}
@@ -832,17 +955,23 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           disabled={archived}
                           onClick={() => handleDelete(id, "conferences")}
-                          title={archived ? "Cannot delete: event archived" : "Delete this conference"}
-
+                          title={
+                            archived
+                              ? "Cannot delete: event archived"
+                              : "Delete this conference"
+                          }
                         >
                           Delete
                         </button>
                         {/* Optional ARCHIVED badge */}
-    {archived && (
-      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
-        ARCHIVED
-      </div>
-    )}
+                        {archived && (
+                          <div
+                            className="chip"
+                            style={{ background: "#aaa", marginTop: "4px" }}
+                          >
+                            ARCHIVED
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -857,29 +986,30 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        { !archived &&(ev.status === "pending" ||
-                          ev.status === "edits_requested") && (
-                          <>
-                            <button
-                              className="btn btn-success"
-                              onClick={() => handleAccept(id)}
-                            >
-                              Accept & Publish
-                            </button>
-                            <button
-                              className="btn btn-danger"
-                              onClick={() => handleReject(id)}
-                            >
-                              Reject
-                            </button>
-                            <button
-                              className="btn btn-warning"
-                              onClick={() => handleRequestEdits(id)}
-                            >
-                              Request Edits
-                            </button>
-                          </>
-                        )}
+                        {!archived &&
+                          (ev.status === "pending" ||
+                            ev.status === "edits_requested") && (
+                            <>
+                              <button
+                                className="btn btn-success"
+                                onClick={() => handleAccept(id)}
+                              >
+                                Accept & Publish
+                              </button>
+                              <button
+                                className="btn btn-danger"
+                                onClick={() => handleReject(id)}
+                              >
+                                Reject
+                              </button>
+                              <button
+                                className="btn btn-warning"
+                                onClick={() => handleRequestEdits(id)}
+                              >
+                                Request Edits
+                              </button>
+                            </>
+                          )}
 
                         {ev.status === "published" && (
                           <button
@@ -890,12 +1020,15 @@ export default function EventsHome() {
                             Export Excel
                           </button>
                         )}
-                         {/* Optional ARCHIVED badge */}
-    {archived && (
-      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
-        ARCHIVED
-      </div>
-    )}
+                        {/* Optional ARCHIVED badge */}
+                        {archived && (
+                          <div
+                            className="chip"
+                            style={{ background: "#aaa", marginTop: "4px" }}
+                          >
+                            ARCHIVED
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -910,13 +1043,13 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                         {!archived && (
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(id, "booths")}
-                        >
-                          Delete
-                        </button>
+                        {!archived && (
+                          <button
+                            className="btn btn-danger"
+                            onClick={() => handleDelete(id, "booths")}
+                          >
+                            Delete
+                          </button>
                         )}
                         <button
                           className="btn"
@@ -926,10 +1059,13 @@ export default function EventsHome() {
                           Export Excel
                         </button>
                         {archived && (
-      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
-        ARCHIVED
-      </div>
-    )}
+                          <div
+                            className="chip"
+                            style={{ background: "#aaa", marginTop: "4px" }}
+                          >
+                            ARCHIVED
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
