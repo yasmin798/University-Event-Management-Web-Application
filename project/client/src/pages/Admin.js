@@ -204,32 +204,36 @@ export default function Admin() {
       }
       setVendorBoothRequests(boothArr || []);
       const start = new Date();
-      
-        const boothEvents = (boothArr || []).map((booth) => {
-  const durationWeeks = booth.duration || 1; 
-  const end = new Date(start.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000);
 
-  return {
-    ...booth,
-    _id:booth._id,
-    eventType: "booth",
-    title: booth.attendees?.[0]?.name || `Booth ${booth._id}`,
-    durationWeeks,
-    location: booth.platformSlot || booth.boothLocation || booth.locationName || "—",
-    startDateTime: start.toISOString(),
-    endDateTime: end.toISOString(),
-    registrations: booth.registrations || [],
-  };
-});
+      const boothEvents = (boothArr || []).map((booth) => {
+        const durationWeeks = booth.duration || 1;
+        const end = new Date(
+          start.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000
+        );
+
+        return {
+          ...booth,
+          _id: booth._id,
+          eventType: "booth",
+          title: booth.attendees?.[0]?.name || `Booth ${booth._id}`,
+          durationWeeks,
+          location:
+            booth.platformSlot ||
+            booth.boothLocation ||
+            booth.locationName ||
+            "—",
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          registrations: booth.registrations || [],
+        };
+      });
 
       const eventEndpoints = [
         { path: "/api/trips", type: "trip", key: "items" },
         { path: "/api/conferences", type: "conference", key: "items" },
         { path: "/api/bazaars", type: "bazaar", key: "items" },
         { path: "/api/workshops", type: "workshop", key: "items" },
-         
       ];
-       
 
       const allEvents = [];
       const errors = [];
@@ -243,7 +247,6 @@ export default function Admin() {
           allEvents.push(
             ...data.map((event) => ({ ...event, eventType: endpoint.type }))
           );
-         
         } else {
           errors.push(
             `Failed to fetch ${endpoint.path}: ${attempt.status} ${
@@ -298,7 +301,8 @@ export default function Admin() {
 
   const handleBlock = async (userId, currentStatus) => {
     const newStatus = currentStatus === "blocked" ? "active" : "blocked";
-    if (!window.confirm(`Are you sure you want to ${newStatus} this user?`)) return;
+    if (!window.confirm(`Are you sure you want to ${newStatus} this user?`))
+      return;
 
     try {
       const res = await fetch(`${API_ORIGIN}/api/admin/block/${userId}`, {
@@ -394,7 +398,6 @@ export default function Admin() {
       setMessage(`❌ Event not found for ID ${eventId}`);
       return;
     }
-  
 
     const hasRegistrations =
       Array.isArray(event.registrations) && event.registrations.length > 0;
@@ -451,7 +454,11 @@ export default function Admin() {
   };
 
   const handleCreateUser = async () => {
-    if (!createUserForm.name || !createUserForm.email || !createUserForm.password) {
+    if (
+      !createUserForm.name ||
+      !createUserForm.email ||
+      !createUserForm.password
+    ) {
       setMessage("❌ Please fill in all fields.");
       return;
     }
@@ -470,7 +477,11 @@ export default function Admin() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`✅ ${createUserRole.charAt(0).toUpperCase() + createUserRole.slice(1)} created successfully!`);
+        setMessage(
+          `✅ ${
+            createUserRole.charAt(0).toUpperCase() + createUserRole.slice(1)
+          } created successfully!`
+        );
         setShowCreateUserPopup(false);
         setCreateUserForm({ name: "", email: "", password: "" });
         await fetchUsers();
@@ -531,7 +542,26 @@ export default function Admin() {
           </button>
         </div>
 
-        <nav className="flex-1 px-4"></nav>
+        <nav className="flex-1 px-4">
+          {/* Admin quick links */}
+          <div className="mt-2 flex flex-col gap-2">
+            <button
+              onClick={() => navigate("/admin/attendees-report")}
+              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
+              title="View attendees report"
+            >
+              Attendees Report
+            </button>
+
+            <button
+              onClick={() => navigate("/admin/sales-report")}
+              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
+              title="View sales report"
+            >
+              Sales Report
+            </button>
+          </div>
+        </nav>
       </div>
 
       {/* Main Section */}
@@ -724,7 +754,7 @@ function SectionVerified({ verifiedUsers, handleDelete, handleBlock }) {
                     </span>
                   )}
                 </td>
-                 <td style={tdStyle}>
+                <td style={tdStyle}>
                   <span
                     style={{
                       color: user.status === "blocked" ? "red" : "green",
@@ -736,9 +766,12 @@ function SectionVerified({ verifiedUsers, handleDelete, handleBlock }) {
                 </td>
                 <td style={tdStyle}>
                   <button
-                    onClick={() => handleBlock(user._id, user.status || "active")}
+                    onClick={() =>
+                      handleBlock(user._id, user.status || "active")
+                    }
                     style={{
-                      backgroundColor: user.status === "blocked" ? "#10B981" : "#EF4444",
+                      backgroundColor:
+                        user.status === "blocked" ? "#10B981" : "#EF4444",
                       color: "white",
                       border: "none",
                       borderRadius: 6,
@@ -793,7 +826,7 @@ function SectionPending({
             <th style={thStyle}>Name / Company</th>
             <th style={thStyle}>Email</th>
             <th style={thStyle}>Current Role</th>
-             <th style={thStyle}>ID</th>
+            <th style={thStyle}>ID</th>
             <th style={thStyle}>Assigned Role</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
@@ -808,7 +841,7 @@ function SectionPending({
                 </td>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.role}</td>
-                   <td style={tdStyle}>
+                <td style={tdStyle}>
                   {user.roleSpecificId || (
                     <span style={{ color: "#6B7280", fontStyle: "italic" }}>
                       N/A
@@ -848,9 +881,12 @@ function SectionPending({
                 </td>
                 <td style={tdStyle}>
                   <button
-                    onClick={() => handleBlock(user._id, user.status || "active")}
+                    onClick={() =>
+                      handleBlock(user._id, user.status || "active")
+                    }
                     style={{
-                      backgroundColor: user.status === "blocked" ? "#10B981" : "#EF4444",
+                      backgroundColor:
+                        user.status === "blocked" ? "#10B981" : "#EF4444",
                       color: "white",
                       border: "none",
                       borderRadius: 6,
@@ -1212,7 +1248,10 @@ function SectionEvents({
                       event.eventType.slice(1)}
                   </td>
                   <td style={tdStyle}>
-                    {event.title || event.name || event.workshopName||"Untitled"}
+                    {event.title ||
+                      event.name ||
+                      event.workshopName ||
+                      "Untitled"}
                   </td>
                   <td style={tdStyle}>
                     {event.location || event.venue || "—"}
@@ -1315,7 +1354,14 @@ function MailPopup({ onClose, onSend, sending, mailTarget, previewLink }) {
   );
 }
 
-function CreateUserPopup({ role, formData, setFormData, onClose, onCreate, sending }) {
+function CreateUserPopup({
+  role,
+  formData,
+  setFormData,
+  onClose,
+  onCreate,
+  sending,
+}) {
   return (
     <div style={popupOverlayStyle}>
       <div style={popupHeaderStyle}>
@@ -1337,9 +1383,7 @@ function CreateUserPopup({ role, formData, setFormData, onClose, onCreate, sendi
           <input
             type="text"
             value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             style={inputStyle}
             placeholder="Enter full name"
           />

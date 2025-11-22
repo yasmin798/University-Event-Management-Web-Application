@@ -34,7 +34,7 @@ exports.getSalesReport = async (req, res) => {
       return Object.keys(m).length ? m : null;
     };
 
-    // Bazaars
+    // Bazaars (no price or revenue - bazaars are free events)
     if (!eventType || eventType === "bazaar") {
       const pipeline = [];
       const m = buildMatch("title", "startDateTime");
@@ -42,7 +42,6 @@ exports.getSalesReport = async (req, res) => {
       pipeline.push({
         $project: {
           title: 1,
-          price: { $ifNull: ["$price", 0] },
           attendees: { $size: { $ifNull: ["$registrations", []] } },
         },
       });
@@ -53,8 +52,8 @@ exports.getSalesReport = async (req, res) => {
           id: b._id,
           title: b.title,
           attendees: b.attendees || 0,
-          price: b.price || 0,
-          revenue: (b.price || 0) * (b.attendees || 0),
+          price: 0,
+          revenue: 0,
         })
       );
     }
