@@ -9,6 +9,7 @@ const BoothApplicationForm = () => {
   const [durationWeeks, setDurationWeeks] = useState("1");
   const [boothSize, setBoothSize] = useState("2x2");
   const [attendees, setAttendees] = useState([{ name: "", email: "" }]);
+  const [idFiles, setIdFiles] = useState([null]);
 
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -17,6 +18,7 @@ const BoothApplicationForm = () => {
   const addAttendee = () => {
     if (attendees.length < 5)
       setAttendees([...attendees, { name: "", email: "" }]);
+    setIdFiles((s) => [...s, null]);
   };
 
   const updateAttendee = (index, field, value) => {
@@ -25,8 +27,15 @@ const BoothApplicationForm = () => {
     );
   };
 
-  const removeAttendee = (i) =>
+  const removeAttendee = (i) => {
     setAttendees(attendees.filter((_, idx) => idx !== i));
+    // also remove file
+    setIdFiles((s) => s.filter((_, idx) => idx !== i));
+  };
+
+  const onFileChange = (index, file) => {
+    setIdFiles((prev) => prev.map((f, i) => (i === index ? file : f)));
+  };
 
   const validate = () => {
     for (let i = 0; i < attendees.length; i++) {
@@ -49,19 +58,30 @@ const BoothApplicationForm = () => {
     setSubmitting(true);
 
     try {
+      for (let i = 0; i < attendees.length; i++) {
+        if (!idFiles[i]) throw new Error(`Please upload ID file for attendee ${i + 1}`);
+      }
+
+      const form = new FormData();
+      form.append("platformSlot", platformSlot);
+      form.append("durationWeeks", durationWeeks);
+      form.append("boothSize", boothSize);
+      form.append("attendees", JSON.stringify(attendees));
+      idFiles.forEach((f) => form.append("idFiles", f));
+
       const res = await fetch("http://localhost:3001/api/booth-applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platformSlot,
-          durationWeeks,
-          boothSize,
-          attendees,
-        }),
+        body: form,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Submission failed");
+      const dataText = await res.text();
+      let data;
+      try {
+        data = dataText ? JSON.parse(dataText) : {};
+      } catch (_e) {
+        data = dataText;
+      }
+      if (!res.ok) throw new Error((data && data.error) || res.statusText || "Submission failed");
 
       setSuccessMsg("Application submitted!");
       setTimeout(() => navigate("/vendors"), 1200);
@@ -199,6 +219,12 @@ const BoothApplicationForm = () => {
                   placeholder="Email"
                   value={att.email}
                   onChange={(e) => updateAttendee(i, "email", e.target.value)}
+                />
+
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => onFileChange(i, e.target.files[0] || null)}
                 />
 
                 {attendees.length > 1 && (

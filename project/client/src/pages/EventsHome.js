@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
@@ -62,6 +63,7 @@ export default function EventsHome() {
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [filter, setFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [params] = useSearchParams();
 
   // Debounced filters
@@ -394,33 +396,40 @@ export default function EventsHome() {
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
   ---------------------------------------------------- */
-  const filteredEvents = allEvents.filter((ev) => {
-    const title = ev.title?.toLowerCase() || "";
-    const professors = ev.professorsParticipating?.toLowerCase() || "";
-    const location = ev.location?.toLowerCase() || "";
+  const filteredEvents = allEvents
+    .filter((ev) => {
+      const title = ev.title?.toLowerCase() || "";
+      const professors = ev.professorsParticipating?.toLowerCase() || "";
+      const location = ev.location?.toLowerCase() || "";
 
-    const matchSearch =
-      !debouncedSearch || title.includes(debouncedSearch.toLowerCase());
-    const matchProfessor =
-      !debouncedProfessor ||
-      professors.includes(debouncedProfessor.toLowerCase());
-    const matchLocation =
-      !debouncedLocation || location.includes(debouncedLocation.toLowerCase());
-    const matchType = filter === "All" || ev.type === filter;
+      const matchSearch =
+        !debouncedSearch || title.includes(debouncedSearch.toLowerCase());
+      const matchProfessor =
+        !debouncedProfessor ||
+        professors.includes(debouncedProfessor.toLowerCase());
+      const matchLocation =
+        !debouncedLocation ||
+        location.includes(debouncedLocation.toLowerCase());
+      const matchType = filter === "All" || ev.type === filter;
 
-    let matchDate = true;
-    if (debouncedDate) {
-      const filterDate = new Date(debouncedDate);
-      const nextDay = new Date(filterDate);
-      nextDay.setDate(filterDate.getDate() + 1);
-      const eventDate = new Date(ev.startDateTime || ev.startDate || ev.date);
-      matchDate = eventDate >= filterDate && eventDate < nextDay;
-    }
+      let matchDate = true;
+      if (debouncedDate) {
+        const filterDate = new Date(debouncedDate);
+        const nextDay = new Date(filterDate);
+        nextDay.setDate(filterDate.getDate() + 1);
+        const eventDate = new Date(ev.startDateTime || ev.startDate || ev.date);
+        matchDate = eventDate >= filterDate && eventDate < nextDay;
+      }
 
-    return (
-      matchSearch && matchProfessor && matchLocation && matchType && matchDate
-    );
-  });
+      return (
+        matchSearch && matchProfessor && matchLocation && matchType && matchDate
+      );
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.startDateTime || a.startDate || a.date);
+      const dateB = new Date(b.startDateTime || b.startDate || b.date);
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
 
   useEffect(() => {
     const urlFilter = params.get("filter");
@@ -545,10 +554,32 @@ export default function EventsHome() {
                 fontSize: "13px",
               }}
             />
+            <button
+              onClick={() =>
+                setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              style={{
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(47,65,86,0.2)",
+                background: "white",
+                fontSize: "13px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+            </button>
           </div>
 
           {/* RIGHT: action buttons */}
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: 'center' }}>
+            {/* Notifications dropdown placed to the LEFT of Create Event */}
+            <div>
+              <React.Suspense fallback={null}>
+                <NotificationsDropdown />
+              </React.Suspense>
+            </div>
             <button
               className="btn"
               style={{

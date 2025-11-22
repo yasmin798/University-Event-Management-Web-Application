@@ -17,6 +17,7 @@ const EventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const fromAdmin = location.state?.fromAdmin || false;
 
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,27 +34,33 @@ const EventDetails = () => {
   const [myComment, setMyComment] = useState("");
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [canReview, setCanReview] = useState(false); // NEW: Simplified review permission
 
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
 
-  // Get user ID
+  // Get user ID from token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserId(payload.id || payload.userId || payload._id);
+        console.log("User ID from token:", payload.id || payload.userId || payload._id); // DEBUG
       } catch (e) {
         console.error("Invalid token");
       }
+    } else {
+      console.log("No token found — user not logged in"); // DEBUG
     }
   }, []);
 
   // Fetch Reviews
   useEffect(() => {
     const fetchReviews = async () => {
+      console.log("Fetching reviews for ID:", id); // DEBUG
       try {
         const res = await fetch(`${API_BASE}/api/events/${id}/reviews`);
+        console.log("Reviews response status:", res.status); // DEBUG
         if (res.ok) {
           const data = await res.json();
           setReviews(data || []);
@@ -62,6 +69,8 @@ const EventDetails = () => {
             setMyRating(myReview.rating);
             setMyComment(myReview.comment || "");
           }
+        } else {
+          console.error("Reviews fetch failed:", res.status, await res.text()); // DEBUG
         }
       } catch (err) {
         console.error("Failed to load reviews:", err);
@@ -70,15 +79,49 @@ const EventDetails = () => {
       }
     };
 
-    if (id && userId) fetchReviews();
+    if (id) fetchReviews();
   }, [id, userId]);
 
-  // Submit Review
+  // NEW: Simplified "Can Review" Logic — No Attendance Check for Bazaars/Booths
+  useEffect(() => {
+    if (!event || !userId) return;
+
+    const hasPassed = new Date(event.startDateTime || event.endDateTime || event.startDate) < new Date();
+    const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
+    const isBazaar = event.type === "BAZAAR";
+    const isBooth = event.type === "BOOTH";
+
+    console.log("Debug canReview:", { hasPassed, alreadyReviewed, isBazaar, isBooth, userId }); // DEBUG
+
+    // Bazaars & Booths: Anyone can review if passed and not already reviewed
+    if ((isBazaar || isBooth) && hasPassed && !alreadyReviewed) {
+      setCanReview(true);
+      console.log("Can review: Bazaar/Booth logic"); // DEBUG
+      return;
+    }
+
+    // For other events: Check if registered (your existing logic)
+    let isRegistered = false;
+    if (event.registeredUsers) isRegistered = event.registeredUsers.some(u => u.toString() === userId);
+    if (event.registrations) isRegistered = isRegistered || event.registrations.some(r => r.userId?.toString() === userId);
+
+    if (hasPassed && !alreadyReviewed && isRegistered) {
+      setCanReview(true);
+      console.log("Can review: Registered for other event"); // DEBUG
+    } else {
+      setCanReview(false);
+      console.log("Cannot review: Conditions not met"); // DEBUG
+    }
+  }, [event, reviews, userId]);
+
+  // Submit Review — With Full Error Debugging
   const submitReview = async () => {
     if (myRating === 0) {
       alert("Please select a star rating");
       return;
     }
+
+    console.log("Submitting review:", { myRating, myComment, userId, eventId: id }); // DEBUG
 
     try {
       const token = localStorage.getItem("token");
@@ -94,20 +137,26 @@ const EventDetails = () => {
         }),
       });
 
+      console.log("Submit response status:", res.status); // DEBUG
+
       if (res.ok) {
         const updated = await res.json();
         setReviews(updated);
+        setMyRating(0);
+        setMyComment("");
         alert("Thank you for your review!");
       } else {
-        const err = await res.json();
-        alert(err.error || "Failed to submit review");
+        const errText = await res.text();
+        console.error("Submit failed:", res.status, errText); // DEBUG
+        alert(`Failed: ${res.status} - ${errText || "Unknown error"}`);
       }
     } catch (err) {
-      alert("Network error. Please try again.");
+      console.error("Network error:", err); // DEBUG
+      alert("Network error. Check console for details.");
     }
   };
 
-  // Your existing fetches (unchanged)
+  // Your existing booth & workshop fetches (unchanged)
   useEffect(() => {
     const fetchBooths = async () => {
       setBoothsLoading(true);
@@ -128,6 +177,7 @@ const EventDetails = () => {
         }));
         setBooths(normalizedBooths);
       } catch (err) {
+        console.error("Error fetching booths:", err);
         setBooths([]);
       } finally {
         setBoothsLoading(false);
@@ -161,6 +211,7 @@ const EventDetails = () => {
         });
         setWorkshops(normalizedWorkshops);
       } catch (error) {
+        console.error("Error fetching workshops:", error);
         setWorkshops([]);
       } finally {
         setWorkshopsLoading(false);
@@ -200,6 +251,24 @@ const EventDetails = () => {
     setLoading(stillLoading);
   }, [otherEvents, workshopsLoading, workshops.length]);
 
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const formatMoney = (n) => {
+    if (n == null || n === "") return "—";
+    const num = Number(n);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "EGP", maximumFractionDigits: 0 }).format(num);
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-[#f5efeb] items-center justify-center">
@@ -214,7 +283,7 @@ const EventDetails = () => {
       <div className="flex h-screen bg-[#f5efeb] items-center justify-center">
         <h2 className="text-xl font-semibold text-[#2f4156] mb-4">Event Not Found</h2>
         <button onClick={() => navigate(-1)} className="bg-[#567c8d] hover:bg-[#45687a] text-white px-6 py-2 rounded-lg">
-          Back to Events
+          ← Back to Events
         </button>
       </div>
     );
@@ -222,16 +291,15 @@ const EventDetails = () => {
 
   const type = event.type?.toUpperCase() || "EVENT";
   const title = event.title || event.name || event.workshopName || "Untitled Event";
+  const isTrip = type === "TRIP";
+  const isWorkshop = type === "WORKSHOP";
   const isBazaar = type === "BAZAAR";
+  const isConference = type === "CONFERENCE";
   const isBooth = type === "BOOTH";
-  const hasPassed = new Date(event.startDateTime || event.endDateTime || event.startDate) < new Date();
-  const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
-
-  // THIS IS THE KEY FIX: Bazaars & Booths can be reviewed by ANYONE after they end
-  const canReview = userId && hasPassed && !alreadyReviewed && (isBazaar || isBooth || event.registeredUsers?.some(u => u.toString() === userId) || event.registrations?.some(r => r.userId?.toString() === userId));
+  const hasPassed = new Date(event.startDateTime || event.startDate) < new Date();
 
   let eventImage = event.image;
-  if (!eventImage) {
+  if (!eventImage || eventImage === "") {
     switch (type) {
       case "TRIP": eventImage = tripImage; break;
       case "WORKSHOP": eventImage = workshopPlaceholder; break;
@@ -248,7 +316,7 @@ const EventDetails = () => {
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar & Header - unchanged */}
+      {/* Sidebar */}
       {isSidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsSidebarOpen(false)}></div>}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="p-6 flex items-center justify-between">
@@ -275,7 +343,7 @@ const EventDetails = () => {
         </header>
 
         <main className="p-4 md:p-8 max-w-5xl mx-auto">
-          <button onClick={() => navigate(-1)} className="mb-6 text-[#567c8d] hover:text-[#2f4156]">Back to Events</button>
+          <button onClick={() => navigate(-1)} className="mb-6 text-[#567c8d] hover:text-[#2f4156]">← Back to Events</button>
 
           <div className="bg-white rounded-2xl shadow-sm p-8">
             <div className="flex items-start justify-between mb-6">
@@ -290,7 +358,7 @@ const EventDetails = () => {
               <img src={eventImage} alt={title} className="h-full w-full object-cover" />
             </div>
 
-            {/* REVIEWS SECTION - NOW WORKS FOR BAZAARS & BOOTHS */}
+            {/* RATINGS & REVIEWS SECTION */}
             <div className="mt-12 border-t pt-8">
               <h2 className="text-2xl font-bold text-[#2f4156] mb-6 flex items-center gap-2">
                 <MessageCircle size={28} /> Ratings & Reviews {reviews.length > 0 && `(${reviews.length})`}
@@ -310,7 +378,7 @@ const EventDetails = () => {
                 </div>
               )}
 
-              {/* THIS IS THE FIX: Show review box for Bazaars/Booths even if not registered */}
+              {/* REVIEW BOX — NOW SHOWS FOR BAZAARS/BOOTHS IF PASSED */}
               {canReview && (
                 <div className="bg-[#f8f9fa] p-6 rounded-xl mb-8 border">
                   <h3 className="font-semibold text-[#2f4156] mb-4">Your Review</h3>
@@ -322,7 +390,7 @@ const EventDetails = () => {
                     ))}
                   </div>
                   <textarea
-                    placeholder="Share your experience..."
+                    placeholder="Share your experience with this event..."
                     value={myComment}
                     onChange={(e) => setMyComment(e.target.value)}
                     className="w-full p-4 border border-[#c8d9e6] rounded-lg resize-none focus:ring-2 focus:ring-[#567c8d]"
@@ -334,11 +402,15 @@ const EventDetails = () => {
                 </div>
               )}
 
+              {!canReview && hasPassed && userId && (
+                <p className="text-gray-500 italic mb-4">You cannot review this event (already reviewed or not eligible).</p>
+              )}
+
               <div className="space-y-6">
                 {reviewsLoading ? (
                   <p className="text-gray-500">Loading reviews...</p>
                 ) : reviews.length === 0 ? (
-                  <p className="text-gray-500 italic text-center py-8">No reviews yet. Be the first!</p>
+                  <p className="text-gray-500 italic text-center py-8">No reviews yet. Be the first to review!</p>
                 ) : (
                   reviews.map((r, i) => (
                     <div key={i} className="bg-[#fdfdfd] p-6 rounded-xl border">

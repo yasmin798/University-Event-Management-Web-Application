@@ -25,6 +25,15 @@ const userSchema = new mongoose.Schema(
     type: mongoose.Schema.Types.ObjectId,
     ref: "Event", // we'll use a virtual populate later
   }],
+  // Loyalty partner fields for vendors
+  isLoyaltyPartner: { type: Boolean, default: false },
+  loyalty: {
+    discountRate: { type: Number, default: 0 }, // percentage e.g., 10 for 10%
+    promoCode: { type: String, default: "" },
+    terms: { type: String, default: "" },
+    validFrom: { type: Date },
+    validTo: { type: Date },
+  },
   },
   { timestamps: true }
 );

@@ -37,6 +37,7 @@ export default function Admin() {
   const [professorFilter, setProfessorFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   // Debounced admin filters to avoid per-keystroke filtering
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -286,6 +287,9 @@ export default function Admin() {
           params.append("type", debouncedEventFilter.toUpperCase());
         }
         if (debouncedDateFilter) params.append("date", debouncedDateFilter);
+        params.append("sort", "startDateTime");
+        // Reverse the order for server because server logic is inverted
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
         const unifiedAttempt = await tryFetchJson(
           `${API_ORIGIN}/api/events/all?${params.toString()}`
@@ -355,6 +359,13 @@ export default function Admin() {
       // Add filtered booth events to all events
       allEvents.push(...filteredBoothEvents);
 
+      // Sort combined events by date (reverse logic to match server behavior)
+      allEvents.sort((a, b) => {
+        const dateA = new Date(a.startDateTime || a.startDate || a.date);
+        const dateB = new Date(b.startDateTime || b.startDate || b.date);
+        return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
+      });
+
       console.log("Combined events:", allEvents);
       setEvents(allEvents);
       setEventFetchErrors(errors);
@@ -382,6 +393,7 @@ export default function Admin() {
     debouncedLocationFilter,
     debouncedEventFilter,
     debouncedDateFilter,
+    sortOrder,
   ]);
 
   const handleDelete = async (userId) => {
@@ -805,6 +817,14 @@ export default function Admin() {
                 <option value="workshop">Workshop</option>
                 <option value="booth">Booth</option>
               </select>
+              <button
+                onClick={() =>
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
+                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+              >
+                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              </button>
             </div>
 
             <SectionEvents

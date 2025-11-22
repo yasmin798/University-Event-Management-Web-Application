@@ -143,7 +143,7 @@ const StudentDashboard = () => {
 
         params.append("sort", "startDateTime");
 
-        params.append("order", sortOrder);
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
         const res = await fetch(`/api/events/all?${params}`);
 
@@ -197,7 +197,7 @@ const StudentDashboard = () => {
   };
 
   const handleCourtsAvailability = () => {
-    navigate("/student/courts-availability");
+    navigate("/courts-availability");
     closeSidebar();
   };
 
@@ -388,7 +388,7 @@ const StudentDashboard = () => {
               }
               className="px-4 py-2 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg transition-colors whitespace-nowrap"
             >
-              Sort {sortOrder === "asc" ? "Ascending" : "Descending"} Date
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
             </button>
           </div>
 

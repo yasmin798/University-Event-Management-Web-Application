@@ -11,6 +11,7 @@ const BazaarApplicationForm = () => {
   const [bazaar, setBazaar] = useState(null);
   const [loadingBazaar, setLoadingBazaar] = useState(true);
   const [attendees, setAttendees] = useState([ { ...emptyAttendee } ]);
+  const [idFiles, setIdFiles] = useState([null]);
   const [boothSize, setBoothSize] = useState("2x2");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -36,13 +37,19 @@ const BazaarApplicationForm = () => {
   const addAttendee = () => {
     if (attendees.length >= 5) return;
     setAttendees([...attendees, { ...emptyAttendee }]);
+    setIdFiles((s) => [...s, null]);
   };
   const removeAttendee = (index) => {
     setAttendees(attendees.filter((_, i) => i !== index));
+    setIdFiles((s) => s.filter((_, i) => i !== index));
   };
   const updateAttendee = (index, field, value) => {
     const copy = attendees.map((a, i) => (i === index ? { ...a, [field]: value } : a));
     setAttendees(copy);
+  };
+
+  const onFileChange = (index, file) => {
+    setIdFiles((prev) => prev.map((f, i) => (i === index ? file : f)));
   };
 
   const validate = () => {
@@ -65,20 +72,22 @@ const BazaarApplicationForm = () => {
   if (v) { setError(v); return; }
 
   setSubmitting(true);
-  try {
-    // Ensure the key name is "bazaar" (not bazaarId) — server expects bazaar
-    const payload = {
-      bazaar: bazaarId,
-      attendees,
-      boothSize,
-    };
+    try {
+    // If any id file is missing, warn
+    for (let i = 0; i < attendees.length; i++) {
+      if (!idFiles[i]) throw new Error(`Please upload ID file for attendee ${i + 1}`);
+    }
 
-    console.log("Submitting application payload:", payload);
+    const form = new FormData();
+    form.append("bazaar", bazaarId);
+    form.append("boothSize", boothSize);
+    form.append("attendees", JSON.stringify(attendees));
+    // append files in same order as attendees
+    idFiles.forEach((f) => form.append("idFiles", f));
 
     const res = await fetch("http://localhost:3001/api/bazaar-applications", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: form,
     });
 
     const text = await res.text();
@@ -145,6 +154,12 @@ const BazaarApplicationForm = () => {
                   value={att.email}
                   onChange={(e) => updateAttendee(idx, "email", e.target.value)}
                   className="flex-1 p-2 border rounded"
+                />
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => onFileChange(idx, e.target.files[0] || null)}
+                  className="ml-2"
                 />
                 {attendees.length > 1 && (
                   <button

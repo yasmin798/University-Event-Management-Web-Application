@@ -8,6 +8,7 @@ const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { protect, adminOnly } = require("./middleware/auth");
+const path = require("path");
 
 // Routers
 const authRoutes = require("./routes/authRoutes");
@@ -22,10 +23,13 @@ const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
 const notificationRoutes = require("./routes/notificationRoutes");
 const reportsRoutes = require("./routes/reports");
 const vendorApplicationsRoute = require("./routes/vendorApplications");
+const vendorsRoute = require("./routes/vendors");
 const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
 const reservationRoutes = require("./routes/reservationRoutes");
-const reviewsRouter = require("./routes/reviews");
+const paymentRoutes = require("./routes/paymentRoutes");
+const stripeWebhook = require("./webhooks/stripeWebhook");
+const reviewsRouter = require("./routes/reviews"); // or whatever the file is called
 // Models
 const User = require("./models/User");
 
@@ -41,6 +45,9 @@ app.use(
 );
 app.use(morgan("dev"));
 app.set("etag", false);
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Logger
 app.use((req, _res, next) => {
@@ -73,6 +80,7 @@ app.use("/api/bazaar-applications", adminBazaarRequestsRoute);
 app.use("/api/booth-applications", boothApplicationsRouter);
 app.use("/api/booth-applications", adminBoothRequestsRoute);
 app.use("/api/vendor/applications", vendorApplicationsRoute);
+app.use("/api/vendors", vendorsRoute);
 app.use("/api/booths", require("./routes/booths"));
 
 // Events routes (keep generic last)
@@ -80,6 +88,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
 
 app.use("/api/reservations", reservationRoutes);
+app.use("/api/payments", paymentRoutes);// Raw body needed for Stripe signature
+app.post("/webhook/stripe", express.raw({ type: "application/json" }), stripeWebhook);
 
 app.use("/api/events", reviewsRouter);
 
