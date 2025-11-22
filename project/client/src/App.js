@@ -19,6 +19,7 @@ import EventDetails from "./pages/EventDetails";
 //gymSessions
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
+import GymSessionsForRegister from "./pages/GymSessionsForRegister";
 
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
@@ -144,7 +145,9 @@ function App() {
         <Route path="/courts-availability" element={<CourtsAvailability />} />
         <Route path="/apply-booth" element={<BoothApplicationForm />} />
         <Route path="/gym-sessions" element={<GymSessions />} />
+        <Route path="/gym-sessions-register" element={<GymSessionsForRegister />} />
         <Route path="/gym-manager" element={<GymManager />} />
+
         <Route
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}

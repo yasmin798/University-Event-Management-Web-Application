@@ -175,7 +175,7 @@ const StudentDashboard = () => {
   };
 
   const handleGymSessions = () => {
-    navigate("/gym-sessions");
+    navigate("/gym-sessions-register");
 
     closeSidebar();
   };

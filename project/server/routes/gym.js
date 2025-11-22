@@ -58,4 +58,50 @@ router.put("/:id", async (req, res) => {
 });
 
 
+router.post("/register", async (req, res) => {
+  try {
+    const { sessionId, email } = req.body;
+
+    if (!sessionId || !email) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const session = await GymSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    // ✅ Check if session is full
+    if (session.registeredUsers.length >= session.maxParticipants) {
+      return res
+        .status(400)
+        .json({ error: "This session is already full." });
+    }
+
+    // ❌ Check if email already registered
+    const alreadyRegistered = session.registeredUsers.some(
+      (u) => u.email === email
+    );
+
+    if (alreadyRegistered) {
+      return res.status(400).json({ error: "Already registered" });
+    }
+
+    // ✅ Add user
+    session.registeredUsers.push({ email });
+
+    await session.save();
+
+    res.json({ message: "Registered successfully" });
+  } catch (err) {
+    console.error("Registration error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
+
+
 module.exports = router;

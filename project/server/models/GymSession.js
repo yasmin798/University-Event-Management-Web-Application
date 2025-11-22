@@ -12,7 +12,12 @@ const gymSessionSchema = new mongoose.Schema(
       required: true,
     },
     maxParticipants: { type: Number, required: true },
-    registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    registeredUsers: [
+      {
+        
+        email: { type: String, required: true },
+      }
+    ],
   },
   { timestamps: true }
 );
