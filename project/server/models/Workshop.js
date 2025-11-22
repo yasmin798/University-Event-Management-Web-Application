@@ -1,4 +1,14 @@
+// models/Workshop.js
 const mongoose = require("mongoose");
+
+// Reusable review schema (you can also put this in a separate file if you want)
+const reviewSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  userName: { type: String, required: true },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
 
 const workshopSchema = new mongoose.Schema({
   workshopName: { type: String, required: true },
@@ -14,14 +24,31 @@ const workshopSchema = new mongoose.Schema({
   extraResources: { type: String },
   capacity: { type: Number, required: true },
   registrationDeadline: { type: Date, required: true },
+  
+  // Registered users (attendees)
   registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' ,required: true,},
+
+  createdBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  
   status: { 
-  type: String, 
-  default: "pending",
-  enum: ['pending', 'published', 'rejected', 'edits_requested'] // Add this if using enum
-},
+    type: String, 
+    default: "pending",
+    enum: ['pending', 'published', 'rejected', 'edits_requested']
+  },
+  
   image: { type: String },
+
+  // ADD THIS: Reviews array
+  reviews: [reviewSchema],
+  
 }, { timestamps: true });
+
+// Optional: Index for faster queries
+workshopSchema.index({ startDateTime: 1 });
+workshopSchema.index({ "reviews.createdAt": -1 });
 
 module.exports = mongoose.model("Workshop", workshopSchema);
