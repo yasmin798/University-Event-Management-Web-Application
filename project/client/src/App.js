@@ -159,7 +159,7 @@ function App() {
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
         <Route
-          path="/student/courts-availability"
+          path="/courts-availability"
           element={<CourtsAvailabilityWrapper />}
         />
         <Route path="/reserve/:courtId" element={<ReserveCourt />} />

@@ -197,7 +197,7 @@ const StudentDashboard = () => {
   };
 
   const handleCourtsAvailability = () => {
-    navigate("/student/courts-availability");
+    navigate("/courts-availability");
     closeSidebar();
   };
 
