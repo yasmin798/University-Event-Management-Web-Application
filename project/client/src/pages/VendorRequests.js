@@ -6,6 +6,76 @@ import { LogOut } from "lucide-react";
 import "../events.theme.css";
 import Sidebar from "../components/Sidebar";
 
+function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
+  if (!open) return null;
+  return (
+    <div className="confirm-overlay" role="dialog" aria-modal="true">
+      <div className="confirm">
+        <h2>{title}</h2>
+        <p>{body}</p>
+        <div className="confirm-actions">
+          <button className="btn btn-outline" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="btn" onClick={onConfirm}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
+  const isAccepted = vendorTarget.newStatus === "accepted";
+  const typeCapitalized = vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
+  let detailsString = "";
+  if (vendorTarget.type === "bazaar") {
+    detailsString = `Bazaar Title: ${vendorTarget.details.bazaarTitle || "N/A"}\nLocation: ${vendorTarget.details.location || "N/A"}\nStart: ${vendorTarget.details.start || "N/A"}\nEnd: ${vendorTarget.details.end || "N/A"}\nBooth Size: ${vendorTarget.details.boothSize || "N/A"}`;
+  }
+  return (
+    <div style={popupOverlayStyle}>
+      <div style={popupHeaderStyle}>
+        <div>
+          <h3 style={{ margin: 0 }}>New Message</h3>
+          <p style={{ color: "#E5E7EB", fontSize: 14 }}>Vendor Notification</p>
+        </div>
+        <button onClick={onClose} style={closeBtnStyle}>
+          ✕
+        </button>
+      </div>
+      <div style={popupContentStyle}>
+        <div style={mailRowStyle}>
+          <b>To:</b> {vendorTarget.vendorEmail}
+        </div>
+        <div style={mailRowStyle}>
+          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been {isAccepted ? "Accepted" : "Rejected"}
+        </div>
+        <div style={mailBodyStyle}>
+          <p>Dear {vendorTarget.vendorName},</p>
+          <p>Your {vendorTarget.type} vendor request has been {vendorTarget.newStatus} by the admin.</p>
+          <p>Details:</p>
+          <pre style={{ whiteSpace: "pre-wrap" }}>{detailsString}</pre>
+          {isAccepted ? (
+            <p>We look forward to your participation!</p>
+          ) : (
+            <p>If you have any questions, please contact support.</p>
+          )}
+          <p>— Admin Team</p>
+        </div>
+      </div>
+      <div style={popupFooterStyle}>
+        <button onClick={onSend} style={sendBtnStyle} disabled={sending}>
+          {sending ? "Sending..." : "Send"}
+        </button>
+        <button onClick={onClose} style={cancelBtnStyle}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function VendorRequests() {
   const { id: bazaarId } = useParams();
   const navigate = useNavigate();
@@ -14,6 +84,17 @@ export default function VendorRequests() {
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState(null);
   const [filter, setFilter] = useState("All");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState({
+    requestId: null,
+    newStatus: null,
+    title: "",
+    body: "",
+  });
+  const [showVendorMailPopup, setShowVendorMailPopup] = useState(false);
+  const [vendorTarget, setVendorTarget] = useState(null);
+  const [sending, setSending] = useState(false);
+  const API_ORIGIN = "http://localhost:3001";
 
   const getBazaarId = (req) => {
     if (!req) return null;
@@ -29,9 +110,9 @@ export default function VendorRequests() {
       setError("");
 
       const attempts = [
-        `http://localhost:3001/api/bazaar-applications/bazaar/${bazaarId}`,
-        `http://localhost:3001/api/bazaar-applications?bazaar=${bazaarId}`,
-        `http://localhost:3001/api/bazaar-applications`,
+        `${API_ORIGIN}/api/bazaar-applications/bazaar/${bazaarId}`,
+        `${API_ORIGIN}/api/bazaar-applications?bazaar=${bazaarId}`,
+        `${API_ORIGIN}/api/bazaar-applications`,
       ];
 
       let res = null;
@@ -76,27 +157,73 @@ export default function VendorRequests() {
     fetchRequests();
   }, [bazaarId]);
 
-  const updateStatus = async (requestId, status) => {
-    if (!window.confirm(`Are you sure to ${status}?`)) return;
+  const updateStatusOnServer = async (requestId, newStatus) => {
+    const urls = [
+      `${API_ORIGIN}/api/admin/bazaar-vendor-requests/${requestId}`,
+      `${API_ORIGIN}/api/bazaar-applications/${requestId}`,
+      `${API_ORIGIN}/api/bazaar-vendor-requests/${requestId}`,
+    ];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        if (res.ok) return true;
+      } catch {}
+    }
+    throw new Error("Failed update");
+  };
 
+  const handleSendVendorMail = async () => {
+    if (!vendorTarget) return;
+    setSending(true);
+    setProcessingId(vendorTarget.requestId);
     try {
-      setProcessingId(requestId);
-      const url = `http://localhost:3001/api/bazaar-applications/${requestId}`;
-      const res = await axios.patch(url, { status });
-
-      if (res?.status === 200 || res?.status === 201) {
+      await updateStatusOnServer(vendorTarget.requestId, vendorTarget.newStatus);
+      const mailRes = await fetch(`${API_ORIGIN}/api/admin/send-vendor-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: vendorTarget.vendorEmail,
+          requestId: vendorTarget.requestId,
+          status: vendorTarget.newStatus,
+          type: vendorTarget.type,
+          details: vendorTarget.details,
+        }),
+      });
+      const mailData = await mailRes.json();
+      if (mailRes.ok) {
         setRequests((prev) =>
-          prev.map((r) =>
-            String(r._id) === String(requestId) ? { ...r, status } : r
-          )
+          prev.map((r) => (r._id === vendorTarget.requestId ? { ...r, status: vendorTarget.newStatus } : r))
         );
+        alert(`✅ Vendor request ${vendorTarget.newStatus} and notification sent successfully!`);
+      } else {
+        alert(`✅ Vendor request ${vendorTarget.newStatus}, but email failed: ${mailData.error || "Unknown error"}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Update failed.");
+      console.error("Error handling vendor request:", err);
+      alert("❌ Server error during request handling");
     } finally {
+      setSending(false);
+      setShowVendorMailPopup(false);
+      setVendorTarget(null);
       setProcessingId(null);
     }
+  };
+
+  const openConfirm = (id, status) => {
+    setConfirmData({
+      requestId: id,
+      newStatus: status,
+      title: status === "accepted" ? "Accept request?" : "Reject request?",
+      body:
+        status === "accepted"
+          ? "This will accept the vendor bazaar request."
+          : "This will reject the vendor bazaar request.",
+    });
+    setConfirmOpen(true);
   };
 
   return (
@@ -174,14 +301,14 @@ export default function VendorRequests() {
                   {status === "pending" && (
                     <div className="flex gap-2 mt-2">
                       <button
-                        onClick={() => updateStatus(req._id, "accepted")}
+                        onClick={() => openConfirm(req._id, "accepted")}
                         className="btn"
                         disabled={processingId === req._id}
                       >
                         {processingId === req._id ? "Processing…" : "Accept"}
                       </button>
                       <button
-                        onClick={() => updateStatus(req._id, "rejected")}
+                        onClick={() => openConfirm(req._id, "rejected")}
                         className="btn btn-outline"
                         disabled={processingId === req._id}
                       >
@@ -194,7 +321,106 @@ export default function VendorRequests() {
             })}
           </ul>
         )}
+        <ConfirmModal
+          open={confirmOpen}
+          title={confirmData.title}
+          body={confirmData.body}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            const req = requests.find((r) => r._id === confirmData.requestId);
+            if (!req) return;
+            const details = {
+              bazaarTitle: req.bazaar?.title || "N/A",
+              location: req.bazaar?.location || "N/A",
+              start: req.bazaar?.startDateTime || "N/A",
+              end: req.bazaar?.endDateTime || "N/A",
+              boothSize: req.boothSize || "N/A",
+            };
+            setVendorTarget({
+              requestId: confirmData.requestId,
+              type: "bazaar",
+              newStatus: confirmData.newStatus,
+              vendorName: req.vendorName || (req.attendees?.[0]?.name || "Vendor"),
+              vendorEmail: req.vendorEmail || (req.attendees?.[0]?.email || ""),
+              details,
+            });
+            setShowVendorMailPopup(true);
+          }}
+        />
+        {showVendorMailPopup && vendorTarget && (
+          <VendorMailPopup
+            onClose={() => setShowVendorMailPopup(false)}
+            onSend={handleSendVendorMail}
+            sending={sending}
+            vendorTarget={vendorTarget}
+          />
+        )}
       </main>
     </div>
   );
 }
+
+/* ===== Styles ===== */
+const popupOverlayStyle = {
+  position: "fixed",
+  bottom: 0,
+  right: 20,
+  width: 400,
+  backgroundColor: "white",
+  borderRadius: "10px 10px 0 0",
+  boxShadow: "0 -4px 15px rgba(0,0,0,0.2)",
+  display: "flex",
+  flexDirection: "column",
+  zIndex: 999,
+};
+const popupHeaderStyle = {
+  background: "#3B82F6",
+  color: "white",
+  padding: "10px 15px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+const closeBtnStyle = {
+  background: "transparent",
+  border: "none",
+  color: "white",
+  fontSize: 18,
+  cursor: "pointer",
+};
+const popupContentStyle = {
+  padding: "10px 15px",
+  flexGrow: 1,
+  overflowY: "auto",
+};
+const mailRowStyle = {
+  padding: "5px 0",
+  borderBottom: "1px solid #E5E7EB",
+  fontSize: 14,
+};
+const mailBodyStyle = { padding: "10px 0", fontSize: 14, color: "#111827" };
+const popupFooterStyle = {
+  padding: "10px 15px",
+  borderTop: "1px solid #E5E7EB",
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+};
+const sendBtnStyle = {
+  backgroundColor: "#10B981",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "8px 16px",
+  cursor: "pointer",
+  fontWeight: 500,
+};
+const cancelBtnStyle = {
+  backgroundColor: "#9CA3AF",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "8px 16px",
+  cursor: "pointer",
+};

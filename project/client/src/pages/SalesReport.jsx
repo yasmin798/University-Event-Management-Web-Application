@@ -327,9 +327,14 @@ export default function SalesReport() {
                         <th style={{ padding: 10, textAlign: "right" }}>
                           Attendees
                         </th>
-                        <th style={{ padding: 10, textAlign: "right" }}>
-                          Price
-                        </th>
+                        {/* Only show Price column if there are non-bazaar events */}
+                        {data.breakdown.some(
+                          (b) => b.eventType !== "bazaar"
+                        ) && (
+                          <th style={{ padding: 10, textAlign: "right" }}>
+                            Price
+                          </th>
+                        )}
                         <th style={{ padding: 10, textAlign: "right" }}>
                           Revenue
                         </th>
@@ -350,11 +355,16 @@ export default function SalesReport() {
                           <td style={{ padding: 10, textAlign: "right" }}>
                             {b.attendees ?? 0}
                           </td>
+                          {/* Only show Price cell if there are non-bazaar events */}
+                          {data.breakdown.some(
+                            (x) => x.eventType !== "bazaar"
+                          ) && (
+                            <td style={{ padding: 10, textAlign: "right" }}>
+                              ${b.price?.toFixed(2) || 0}
+                            </td>
+                          )}
                           <td style={{ padding: 10, textAlign: "right" }}>
-                            {b.price ?? 0}
-                          </td>
-                          <td style={{ padding: 10, textAlign: "right" }}>
-                            {b.revenue ?? 0}
+                            ${b.revenue?.toFixed(2) || 0}
                           </td>
                         </tr>
                       ))}

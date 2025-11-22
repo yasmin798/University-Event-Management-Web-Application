@@ -39,6 +39,8 @@ const StudentDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
 
   const [dateFilter, setDateFilter] = useState("");
 
@@ -53,6 +55,20 @@ const StudentDashboard = () => {
   const [favorites, setFavorites] = useState([]);
 
   const [userRole, setUserRole] = useState("");
+
+  // Debounced inputs to avoid refetching on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    return () => clearTimeout(t);
+  }, [professorFilter]);
 
   // Fetch favorites
 
@@ -115,7 +131,11 @@ const StudentDashboard = () => {
       try {
         const params = new URLSearchParams();
 
-        if (searchTerm) params.append("search", searchTerm);
+        const searchValue = [debouncedSearch, debouncedProfessor]
+          .filter(Boolean)
+          .join(" ");
+        if (searchValue) params.append("search", searchValue);
+        if (locationFilter) params.append("location", locationFilter);
 
         if (eventTypeFilter !== "All") params.append("type", eventTypeFilter);
 
@@ -160,7 +180,15 @@ const StudentDashboard = () => {
         console.error("Invalid token", e);
       }
     }
-  }, [searchTerm, eventTypeFilter, dateFilter, sortOrder, fetchFavorites]);
+  }, [
+    debouncedSearch,
+    eventTypeFilter,
+    dateFilter,
+    sortOrder,
+    fetchFavorites,
+    debouncedProfessor,
+    locationFilter,
+  ]);
 
   const handleRegisteredEvents = () => {
     navigate("/events/registered");
@@ -171,8 +199,7 @@ const StudentDashboard = () => {
   const handleCourtsAvailability = () => {
     navigate("/student/courts-availability");
     closeSidebar();
-};
-
+  };
 
   const handleGymSessions = () => {
     navigate("/gym-sessions-register");
@@ -261,7 +288,10 @@ const StudentDashboard = () => {
           </button>
 
           <button
-            onClick={() => { navigate('/favorites'); closeSidebar(); }}
+            onClick={() => {
+              navigate("/favorites");
+              closeSidebar();
+            }}
             className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
           >
             <Heart size={18} />
@@ -321,7 +351,25 @@ const StudentDashboard = () => {
                 className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
               />
             </div>
+            <div className="hidden md:block md:w-48">
+              <input
+                type="text"
+                placeholder="Professor name"
+                value={professorFilter}
+                onChange={(e) => setProfessorFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-[#c8d9e6] rounded-lg"
+              />
+            </div>
 
+            <div className="hidden md:block md:w-48">
+              <input
+                type="text"
+                placeholder="Location"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-[#c8d9e6] rounded-lg"
+              />
+            </div>
             <EventTypeDropdown
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}

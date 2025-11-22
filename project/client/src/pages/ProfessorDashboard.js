@@ -40,6 +40,12 @@ const ProfessorDashboard = () => {
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [booths, setBooths] = useState([]);
   const [boothsLoading, setBoothsLoading] = useState(true);
+  // Debounced inputs to avoid refetching on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   // Use same hooks as EventsHome
   const { events: otherEvents, loading: otherLoading } = useServerEvents({
@@ -156,7 +162,6 @@ const ProfessorDashboard = () => {
     ...workshops,
     ...booths,
   ];
-  const loading = otherLoading || workshopsLoading;
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -306,7 +311,7 @@ const ProfessorDashboard = () => {
   };
 
   useEffect(() => {
-    const term = searchTerm.toLowerCase().trim();
+    const term = debouncedSearch.toLowerCase().trim();
 
     if (!term) {
       setFilteredWorkshops(workshops);
@@ -333,7 +338,7 @@ const ProfessorDashboard = () => {
     });
 
     setFilteredWorkshops(results);
-  }, [searchTerm, workshops]);
+  }, [debouncedSearch, workshops]);
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
