@@ -20,9 +20,11 @@ const boothApplicationsRouter = require("./routes/boothApplications");
 const adminBazaarRequestsRoute = require("./routes/adminBazaarRequests");
 const adminBoothRequestsRoute = require("./routes/adminBoothRequests");
 const notificationRoutes = require("./routes/notificationRoutes");
+const reportsRoutes = require("./routes/reports");
 const vendorApplicationsRoute = require("./routes/vendorApplications");
 const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
+const reservationRoutes = require("./routes/reservationRoutes");
 // Models
 const User = require("./models/User");
 
@@ -56,10 +58,11 @@ app.use((_, res, next) => {
 // Auth & Gym
 app.use("/api/auth", authRoutes);
 app.use("/api/gym", gymRouter);
-app.use('/api/admin', require('./routes/admin'));
+app.use("/api/admin", require("./routes/admin"));
 
 // Notifications
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/reports", reportsRoutes);
 
 // Feature routers
 app.use("/api/workshops", workshopRoutes);
@@ -74,6 +77,8 @@ app.use("/api/booths", require("./routes/booths"));
 // Events routes (keep generic last)
 app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
+
+app.use("/api/reservations", reservationRoutes);
 
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
@@ -98,11 +103,11 @@ async function sendVerificationEmail(email, userId, role, isAdmin = false) {
       },
     });
 
-    const subject = isAdmin 
-      ? "Account Verification - Admin Approval" 
+    const subject = isAdmin
+      ? "Account Verification - Admin Approval"
       : "Welcome to Eventity - Verify Your Account";
 
-    const body = isAdmin 
+    const body = isAdmin
       ? `
         <div style="font-family:Arial,sans-serif;line-height:1.6;">
           <h2 style="color:#10B981;">Eventity - Account Verification</h2>
@@ -120,7 +125,7 @@ async function sendVerificationEmail(email, userId, role, isAdmin = false) {
       : `
         <div style="font-family:Arial,sans-serif;line-height:1.6;">
           <h2 style="color:#10B981;">Welcome to Eventity!</h2>
-          <p>Hello ${email.split('@')[0]},</p>
+          <p>Hello ${email.split("@")[0]},</p>
           <p>Thank you for registering with Eventity. To complete your registration, please click the button below to verify your email address:</p>
           <a href="${verifyUrl}" target="_blank"
              style="background:#10B981;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:10px;">
@@ -141,7 +146,9 @@ async function sendVerificationEmail(email, userId, role, isAdmin = false) {
 
     await transporter.sendMail(mailOptions);
 
-    console.log(`📧 ${isAdmin ? 'Admin' : 'Student'} verification email sent to ${email}`);
+    console.log(
+      `📧 ${isAdmin ? "Admin" : "Student"} verification email sent to ${email}`
+    );
   } catch (err) {
     console.error("❌ Email send error:", err);
     throw new Error("Failed to send verification email");
@@ -182,7 +189,9 @@ app.post("/api/register", async (req, res) => {
     let isVerified = true;
     let message = "✅ Signup successful!";
 
-    const needsAdminApproval = ["staff", "professor", "ta", "student"].includes(role);
+    const needsAdminApproval = ["staff", "professor", "ta", "student"].includes(
+      role
+    );
 
     if (needsAdminApproval) {
       isVerified = false;
@@ -329,7 +338,9 @@ app.patch("/api/admin/block/:id", async (req, res) => {
     const { status } = req.body;
 
     if (!["active", "blocked"].includes(status))
-      return res.status(400).json({ error: "status must be 'active' or 'blocked'" });
+      return res
+        .status(400)
+        .json({ error: "status must be 'active' or 'blocked'" });
 
     if (!mongoose.Types.ObjectId.isValid(id))
       return res.status(400).json({ error: "Invalid user ID" });
@@ -342,7 +353,9 @@ app.patch("/api/admin/block/:id", async (req, res) => {
     const saved = await user.save();
     res.status(200).json({
       success: true,
-      message: `User ${status === "blocked" ? "blocked" : "unblocked"} successfully.`,
+      message: `User ${
+        status === "blocked" ? "blocked" : "unblocked"
+      } successfully.`,
       user: saved,
     });
   } catch (err) {
@@ -383,7 +396,9 @@ app.get("/api/verify/:token", async (req, res) => {
     if (!data) {
       return res
         .status(400)
-        .send("<h2 style='color:red;text-align:center;'>❌ Invalid or expired verification link.</h2>");
+        .send(
+          "<h2 style='color:red;text-align:center;'>❌ Invalid or expired verification link.</h2>"
+        );
     }
 
     const { userId, role } = data;
@@ -400,7 +415,9 @@ app.get("/api/verify/:token", async (req, res) => {
     await user.save();
     delete verificationTokens[token];
 
-    console.log(`✅ ${user.email} verified successfully as ${user.role || 'student'}`);
+    console.log(
+      `✅ ${user.email} verified successfully as ${user.role || "student"}`
+    );
 
     res.send(`
       <html>

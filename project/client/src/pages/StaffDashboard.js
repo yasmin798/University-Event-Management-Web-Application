@@ -179,7 +179,7 @@ const handleCourtsAvailability = () => {
 };
 
 const handleGymSessions = () => {
-  navigate("/gym-sessions");
+  navigate("/gym-sessions-register");
   closeSidebar();
 };
 

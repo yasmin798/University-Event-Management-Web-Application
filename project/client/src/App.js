@@ -19,6 +19,7 @@ import EventDetails from "./pages/EventDetails";
 //gymSessions
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
+import GymSessionsForRegister from "./pages/GymSessionsForRegister";
 
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
@@ -48,9 +49,14 @@ import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
 import WorkshopsListPage from "./pages/WorkshopsListPage";
 import EditWorkshopPage from "./pages/EditWorkshopPage";
+import AttendeesReport from "./pages/AttendeesReport";
+import SalesReport from "./pages/SalesReport";
 
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
+import ReserveCourt from "./pages/ReserveCourt";
+import CourtsAvailabilityWrapper from "./pages/CourtsAvailabilityWrapper";
+
 
 import BazaarApplicationForm from "./pages/BazaarApplicationForm";
 import BoothApplicationForm from "./pages/BoothApplicationForm";
@@ -97,6 +103,8 @@ function App() {
           path="/professor/workshops/edit/:id"
           element={<EditWorkshopPage />}
         />
+        <Route path="/reports/attendees" element={<AttendeesReport />} />
+        <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
         <Route path="/events" element={<EventsHome />} />
         <Route path="/events/list" element={<EventList />} />
@@ -137,10 +145,14 @@ function App() {
         <Route path="/vendors" element={<VendorsPage />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
-        <Route path="/courts-availability" element={<CourtsAvailability />} />
+        <Route path="/student/courts-availability"element={<CourtsAvailabilityWrapper />}/>
+        <Route path="/reserve/:courtId" element={<ReserveCourt />} />
+
         <Route path="/apply-booth" element={<BoothApplicationForm />} />
         <Route path="/gym-sessions" element={<GymSessions />} />
+        <Route path="/gym-sessions-register" element={<GymSessionsForRegister />} />
         <Route path="/gym-manager" element={<GymManager />} />
+
         <Route
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}

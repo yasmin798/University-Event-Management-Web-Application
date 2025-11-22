@@ -1,14 +1,19 @@
 // client/src/pages/EventsHome.js
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { LogOut, Search } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search } from "lucide-react";
+
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
 import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
 import { useServerEvents } from "../hooks/useServerEvents";
 import Sidebar from "../components/Sidebar";
-import { useSearchParams } from "react-router-dom";
+
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 
 // --- helpers (put above the component) ---
 function formatDate(iso) {
@@ -22,6 +27,7 @@ function formatDate(iso) {
     minute: "2-digit",
   });
 }
+
 function formatMoney(n) {
   if (n == null || n === "") return "—";
   const num = Number(n);
@@ -32,14 +38,27 @@ function formatMoney(n) {
     maximumFractionDigits: 0,
   }).format(num);
 }
+
 // editable if the event hasn't started yet
 function isEditable(startIso) {
   if (!startIso) return true;
   return new Date(startIso).getTime() > Date.now();
 }
 
+// Check if an event has already ended
+function isPastEvent(ev) {
+  const endDate =
+    ev.endDateTime || ev.endDate || ev.endDateTime; // support all types
+  if (!endDate) return false;
+  return new Date(endDate).getTime() < Date.now();
+}
+
+
 export default function EventsHome() {
   const navigate = useNavigate();
+  const [viewEvent, setViewEvent] = useState(null);
+  const [conferences, setConferences] = useState([]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("All");
   const [params] = useSearchParams();
@@ -63,6 +82,7 @@ export default function EventsHome() {
     workshopId: null,
     message: "",
   });
+
   const {
     events: otherEvents,
     loading: otherLoading,
@@ -76,19 +96,58 @@ export default function EventsHome() {
       const data = await workshopAPI.getAllWorkshops();
       const normalized = data.map((w) => ({
         _id: w._id,
-        title: w.workshopName,
-        description: w.shortDescription || w.description || "",
-        location: w.location || "",
-        startDateTime: w.startDate,
-        endDateTime: w.endDate,
+        title: w.workshopName || w.title,
+        type: "WORKSHOP",
+
+        // WORKSHOP FIELDS
+        location: w.location,
+        startDateTime: w.startDateTime, // ← REAL BACKEND FIELD
+        endDateTime: w.endDateTime, // ← REAL BACKEND FIELD
         registrationDeadline: w.registrationDeadline,
         capacity: w.capacity,
-        budget: w.budget,
+
+        description: w.shortDescription || "",
+        agenda: w.fullAgenda || w.agenda,
+        facultyResponsible: w.facultyResponsible,
+        professorsParticipating: w.professorsParticipating,
+        budget: w.requiredBudget || w.budget,
+        fundingSource: w.fundingSource,
+        extraResources: w.extraResources,
+
         status: w.status,
         registrations: w.registeredUsers || [],
-        type: "WORKSHOP",
         image: w.image || workshopPlaceholder,
       }));
+      const normalizedConferences = otherEvents
+        .filter((ev) => ev.type === "CONFERENCE")
+        .map((c) => ({
+          _id: c._id,
+          type: "CONFERENCE",
+
+          title: c.name || c.title,
+          name: c.name || c.title,
+
+          location: c.location,
+          startDateTime: c.startDateTime, // ← correct backend field
+          endDateTime: c.endDateTime, // ← correct backend field
+
+          shortDescription: c.shortDescription,
+          description: c.shortDescription, // for view modal fallback
+
+          agenda: c.fullAgenda || c.agenda,
+          website: c.website,
+
+          budget: c.requiredBudget || c.budget,
+          fundingSource: c.fundingSource,
+          extraResources: c.extraResources,
+
+          registrations: c.registeredUsers || [],
+          status: c.status,
+
+          image: conferenceImg,
+        }));
+      setConferences(normalizedConferences);
+
       setWorkshops(normalized);
     } catch (err) {
       console.error("Error fetching workshops:", err);
@@ -101,12 +160,14 @@ export default function EventsHome() {
       const data = await boothAPI.getAllBooths();
       const normalized = data.map((b) => ({
         _id: b._id,
-        title: b.name || `Booth ${b._id}`,
+        title: b.attendees?.[0]?.name || `Booth ${b._id}`,
+
         description: b.description || "",
         startDateTime: b.startDate,
         endDateTime: b.endDate,
         boothSize: b.boothSize,
-        duration: b.duration,
+        duration: b.durationWeeks,
+
         platformSlot: b.platformSlot,
         status: b.status,
         attendees: b.attendees,
@@ -131,18 +192,26 @@ export default function EventsHome() {
     fetchBooths();
     refreshEvents();
   }, [fetchWorkshops, fetchBooths, refreshEvents]);
+  function normalizeConferenceFields(conf) {
+    return {
+      ...conf,
+      shortDescription: conf.shortDescription || "",
+      fullAgenda: conf.fullAgenda || "",
+      website: conf.website || "",
+      requiredBudget: conf.requiredBudget || "",
+      fundingSource: conf.fundingSource || "",
+      extraResources: conf.extraResources || "",
+    };
+  }
 
   const allEvents = [
-    ...otherEvents.filter((e) => !e.status || e.status === "published"),
+    ...otherEvents.filter((e) => !["CONFERENCE"].includes(e.type)),
+    ...conferences,
     ...workshops,
     ...booths,
   ];
 
   const isLoading = loading || otherLoading;
-
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) navigate("/");
-  };
 
   // ====== API actions ======
   const doDelete = async (id, eventType) => {
@@ -208,47 +277,51 @@ export default function EventsHome() {
       setToast({ open: true, text: "Network error: Could not send request" });
     }
   };
-const exportAttendees = async (eventId, eventType) => {
-  if (!eventId) return;
 
-  const typeMap = {
-    bazaars: "bazaars",
-    trips: "trips",
-    workshops: "workshops",
-    booths: "booths",
-  };
+  const exportAttendees = async (eventId, eventType) => {
+    if (!eventId) return;
 
-  const apiPath = typeMap[eventType];
-  if (!apiPath) {
-    setToast({ open: true, text: "Export not supported" });
-    return;
-  }
+    const typeMap = {
+      bazaars: "bazaars",
+      trips: "trips",
+      workshops: "workshops",
+      booths: "booths",
+    };
 
-  try {
-    const res = await fetch(`/api/events/${eventId}/registrations?format=xlsx`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      setToast({ open: true, text: err || "Export failed" });
+    const apiPath = typeMap[eventType];
+    if (!apiPath) {
+      setToast({ open: true, text: "Export not supported" });
       return;
     }
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `attendees_${eventType}_${eventId}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    setToast({ open: true, text: "Exported successfully!" });
-  } catch (e) {
-    setToast({ open: true, text: "Export error" });
-  }
-};
+    try {
+      const res = await fetch(
+        `/api/events/${eventId}/registrations?format=xlsx`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.text();
+        setToast({ open: true, text: err || "Export failed" });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendees_${eventType}_${eventId}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setToast({ open: true, text: "Exported successfully!" });
+    } catch (e) {
+      setToast({ open: true, text: "Export error" });
+    }
+  };
 
   // ====== Handlers for modals & buttons ======
   const handleDelete = (id, eventType) => {
@@ -296,11 +369,12 @@ const exportAttendees = async (eventId, eventType) => {
 
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
----------------------------------------------------- */
+  ---------------------------------------------------- */
   const filteredEvents = allEvents.filter((ev) => {
     const title = ev.title?.toLowerCase() || "";
     const matchSearch = title.includes(searchTerm.toLowerCase());
     const matchType = filter === "All" || ev.type === filter;
+
     return matchSearch && matchType;
   });
 
@@ -315,7 +389,7 @@ const exportAttendees = async (eventId, eventType) => {
 
   /* ----------------------------------------------------
    2) THEN: PAGINATION
----------------------------------------------------- */
+  ---------------------------------------------------- */
   const ITEMS_PER_PAGE = 6;
   const indexOfLast = currentPage * ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - ITEMS_PER_PAGE;
@@ -323,7 +397,7 @@ const exportAttendees = async (eventId, eventType) => {
 
   /* ----------------------------------------------------
    3) NUMBER OF PAGES
----------------------------------------------------- */
+  ---------------------------------------------------- */
   const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
 
   return (
@@ -540,12 +614,26 @@ const exportAttendees = async (eventId, eventType) => {
             No events found.
           </p>
         ) : (
-          <div className="grid">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "24px",
+              alignItems: "stretch",
+            }}
+          >
             {currentEvents.map((ev) => {
+              let cardImage = workshopImg;
+              if (ev.type === "TRIP") cardImage = tripImg;
+              if (ev.type === "BAZAAR") cardImage = bazaarImg;
+              if (ev.type === "CONFERENCE") cardImage = conferenceImg;
+              if (ev.type === "WORKSHOP") cardImage = workshopImg;
+
               const id = ev._id;
               const typeRaw = ev.type?.toUpperCase() || "EVENT";
               const title = ev.title || ev.name || "Untitled";
               const editable = isEditable(ev.startDateTime);
+              const archived = isPastEvent(ev); // true if the event has already ended
               const isWorkshop = typeRaw === "WORKSHOP";
               const isBooth = typeRaw === "BOOTH";
               const isBazaar = typeRaw === "BAZAAR";
@@ -553,183 +641,65 @@ const exportAttendees = async (eventId, eventType) => {
               const isConference = typeRaw === "CONFERENCE";
 
               return (
-                <article key={id} className="card">
-                  <div className="chip">{typeRaw}</div>
+                <article
+                  key={id}
+                  className="card"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    height: "430px", // 🔥 all cards same height
+                  }}
+                >
+                  {/* TOP CONTENT */}
+                  <div style={{ flexGrow: 1 }}>
+                    <img
+                      src={cardImage}
+                      alt={ev.title}
+                      style={{
+                        width: "100%",
+                        height: "150px",
+                        objectFit: "cover",
+                        borderRadius: "12px",
+                        marginBottom: "12px",
+                      }}
+                    />
 
-                  {/* NAME */}
-                  <div className="kv">
-                    <span className="k">Name:</span>
-                    <span className="v">{title}</span>
+                    <div className="chip">{typeRaw}</div>
+
+                    {/* NAME ONLY on card */}
+                    <div className="kv">
+                      <span className="k">Name:</span>
+                      <span className="v">{title}</span>
+                    </div>
                   </div>
 
-                  {/* LOCATION */}
-                  {ev.location && (
-                    <div className="kv">
-                      <span className="k">Location:</span>
-                      <span className="v">{ev.location}</span>
-                    </div>
-                  )}
-
-                  {/* START */}
-                  {ev.startDateTime && (
-                    <div className="kv kv-date">
-                      <span className="k">Starts:</span>
-                      <span className="v">{formatDate(ev.startDateTime)}</span>
-                    </div>
-                  )}
-
-                  {/* END */}
-                  {ev.endDateTime && (
-                    <div className="kv kv-date">
-                      <span className="k">Ends:</span>
-                      <span className="v">{formatDate(ev.endDateTime)}</span>
-                    </div>
-                  )}
-
-                  {/* WORKSHOP FIELDS */}
-                  {isWorkshop && (
-                    <>
-                      {ev.registrationDeadline && (
-                        <div className="kv kv-date">
-                          <span className="k">Registration Deadline:</span>
-                          <span className="v">
-                            {formatDate(ev.registrationDeadline)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="kv">
-                        <span className="k">Capacity:</span>
-                        <span className="v">{ev.capacity ?? "—"}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Budget:</span>
-                        <span className="v">{formatMoney(ev.budget)}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Status:</span>
-                        <span className="v">{ev.status}</span>
-                      </div>
-                      {ev.registrations?.length > 0 && (
-                        <div className="kv">
-                          <span className="k">Registered:</span>
-                          <span className="v">
-                            {ev.registrations.length} participants
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* BOOTH FIELDS */}
-                  {isBooth && (
-                    <>
-                      <div className="kv">
-                        <span className="k">Booth Size:</span>
-                        <span className="v">{ev.boothSize || "—"}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Duration:</span>
-                        <span className="v">
-                          {ev.duration || ev.durationWeeks} week(s)
-                        </span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Platform Slot:</span>
-                        <span className="v">{ev.platformSlot || "—"}</span>
-                      </div>
-                      <div className="kv">
-                        <span className="k">Status:</span>
-                        <span className="v">{ev.status || "—"}</span>
-                      </div>
-                      {Array.isArray(ev.attendees) &&
-                        ev.attendees.length > 0 && (
-                          <div className="kv">
-                            <span className="k">Attendees:</span>
-                            <span className="v">
-                              {ev.attendees.map((a) => a.name || a).join(", ")}
-                            </span>
-                          </div>
-                        )}
-                    </>
-                  )}
-
-                  {/* BAZAAR FIELDS */}
-                  {isBazaar && (
-                    <>
-                      {ev.registrationDeadline && (
-                        <div className="kv kv-date">
-                          <span className="k">Registration Deadline:</span>
-                          <span className="v">
-                            {formatDate(ev.registrationDeadline)}
-                          </span>
-                        </div>
-                      )}
-                      {ev.registrations?.length > 0 && (
-                        <div className="kv">
-                          <span className="k">Registered:</span>
-                          <span className="v">
-                            {ev.registrations.length} participants
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* CONFERENCE FIELDS */}
-                  {isConference && ev.website && (
-                    <div className="kv">
-                      <span className="k">Website:</span>
-                      <span className="v">
-                        <a
-                          href={ev.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {ev.website}
-                        </a>
-                      </span>
-                    </div>
-                  )}
-
-                  {/* TRIP FIELDS */}
-                  {isTrip && (
-                    <>
-                      {ev.price && (
-                        <div className="kv">
-                          <span className="k">Price:</span>
-                          <span className="v">{formatMoney(ev.price)}</span>
-                        </div>
-                      )}
-                      {ev.capacity && (
-                        <div className="kv">
-                          <span className="k">Capacity:</span>
-                          <span className="v">{ev.capacity}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* DESCRIPTION */}
-                  {(ev.description || ev.shortDescription) && (
-                    <p
-                      style={{
-                        marginTop: "8px",
-                        fontSize: "14px",
-                        lineHeight: "1.4",
-                        color: "var(--text-normal)",
-                      }}
-                    >
-                      {ev.description || ev.shortDescription}
-                    </p>
-                  )}
-
                   {/* ========================= ACTION BUTTONS ========================= */}
-                  <div className="actions" style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <div
+                    className="actions"
+                    style={{
+                      marginTop: "12px",
+                      display: "flex",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     {/* BAZAAR */}
                     {isBazaar && (
                       <>
-                        {editable ? (
-                          <button className="btn" onClick={() => navigate(`/bazaars/${id}`)}>
+                        {/* VIEW + EXPORT (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
+                        {editable && !archived? (
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/bazaars/${id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -737,40 +707,68 @@ const exportAttendees = async (eventId, eventType) => {
                             Edit
                           </button>
                         )}
+
                         <button
                           className="btn btn-danger"
-                          disabled={ev.registrations?.length > 0}
+                          disabled={archived || ev.registrations?.length > 0}
                           onClick={() => handleDelete(id, "bazaars")}
                           title={
                             ev.registrations?.length > 0
                               ? "Cannot delete: participants registered"
+                              : archived
+                              ? "Cannot delete: event archived"
                               : "Delete this bazaar"
                           }
                         >
                           Delete
                         </button>
+
                         <button
                           className="btn"
                           style={{ background: "var(--teal)", color: "white" }}
-                          onClick={() => navigate(`/bazaars/${id}/vendor-requests`)}
+                          onClick={() =>
+                            navigate(`/bazaars/${id}/vendor-requests`)
+                          }
+                          disabled={archived}
+                          title={archived ? "Archived event" : ""}
                         >
                           Vendor Requests
                         </button>
+
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(id, "bazaars")}
+                          disabled={archived}
+                          title={archived ? "Archived event" : ""}
                         >
                           Export Excel
                         </button>
+                        {/* Optional ARCHIVED badge */}
+   {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
                     {/* TRIP */}
                     {isTrip && (
                       <>
-                        {editable ? (
-                          <button className="btn" onClick={() => navigate(`/trips/${id}`)}>
+                        {/* VIEW + EXPORT (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
+                        {editable && !archived? (
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/trips/${id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -778,24 +776,50 @@ const exportAttendees = async (eventId, eventType) => {
                             Edit
                           </button>
                         )}
-                        <button className="btn btn-danger" onClick={() => handleDelete(id, "trips")}>
+
+                        <button
+                          className="btn btn-danger"
+                          disabled={archived}
+                          onClick={() => handleDelete(id, "trips")}
+                          title={archived ? "Cannot delete: event archived" : "Delete this trip"}
+                        >
                           Delete
                         </button>
+
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(id, "trips")}
+                          disabled={archived}
+                          title={archived ? "Archived event" : ""}
                         >
                           Export Excel
                         </button>
+                        {/* Optional ARCHIVED badge */}
+    {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
                     {/* CONFERENCE */}
                     {isConference && (
                       <>
-                        {editable ? (
-                          <button className="btn" onClick={() => navigate(`/conferences/${id}`)}>
+                        {/* VIEW ONLY (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
+                        {editable && !archived? (
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/conferences/${id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -803,28 +827,60 @@ const exportAttendees = async (eventId, eventType) => {
                             Edit
                           </button>
                         )}
-                        <button className="btn btn-danger" onClick={() => handleDelete(id, "conferences")}>
+
+                        <button
+                          className="btn btn-danger"
+                          disabled={archived}
+                          onClick={() => handleDelete(id, "conferences")}
+                          title={archived ? "Cannot delete: event archived" : "Delete this conference"}
+
+                        >
                           Delete
                         </button>
+                        {/* Optional ARCHIVED badge */}
+    {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
                     {/* WORKSHOP */}
                     {isWorkshop && (
                       <>
-                        {(ev.status === "pending" || ev.status === "edits_requested") && (
+                        {/* VIEW ALWAYS (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
+                        { !archived &&(ev.status === "pending" ||
+                          ev.status === "edits_requested") && (
                           <>
-                            <button className="btn btn-success" onClick={() => handleAccept(id)}>
+                            <button
+                              className="btn btn-success"
+                              onClick={() => handleAccept(id)}
+                            >
                               Accept & Publish
                             </button>
-                            <button className="btn btn-danger" onClick={() => handleReject(id)}>
+                            <button
+                              className="btn btn-danger"
+                              onClick={() => handleReject(id)}
+                            >
                               Reject
                             </button>
-                            <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
+                            <button
+                              className="btn btn-warning"
+                              onClick={() => handleRequestEdits(id)}
+                            >
                               Request Edits
                             </button>
                           </>
                         )}
+
                         {ev.status === "published" && (
                           <button
                             className="btn"
@@ -834,15 +890,34 @@ const exportAttendees = async (eventId, eventType) => {
                             Export Excel
                           </button>
                         )}
+                         {/* Optional ARCHIVED badge */}
+    {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
                     {/* BOOTH */}
                     {isBooth && (
                       <>
-                        <button className="btn btn-danger" onClick={() => handleDelete(id, "booths")}>
+                        {/* VIEW + EXPORT (View first) */}
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
+                          View Details
+                        </button>
+
+                         {!archived && (
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(id, "booths")}
+                        >
                           Delete
                         </button>
+                        )}
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
@@ -850,6 +925,11 @@ const exportAttendees = async (eventId, eventType) => {
                         >
                           Export Excel
                         </button>
+                        {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
                   </div>
@@ -940,6 +1020,260 @@ const exportAttendees = async (eventId, eventType) => {
           >
             ×
           </button>
+        </div>
+      )}
+
+      {/* ===== VIEW DETAILS MODAL ===== */}
+      {viewEvent && (
+        <div
+          className="confirm-overlay"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              background: "white",
+              padding: "24px",
+              width: "500px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              borderRadius: "12px",
+              position: "relative",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+            }}
+          >
+            {/* CLOSE BUTTON */}
+            <button
+              onClick={() => setViewEvent(null)}
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "10px",
+                fontSize: "20px",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
+
+            <h2 style={{ fontWeight: 800, marginBottom: "10px" }}>
+              {viewEvent.title || viewEvent.name}
+            </h2>
+
+            {viewEvent.type && (
+              <div style={{ marginBottom: "10px" }}>
+                <strong>Type:</strong> {viewEvent.type}
+              </div>
+            )}
+
+            {/* ==================== BAZAAR ==================== */}
+            {viewEvent.type === "BAZAAR" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+                <div>
+                  <strong>Registered:</strong>{" "}
+                  {viewEvent.registrations?.length || 0}
+                </div>
+
+                {viewEvent.description && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.description}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ==================== CONFERENCE ==================== */}
+            {viewEvent.type === "CONFERENCE" && (
+              <>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Full Agenda:</strong> {viewEvent.agenda || "—"}
+                </div>
+
+                <div>
+                  <strong>Conference Website:</strong>{" "}
+                  {viewEvent.website ? (
+                    <a
+                      href={viewEvent.website}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {viewEvent.website}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </div>
+
+                <div>
+                  <strong>Required Budget:</strong>{" "}
+                  {formatMoney(viewEvent.budget)}
+                </div>
+                <div>
+                  <strong>Funding Source:</strong>{" "}
+                  {viewEvent.fundingSource || "—"}
+                </div>
+                <div>
+                  <strong>Extra Resources:</strong>{" "}
+                  {viewEvent.extraResources || "—"}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Short Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ==================== TRIP ==================== */}
+            {viewEvent.type === "TRIP" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Price:</strong> {formatMoney(viewEvent.price)}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+                </div>
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ==================== WORKSHOP ==================== */}
+            {viewEvent.type === "WORKSHOP" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Full Agenda:</strong> {viewEvent.agenda || "—"}
+                </div>
+                <div>
+                  <strong>Faculty Responsible:</strong>{" "}
+                  {viewEvent.facultyResponsible || "—"}
+                </div>
+                <div>
+                  <strong>Professors Participating:</strong>{" "}
+                  {viewEvent.professorsParticipating || "—"}
+                </div>
+                <div>
+                  <strong>Required Budget:</strong>{" "}
+                  {formatMoney(viewEvent.budget)}
+                </div>
+                <div>
+                  <strong>Funding Source:</strong>{" "}
+                  {viewEvent.fundingSource || "—"}
+                </div>
+                <div>
+                  <strong>Extra Resources:</strong>{" "}
+                  {viewEvent.extraResources || "—"}
+                </div>
+                <div>
+                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+                </div>
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ==================== BOOTH ==================== */}
+            {viewEvent.type === "BOOTH" && (
+              <>
+                <div>
+                  <strong>Booth Size:</strong> {viewEvent.boothSize || "—"}
+                </div>
+                <div>
+                  <strong>Platform Slot:</strong>{" "}
+                  {viewEvent.platformSlot || "—"}
+                </div>
+                <div>
+                  <strong>Status:</strong> {viewEvent.status || "—"}
+                </div>
+
+                <div>
+                  <strong>Attendee Names:</strong>{" "}
+                  {viewEvent.attendees?.length
+                    ? viewEvent.attendees.map((a) => a.name || "—").join(", ")
+                    : "None"}
+                </div>
+
+                <div>
+                  <strong>Attendee Emails:</strong>{" "}
+                  {viewEvent.attendees?.length
+                    ? viewEvent.attendees.map((a) => a.email).join(", ")
+                    : "None"}
+                </div>
+
+                {viewEvent.description && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.description}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -6,20 +6,30 @@ import { workshopAPI } from '../api/workshopApi';
 const WorkshopsListPage = () => {
   const navigate = useNavigate();
   const [workshops, setWorkshops] = useState([]);
+  const [filter, setFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [facultyFilter, setFacultyFilter] = useState('all');
 
+  const user = JSON.parse(localStorage.getItem("user"));
+const currentProfessorId = user?.id;
   useEffect(() => {
-    const fetchWorkshops = async () => {
-      try {
-        const data = await workshopAPI.getAllWorkshops();
-        setWorkshops(data);
-      } catch (error) {
-        console.error('Error fetching workshops:', error);
+  const fetchWorkshops = async () => {
+    try {
+      let data = [];
+      if (filter === 'mine') {
+        data = await workshopAPI.getMyWorkshops(); // fetch only my workshops
+      } else if (filter === 'others') {
+        data = await workshopAPI.getOtherWorkshops(); // fetch others
+      } else {
+        data = await workshopAPI.getAllWorkshops();
       }
-    };
-    fetchWorkshops();
-  }, []);
+      setWorkshops(data);
+    } catch (error) {
+      console.error('Error fetching workshops:', error);
+    }
+  };
+  fetchWorkshops();
+}, [filter]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this workshop?')) {
@@ -43,8 +53,11 @@ const WorkshopsListPage = () => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const uniqueLocations = ['all', 'GUC Cairo', 'GUC Berlin'];
+  // 🔹 Unique locations from workshops
+ const uniqueLocations = ['all', 'GUC Cairo', 'GUC Berlin'];
 
+
+  // 🔹 Static faculty options
   const faculties = [
     { value: 'all', label: 'All Faculties' },
     { value: 'MET', label: 'MET - Media Engineering and Technology' },
@@ -57,11 +70,13 @@ const WorkshopsListPage = () => {
     { value: 'LAW', label: 'LAW - Law and Legal Studies' },
   ];
 
+  // 🔹 Combined filtering logic
   const filteredWorkshops = workshops.filter((w) => {
-    const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
-    const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
-    return locationMatch && facultyMatch;
-  });
+  const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
+  const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
+  return locationMatch && facultyMatch;
+});
+
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -87,32 +102,64 @@ const WorkshopsListPage = () => {
       </div>
 
       <div className="max-w-6xl mx-auto p-8">
-        {/* 🔹 Location & Faculty Filters */}
-        <div className="flex flex-wrap gap-4 mb-6">
-          <select
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
-          >
-            {uniqueLocations.map((loc) => (
-              <option key={loc} value={loc}>
-                {loc === 'all' ? 'All Locations' : loc}
-              </option>
-            ))}
-          </select>
+        {/* 🔹 Filter controls - UPDATED (counts removed) */}
+<div className="flex flex-wrap gap-4 mb-6">
+  <button
+    onClick={() => setFilter('all')}
+    className={`px-4 py-2 rounded-lg transition-colors ${
+      filter === 'all'
+        ? 'bg-[#567c8d] text-white'
+        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+    }`}
+  >
+    All
+  </button>
+  <button
+    onClick={() => setFilter('mine')}
+    className={`px-4 py-2 rounded-lg transition-colors ${
+      filter === 'mine'
+        ? 'bg-[#567c8d] text-white'
+        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+    }`}
+  >
+    My Workshops
+  </button>
+  <button
+    onClick={() => setFilter('others')}
+    className={`px-4 py-2 rounded-lg transition-colors ${
+      filter === 'others'
+        ? 'bg-[#567c8d] text-white'
+        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+    }`}
+  >
+    Other Professors
+  </button>
 
-          <select
-            value={facultyFilter}
-            onChange={(e) => setFacultyFilter(e.target.value)}
-            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
-          >
-            {faculties.map((fac) => (
-              <option key={fac.value} value={fac.value}>
-                {fac.label}
-              </option>
-            ))}
-          </select>
-        </div>
+  {/* Location & Faculty dropdowns stay the same */}
+  <select
+    value={locationFilter}
+    onChange={(e) => setLocationFilter(e.target.value)}
+    className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+  >
+    {uniqueLocations.map((loc) => (
+      <option key={loc} value={loc}>
+        {loc === 'all' ? 'All Locations' : loc}
+      </option>
+    ))}
+  </select>
+
+  <select
+    value={facultyFilter}
+    onChange={(e) => setFacultyFilter(e.target.value)}
+    className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+  >
+    {faculties.map((fac) => (
+      <option key={fac.value} value={fac.value}>
+        {fac.label}
+      </option>
+    ))}
+  </select>
+</div>
 
         {/* 🔹 Workshop Cards */}
         {filteredWorkshops.length === 0 ? (
@@ -145,22 +192,28 @@ const WorkshopsListPage = () => {
                     </h3>
                     <p className="text-[#567c8d] mb-4">{workshop.shortDescription}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
-                      className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
-                      title="Edit"
-                    >
-                      <Edit size={18} className="text-[#567c8d]" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(workshop._id)}
-                      className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={18} className="text-red-500" />
-                    </button>
-                  </div>
+                  {/* Edit / Delete buttons - show ONLY when filter === 'mine' OR when the workshop belongs to the current user */}
+<div className="flex gap-2">
+  {/* Show buttons only for the current professor's workshops */}
+  {workshop.createdBy === currentProfessorId && (
+    <>
+      <button
+        onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
+        className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
+        title="Edit"
+      >
+        <Edit size={18} className="text-[#567c8d]" />
+      </button>
+      <button
+        onClick={() => handleDelete(workshop._id)}
+        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+        title="Delete"
+      >
+        <Trash2 size={18} className="text-red-500" />
+      </button>
+    </>
+  )}
+</div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">

@@ -2,7 +2,7 @@ import React from "react";
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function Sidebar({}) {
+export default function Sidebar() {
   const navigate = useNavigate();
 
   // Buttons that navigate to filtered events page
@@ -12,12 +12,15 @@ export default function Sidebar({}) {
     ["Bazaars", "BAZAAR"],
     ["Trips", "TRIP"],
     ["Conferences", "CONFERENCE"],
+    ["Booths", "BOOTH"],
   ];
 
   // Buttons that go to other pages
   const navigationMenu = [
     ["Gym Sessions", "/gym-sessions"],
     ["Vendor Booths", "/vendor-requests-booths"],
+    ["Attendees Report", "/reports/attendees"],
+    ["Sales Report", "/reports/sales"],
   ];
 
   return (
