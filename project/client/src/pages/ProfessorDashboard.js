@@ -73,40 +73,31 @@ const ProfessorDashboard = () => {
 
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
-    setWorkshopsLoading(true);
-    try {
-      const data = await workshopAPI.getAllWorkshops();
-      const normalizedWorkshops = data
-        .filter((w) => w.status === "published") // Only published for students
-        .map((w) => {
-          const startDatePart = w.startDate.split("T")[0];
-          const startDateTime = new Date(`${startDatePart}T${w.startTime}:00`);
-          const endDatePart = w.endDate.split("T")[0];
-          const endDateTime = new Date(`${endDatePart}T${w.endTime}:00`);
-          return {
-            ...w,
-            _id: w._id,
-            type: "WORKSHOP",
-            title: w.workshopName,
-            name: w.workshopName,
-            startDateTime: startDateTime.toISOString(),
-            endDateTime: endDateTime.toISOString(),
-            startDate: startDateTime.toISOString(), // For compatibility
-            date: startDateTime.toISOString(), // For compatibility
-            image: w.image || workshopPlaceholder,
-            description: w.shortDescription,
-            professorsParticipating: w.professorsParticipating || "",
-          };
-        });
+  setWorkshopsLoading(true);
+  try {
+    const data = await workshopAPI.getAllWorkshops();
 
-      setWorkshops(normalizedWorkshops);
-    } catch (error) {
-      console.error("Error fetching workshops:", error);
-      setWorkshops([]);
-    } finally {
-      setWorkshopsLoading(false);
-    }
-  }, []);
+    const normalizedWorkshops = data
+      .filter((w) => w.status === "published")
+      .map((w) => ({
+        ...w,
+        type: "WORKSHOP",
+        title: w.workshopName,
+        startDateTime: new Date(w.startDateTime).toISOString(),
+        endDateTime: new Date(w.endDateTime).toISOString(),
+        date: new Date(w.startDateTime).toISOString().split("T")[0],
+        image: w.image || workshopPlaceholder,
+        description: w.shortDescription,
+      }));
+
+    setWorkshops(normalizedWorkshops);
+  } catch (err) {
+    console.error("Error fetching workshops:", err);
+    setWorkshops([]);
+  } finally {
+    setWorkshopsLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     fetchWorkshops();
@@ -778,86 +769,7 @@ const ProfessorDashboard = () => {
                 </h1>
               </div>
 
-              <div className="bg-white rounded-xl p-4 md:p-6 border border-[#c8d9e6] mb-8">
-                <h2 className="text-xl font-bold text-[#2f4156] mb-6">
-                  Workshops
-                </h2>
-
-                {filteredWorkshops.length === 0 ? (
-                  <div className="text-center text-[#567c8d] py-6">
-                    No workshops found.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredWorkshops.map((workshop) => (
-                      <div
-                        key={workshop._id}
-                        className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer"
-                        onClick={() =>
-                          navigate(`/professor/workshops/edit/${workshop._id}`)
-                        }
-                      >
-                        <div className="h-40 w-full bg-gray-200 relative">
-                          <img
-                            src={workshop.image || workshopPlaceholder}
-                            alt={workshop.workshopName}
-                            className="h-full w-full object-cover"
-                          />
-                          <button
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              toggleFavorite(workshop._id);
-                            }}
-                            className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
-                          >
-                            <Heart
-                              size={18}
-                              className={
-                                favorites.includes(workshop._id)
-                                  ? "fill-red-500 text-red-500"
-                                  : "text-gray-600"
-                              }
-                            />
-                          </button>
-                        </div>
-
-                        <div className="p-4">
-                          <h3 className="font-semibold text-lg text-[#2f4156] truncate">
-                            {workshop.workshopName}
-                          </h3>
-                          <div className="flex items-center text-sm text-[#567c8d] mt-2">
-                            <Calendar size={16} className="mr-1" />
-                            <span>
-                              {new Date(
-                                workshop.startDateTime
-                              ).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })}
-                            </span>
-                          </div>
-                          <div className="flex items-center text-sm text-[#567c8d] mt-1">
-                            <Clock size={16} className="mr-1" />
-                            <span className="truncate">
-                              Deadline:{" "}
-                              {workshop.registrationDeadline
-                                ? new Date(
-                                    workshop.registrationDeadline
-                                  ).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })
-                                : "N/A"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              
               <h2 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
                 Available Events
               </h2>
@@ -933,7 +845,9 @@ const ProfessorDashboard = () => {
                           </p>
                         )}
                         <p className="text-sm text-[#567c8d] truncate">
-                          Type: {e.type || "N/A"}
+                          <p className="text-sm text-[#567c8d] truncate">
+  Type: {e.workshopName ? "WORKSHOP" : e.type || "N/A"}
+</p>
                         </p>
                         <p className="text-sm text-[#567c8d] truncate">
                           Date:{" "}
