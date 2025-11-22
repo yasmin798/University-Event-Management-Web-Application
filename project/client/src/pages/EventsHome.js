@@ -45,6 +45,15 @@ function isEditable(startIso) {
   return new Date(startIso).getTime() > Date.now();
 }
 
+// Check if an event has already ended
+function isPastEvent(ev) {
+  const endDate =
+    ev.endDateTime || ev.endDate || ev.endDateTime; // support all types
+  if (!endDate) return false;
+  return new Date(endDate).getTime() < Date.now();
+}
+
+
 export default function EventsHome() {
   const navigate = useNavigate();
   const [viewEvent, setViewEvent] = useState(null);
@@ -624,6 +633,7 @@ export default function EventsHome() {
               const typeRaw = ev.type?.toUpperCase() || "EVENT";
               const title = ev.title || ev.name || "Untitled";
               const editable = isEditable(ev.startDateTime);
+              const archived = isPastEvent(ev); // true if the event has already ended
               const isWorkshop = typeRaw === "WORKSHOP";
               const isBooth = typeRaw === "BOOTH";
               const isBazaar = typeRaw === "BAZAAR";
@@ -685,7 +695,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {editable ? (
+                        {editable && !archived? (
                           <button
                             className="btn"
                             onClick={() => navigate(`/bazaars/${id}`)}
@@ -700,11 +710,13 @@ export default function EventsHome() {
 
                         <button
                           className="btn btn-danger"
-                          disabled={ev.registrations?.length > 0}
+                          disabled={archived || ev.registrations?.length > 0}
                           onClick={() => handleDelete(id, "bazaars")}
                           title={
                             ev.registrations?.length > 0
                               ? "Cannot delete: participants registered"
+                              : archived
+                              ? "Cannot delete: event archived"
                               : "Delete this bazaar"
                           }
                         >
@@ -717,6 +729,8 @@ export default function EventsHome() {
                           onClick={() =>
                             navigate(`/bazaars/${id}/vendor-requests`)
                           }
+                          disabled={archived}
+                          title={archived ? "Archived event" : ""}
                         >
                           Vendor Requests
                         </button>
@@ -725,9 +739,17 @@ export default function EventsHome() {
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(id, "bazaars")}
+                          disabled={archived}
+                          title={archived ? "Archived event" : ""}
                         >
                           Export Excel
                         </button>
+                        {/* Optional ARCHIVED badge */}
+   {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
@@ -742,7 +764,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {editable ? (
+                        {editable && !archived? (
                           <button
                             className="btn"
                             onClick={() => navigate(`/trips/${id}`)}
@@ -757,7 +779,9 @@ export default function EventsHome() {
 
                         <button
                           className="btn btn-danger"
+                          disabled={archived}
                           onClick={() => handleDelete(id, "trips")}
+                          title={archived ? "Cannot delete: event archived" : "Delete this trip"}
                         >
                           Delete
                         </button>
@@ -766,9 +790,17 @@ export default function EventsHome() {
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(id, "trips")}
+                          disabled={archived}
+                          title={archived ? "Archived event" : ""}
                         >
                           Export Excel
                         </button>
+                        {/* Optional ARCHIVED badge */}
+    {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
@@ -783,7 +815,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {editable ? (
+                        {editable && !archived? (
                           <button
                             className="btn"
                             onClick={() => navigate(`/conferences/${id}`)}
@@ -798,10 +830,19 @@ export default function EventsHome() {
 
                         <button
                           className="btn btn-danger"
+                          disabled={archived}
                           onClick={() => handleDelete(id, "conferences")}
+                          title={archived ? "Cannot delete: event archived" : "Delete this conference"}
+
                         >
                           Delete
                         </button>
+                        {/* Optional ARCHIVED badge */}
+    {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
@@ -816,7 +857,7 @@ export default function EventsHome() {
                           View Details
                         </button>
 
-                        {(ev.status === "pending" ||
+                        { !archived &&(ev.status === "pending" ||
                           ev.status === "edits_requested") && (
                           <>
                             <button
@@ -849,6 +890,12 @@ export default function EventsHome() {
                             Export Excel
                           </button>
                         )}
+                         {/* Optional ARCHIVED badge */}
+    {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
 
@@ -863,12 +910,14 @@ export default function EventsHome() {
                           View Details
                         </button>
 
+                         {!archived && (
                         <button
                           className="btn btn-danger"
                           onClick={() => handleDelete(id, "booths")}
                         >
                           Delete
                         </button>
+                        )}
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
@@ -876,6 +925,11 @@ export default function EventsHome() {
                         >
                           Export Excel
                         </button>
+                        {archived && (
+      <div className="chip" style={{ background: "#aaa", marginTop: "4px" }}>
+        ARCHIVED
+      </div>
+    )}
                       </>
                     )}
                   </div>
