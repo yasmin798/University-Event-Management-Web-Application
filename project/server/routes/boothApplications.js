@@ -2,14 +2,44 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 const BoothApplication = require("../models/BoothApplication");
 const Bazaar = require("../models/Bazaar");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
+
+// Ensure uploads directory exists
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "ids");
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (_req, file, cb) {
+    const safe = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    cb(null, safe);
+  },
+});
+
+const upload = multer({ storage });
 
 // Create new booth application
-// Create new booth application
-router.post("/", async (req, res) => {
+// Expects multipart/form-data with `attendees` (JSON string) and `idFiles` array
+router.post("/", upload.array("idFiles", 5), async (req, res) => {
   try {
-    const { attendees, boothSize, durationWeeks, platformSlot } = req.body;
+    const { boothSize, durationWeeks, platformSlot } = req.body;
+    let attendees = req.body.attendees;
+    if (typeof attendees === "string") {
+      try {
+        attendees = JSON.parse(attendees);
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid attendees JSON" });
+      }
+    }
+    const files = req.files || [];
 
     if (!Array.isArray(attendees) || attendees.length < 1 || attendees.length > 5)
       return res.status(400).json({ error: "attendees must be array of 1-5" });
@@ -20,8 +50,29 @@ router.post("/", async (req, res) => {
     if (!["B1", "B2", "B3", "B4", "B5"].includes(platformSlot))
       return res.status(400).json({ error: "invalid platformSlot" });
 
+    if (files.length !== attendees.length) {
+      return res.status(400).json({ error: "An ID file must be uploaded for every attendee (field name 'idFiles')." });
+    }
+
+    // Attach file paths to attendees
+    for (let i = 0; i < attendees.length; i++) {
+      const a = attendees[i];
+      if (!a.name || !a.name.trim()) return res.status(400).json({ error: `Attendee ${i + 1}: name is required` });
+      if (!a.email || !a.email.trim()) return res.status(400).json({ error: `Attendee ${i + 1}: email is required` });
+      if (!/^\S+@\S+\.\S+$/.test(a.email.trim())) return res.status(400).json({ error: `Attendee ${i + 1}: invalid email format` });
+      const file = files[i];
+      if (!file) return res.status(400).json({ error: `Missing ID file for attendee ${i + 1}` });
+      a.idDocument = `/uploads/ids/${path.basename(file.path)}`;
+      a.attendingEntireDuration = true;
+    }
+
     const doc = new BoothApplication({
-      attendees,
+      attendees: attendees.map(a => ({
+        name: a.name.trim(),
+        email: a.email.trim(),
+        idDocument: a.idDocument,
+        attendingEntireDuration: !!a.attendingEntireDuration,
+      })),
       boothSize,
       durationWeeks,
       platformSlot,
@@ -29,6 +80,24 @@ router.post("/", async (req, res) => {
 
     const saved = await doc.save();
     res.status(201).json(saved);
+
+    // Notify Events Office users about new pending booth vendor application
+    try {
+      const eventsOfficeUsers = await User.find({ role: "events_office", status: "active" }).select("_id email");
+      const baz = await Bazaar.findById(doc.bazaar);
+      const message = `New booth vendor application pending${baz ? ` for bazaar '${baz.title}'` : ''}. Application ID: ${saved._id}`;
+      const notifPromises = eventsOfficeUsers.map(u => {
+        const n = new Notification({
+          userId: u._id,
+          message,
+          type: 'vendor_application'
+        });
+        return n.save();
+      });
+      await Promise.all(notifPromises);
+    } catch (nerr) {
+      console.error("Failed to create notifications for events office:", nerr);
+    }
   } catch (err) {
     console.error("POST /api/booth-applications error:", err);
     res.status(500).json({ error: "Failed to create booth application" });

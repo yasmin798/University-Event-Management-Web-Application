@@ -30,6 +30,43 @@ export default function Admin() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  // Debounced admin filters to avoid per-keystroke filtering
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [debouncedEventFilter, setDebouncedEventFilter] = useState(eventFilter);
+  const [debouncedProfessorFilter, setDebouncedProfessorFilter] =
+    useState(professorFilter);
+  const [debouncedLocationFilter, setDebouncedLocationFilter] =
+    useState(locationFilter);
+  const [debouncedDateFilter, setDebouncedDateFilter] = useState(dateFilter);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedEventFilter(eventFilter), 300);
+    return () => clearTimeout(t);
+  }, [eventFilter]);
+  useEffect(() => {
+    const t = setTimeout(
+      () => setDebouncedProfessorFilter(professorFilter),
+      300
+    );
+    return () => clearTimeout(t);
+  }, [professorFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocationFilter(locationFilter), 300);
+    return () => clearTimeout(t);
+  }, [locationFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDateFilter(dateFilter), 300);
+    return () => clearTimeout(t);
+  }, [dateFilter]);
 
   const API_ORIGIN = "http://localhost:3001";
 
@@ -224,33 +261,106 @@ export default function Admin() {
         };
       });
 
-      const eventEndpoints = [
-        { path: "/api/trips", type: "trip", key: "items" },
-        { path: "/api/conferences", type: "conference", key: "items" },
-        { path: "/api/bazaars", type: "bazaar", key: "items" },
-        { path: "/api/workshops", type: "workshop", key: "items" },
-      ];
-
-      const allEvents = [];
+      // Fetch events from unified endpoint with filters
+      let allEvents = [];
       const errors = [];
-      allEvents.push(...boothEvents);
-      for (const endpoint of eventEndpoints) {
-        const attempt = await tryFetchJson(`${API_ORIGIN}${endpoint.path}`);
-        if (attempt.ok && attempt.data) {
-          const data = Array.isArray(attempt.data)
-            ? attempt.data
-            : attempt.data[endpoint.key] || [];
-          allEvents.push(
-            ...data.map((event) => ({ ...event, eventType: endpoint.type }))
-          );
+
+      try {
+        const params = new URLSearchParams();
+
+        // Combine search and professor filter into search param
+        const searchParts = [];
+        if (debouncedSearchQuery) searchParts.push(debouncedSearchQuery);
+        if (debouncedProfessorFilter)
+          searchParts.push(debouncedProfessorFilter);
+        if (searchParts.length > 0) {
+          params.append("search", searchParts.join(" "));
+        }
+
+        if (debouncedLocationFilter)
+          params.append("location", debouncedLocationFilter);
+        if (debouncedEventFilter && debouncedEventFilter !== "") {
+          params.append("type", debouncedEventFilter.toUpperCase());
+        }
+        if (debouncedDateFilter) params.append("date", debouncedDateFilter);
+        params.append("sort", "startDateTime");
+        // Reverse the order for server because server logic is inverted
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
+
+        const unifiedAttempt = await tryFetchJson(
+          `${API_ORIGIN}/api/events/all?${params.toString()}`
+        );
+
+        if (unifiedAttempt.ok && unifiedAttempt.data) {
+          const unifiedEvents = Array.isArray(unifiedAttempt.data)
+            ? unifiedAttempt.data
+            : unifiedAttempt.data.events || [];
+          allEvents.push(...unifiedEvents);
         } else {
           errors.push(
-            `Failed to fetch ${endpoint.path}: ${attempt.status} ${
-              attempt.error || attempt.data || "No data"
+            `Failed to fetch unified events: ${unifiedAttempt.status} ${
+              unifiedAttempt.error || "No data"
             }`
           );
         }
+      } catch (err) {
+        console.error("Error fetching unified events:", err);
+        errors.push(`Error fetching events: ${err.message}`);
       }
+
+      // Apply client-side filtering to booth events since they're not in the unified endpoint
+      let filteredBoothEvents = boothEvents;
+
+      // Filter by type
+      if (
+        debouncedEventFilter &&
+        debouncedEventFilter !== "" &&
+        debouncedEventFilter.toLowerCase() !== "booth"
+      ) {
+        filteredBoothEvents = [];
+      } else {
+        // Filter by search/professor (title in booth events)
+        if (debouncedSearchQuery || debouncedProfessorFilter) {
+          const searchLower = (debouncedSearchQuery || "").toLowerCase();
+          const profLower = (debouncedProfessorFilter || "").toLowerCase();
+          filteredBoothEvents = filteredBoothEvents.filter((booth) => {
+            const title = (booth.title || "").toLowerCase();
+            const matchesSearch = !searchLower || title.includes(searchLower);
+            const matchesProf = !profLower || title.includes(profLower);
+            return matchesSearch && matchesProf;
+          });
+        }
+
+        // Filter by location
+        if (debouncedLocationFilter) {
+          const locLower = debouncedLocationFilter.toLowerCase();
+          filteredBoothEvents = filteredBoothEvents.filter((booth) =>
+            (booth.location || "").toLowerCase().includes(locLower)
+          );
+        }
+
+        // Filter by date
+        if (debouncedDateFilter) {
+          const filterDate = new Date(debouncedDateFilter);
+          const nextDay = new Date(filterDate);
+          nextDay.setDate(filterDate.getDate() + 1);
+          filteredBoothEvents = filteredBoothEvents.filter((booth) => {
+            if (!booth.startDateTime) return false;
+            const boothDate = new Date(booth.startDateTime);
+            return boothDate >= filterDate && boothDate < nextDay;
+          });
+        }
+      }
+
+      // Add filtered booth events to all events
+      allEvents.push(...filteredBoothEvents);
+
+      // Sort combined events by date (reverse logic to match server behavior)
+      allEvents.sort((a, b) => {
+        const dateA = new Date(a.startDateTime || a.startDate || a.date);
+        const dateB = new Date(b.startDateTime || b.startDate || b.date);
+        return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
+      });
 
       console.log("Combined events:", allEvents);
       setEvents(allEvents);
@@ -273,7 +383,14 @@ export default function Admin() {
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    debouncedSearchQuery,
+    debouncedProfessorFilter,
+    debouncedLocationFilter,
+    debouncedEventFilter,
+    debouncedDateFilter,
+    sortOrder,
+  ]);
 
   const handleDelete = async (userId) => {
     if (!window.confirm("Are you sure you want to DELETE this user?")) return;
@@ -593,15 +710,35 @@ export default function Admin() {
             <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
               <input
                 type="text"
-                placeholder="Search by title, company, or name..."
+                placeholder="Search by title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/3"
+                className="px-3 py-2 border rounded-md w-full md:w-1/5"
+              />
+              <input
+                type="text"
+                placeholder="Filter by professor..."
+                value={professorFilter}
+                onChange={(e) => setProfessorFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/5"
+              />
+              <input
+                type="text"
+                placeholder="Filter by location..."
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/5"
+              />
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-1/6"
               />
               <select
                 value={eventFilter}
                 onChange={(e) => setEventFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/4"
+                className="px-3 py-2 border rounded-md w-full md:w-1/6"
               >
                 <option value="">All Types</option>
                 <option value="trip">Trip</option>
@@ -610,12 +747,20 @@ export default function Admin() {
                 <option value="workshop">Workshop</option>
                 <option value="booth">Booth</option>
               </select>
+              <button
+                onClick={() =>
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
+                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+              >
+                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              </button>
             </div>
 
             <SectionEvents
               events={events}
-              searchQuery={searchQuery}
-              eventFilter={eventFilter}
+              searchQuery={debouncedSearchQuery}
+              eventFilter={debouncedEventFilter}
               eventFetchErrors={eventFetchErrors}
               processingId={processingId}
               handleDeleteEvent={handleDeleteEvent}
@@ -1139,12 +1284,8 @@ function SectionEvents({
   handleDeleteEvent,
 }) {
   const navigate = useNavigate();
-  const filteredEvents = events
-    .filter((event) => (eventFilter ? event.eventType === eventFilter : true))
-    .filter((event) => {
-      const title = event.title || event.name || "";
-      return title.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+  // Server already filtered events, so just use them directly
+  const filteredEvents = events;
 
   return (
     <>
@@ -1174,8 +1315,10 @@ function SectionEvents({
               return (
                 <tr key={event._id} style={trStyle}>
                   <td style={tdStyle}>
-                    {event.eventType.charAt(0).toUpperCase() +
-                      event.eventType.slice(1)}
+                    {(event.type || event.eventType || "event")
+                      .charAt(0)
+                      .toUpperCase() +
+                      (event.type || event.eventType || "event").slice(1)}
                   </td>
                   <td style={tdStyle}>
                     {event.title ||
@@ -1213,7 +1356,10 @@ function SectionEvents({
                     </button>
                     <button
                       onClick={() =>
-                        handleDeleteEvent(event._id, event.eventType)
+                        handleDeleteEvent(
+                          event._id,
+                          event.type || event.eventType
+                        )
                       }
                       style={{
                         ...deleteBtnStyle,
@@ -1222,7 +1368,9 @@ function SectionEvents({
                           : {}),
                       }}
                       disabled={processingId === event._id}
-                      title={`Delete this ${event.eventType}`}
+                      title={`Delete this ${
+                        event.type || event.eventType || "event"
+                      }`}
                     >
                       {processingId === event._id ? "Processing..." : "Delete"}
                     </button>
