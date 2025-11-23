@@ -45,6 +45,14 @@ exports.register = async (req, res) => {
     const userEmail = user.email;
     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Guest";
 
+    // Check 5: Role restriction (if defined)
+    if (event.allowedRoles && event.allowedRoles.length > 0) {
+      if (!event.allowedRoles.includes(req.user.role) && req.user.role !== "events_office") {
+        const allowed = event.allowedRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1) + "s").join(", ");
+        return res.status(403).json({ error: `This event is intended for ${allowed}!` });
+      }
+    }
+
     // Check 2: Check capacity
     const currentCount = event.registrations ? event.registrations.length : 0;
     const isFull = event.capacity > 0 && currentCount >= event.capacity;

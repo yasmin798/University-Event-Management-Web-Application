@@ -34,7 +34,7 @@ const EventDetails = () => {
   const [myComment, setMyComment] = useState("");
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [userId, setUserId] = useState(null);
-  const [canReview, setCanReview] = useState(false); // NEW: Simplified review permission
+  const [canReview, setCanReview] = useState(false);
 
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
 
@@ -45,22 +45,22 @@ const EventDetails = () => {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserId(payload.id || payload.userId || payload._id);
-        console.log("User ID from token:", payload.id || payload.userId || payload._id); // DEBUG
+        console.log("User ID from token:", payload.id || payload.userId || payload._id);
       } catch (e) {
         console.error("Invalid token");
       }
     } else {
-      console.log("No token found — user not logged in"); // DEBUG
+      console.log("No token found — user not logged in");
     }
   }, []);
 
   // Fetch Reviews
   useEffect(() => {
     const fetchReviews = async () => {
-      console.log("Fetching reviews for ID:", id); // DEBUG
+      console.log("Fetching reviews for ID:", id);
       try {
         const res = await fetch(`${API_BASE}/api/events/${id}/reviews`);
-        console.log("Reviews response status:", res.status); // DEBUG
+        console.log("Reviews response status:", res.status);
         if (res.ok) {
           const data = await res.json();
           setReviews(data || []);
@@ -70,7 +70,7 @@ const EventDetails = () => {
             setMyComment(myReview.comment || "");
           }
         } else {
-          console.error("Reviews fetch failed:", res.status, await res.text()); // DEBUG
+          console.error("Reviews fetch failed:", res.status, await res.text());
         }
       } catch (err) {
         console.error("Failed to load reviews:", err);
@@ -82,46 +82,44 @@ const EventDetails = () => {
     if (id) fetchReviews();
   }, [id, userId]);
 
-  // NEW: Simplified "Can Review" Logic — No Attendance Check for Bazaars/Booths
+  // Updated review permission logic
   useEffect(() => {
     if (!event || !userId) return;
 
-    const hasPassed = new Date(event.startDateTime || event.endDateTime || event.startDate) < new Date();
+    const eventType = event.type?.toUpperCase(); // TRIP, WORKSHOP, BOOTH, BAZAAR, CONFERENCE
     const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
-    const isBazaar = event.type === "BAZAAR";
-    const isBooth = event.type === "BOOTH";
 
-    console.log("Debug canReview:", { hasPassed, alreadyReviewed, isBazaar, isBooth, userId }); // DEBUG
-
-    // Bazaars & Booths: Anyone can review if passed and not already reviewed
-    if ((isBazaar || isBooth) && hasPassed && !alreadyReviewed) {
-      setCanReview(true);
-      console.log("Can review: Bazaar/Booth logic"); // DEBUG
+    // CASE A: BOOTH / BAZAAR / CONFERENCE → anyone can review
+    if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
+      setCanReview(!alreadyReviewed); // Only block if already reviewed
       return;
     }
 
-    // For other events: Check if registered (your existing logic)
-    let isRegistered = false;
-    if (event.registeredUsers) isRegistered = event.registeredUsers.some(u => u.toString() === userId);
-    if (event.registrations) isRegistered = isRegistered || event.registrations.some(r => r.userId?.toString() === userId);
+    // CASE B: TRIPS / WORKSHOPS → must be registered AND event ended
+    const hasPassed = new Date(event.endDateTime || event.startDateTime || event.startDate) < new Date();
 
-    if (hasPassed && !alreadyReviewed && isRegistered) {
-      setCanReview(true);
-      console.log("Can review: Registered for other event"); // DEBUG
-    } else {
+    if (!hasPassed || alreadyReviewed) {
       setCanReview(false);
-      console.log("Cannot review: Conditions not met"); // DEBUG
+      return;
     }
+
+    let isRegistered = false;
+    if (event.registeredUsers)
+      isRegistered = event.registeredUsers.some(u => u.toString() === userId);
+    if (event.registrations)
+      isRegistered = isRegistered || event.registrations.some(r => r.userId?.toString() === userId);
+
+    setCanReview(isRegistered);
   }, [event, reviews, userId]);
 
-  // Submit Review — With Full Error Debugging
+  // Submit Review
   const submitReview = async () => {
     if (myRating === 0) {
       alert("Please select a star rating");
       return;
     }
 
-    console.log("Submitting review:", { myRating, myComment, userId, eventId: id }); // DEBUG
+    console.log("Submitting review:", { myRating, myComment, userId, eventId: id });
 
     try {
       const token = localStorage.getItem("token");
@@ -137,7 +135,7 @@ const EventDetails = () => {
         }),
       });
 
-      console.log("Submit response status:", res.status); // DEBUG
+      console.log("Submit response status:", res.status);
 
       if (res.ok) {
         const updated = await res.json();
@@ -147,16 +145,16 @@ const EventDetails = () => {
         alert("Thank you for your review!");
       } else {
         const errText = await res.text();
-        console.error("Submit failed:", res.status, errText); // DEBUG
+        console.error("Submit failed:", res.status, errText);
         alert(`Failed: ${res.status} - ${errText || "Unknown error"}`);
       }
     } catch (err) {
-      console.error("Network error:", err); // DEBUG
+      console.error("Network error:", err);
       alert("Network error. Check console for details.");
     }
   };
 
-  // Your existing booth & workshop fetches (unchanged)
+  // Booths fetch
   useEffect(() => {
     const fetchBooths = async () => {
       setBoothsLoading(true);
@@ -186,6 +184,7 @@ const EventDetails = () => {
     fetchBooths();
   }, []);
 
+  // Workshops fetch
   useEffect(() => {
     const fetchWorkshops = async () => {
       setWorkshopsLoading(true);
@@ -220,6 +219,7 @@ const EventDetails = () => {
     fetchWorkshops();
   }, []);
 
+  // Combine events
   useEffect(() => {
     if (loading || boothsLoading || workshopsLoading) return;
 
@@ -378,7 +378,7 @@ const EventDetails = () => {
                 </div>
               )}
 
-              {/* REVIEW BOX — NOW SHOWS FOR BAZAARS/BOOTHS IF PASSED */}
+              {/* REVIEW BOX */}
               {canReview && (
                 <div className="bg-[#f8f9fa] p-6 rounded-xl mb-8 border">
                   <h3 className="font-semibold text-[#2f4156] mb-4">Your Review</h3>

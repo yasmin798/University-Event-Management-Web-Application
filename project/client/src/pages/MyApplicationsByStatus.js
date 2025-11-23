@@ -15,7 +15,31 @@ export default function MyApplicationsByStatus() {
   const [booths, setBooths] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+const [loadingPayment, setLoadingPayment] = useState(null);
+const calculatePrice = (app, type) => {
+  if (type === "bazaar") {
+    const size = app.boothSize || "";
+    const prices = {
+      "Small (2x2)": 300,
+      "Medium (3x3)": 600,
+      "Large (4x4)": 1000,
+      "Extra Large (5x5)": 1500,
+    };
+    return prices[size] || 500;
+  } else if (type === "booth") {
+    const location = app.platformSlot || app.location || "default";
+    const weeks = app.durationWeeks || 1;
+    const prices = {
+      "Main Gate": 500,
+      "Food Court": 400,
+      "Central Area": 350,
+      "Side Wing": 250,
+      "default": 300
+    };
+    return (prices[location] || 300) * weeks;
+  }
+  return 0;
+};
   // Detect logged-in user or use manual input
   useEffect(() => {
     try {
@@ -58,6 +82,7 @@ export default function MyApplicationsByStatus() {
 
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const handlePayment = (applicationId, type) => {
+  setLoadingPayment(applicationId);
   navigate(`/payment?appId=${applicationId}&type=${type}`);
 };
   return (
@@ -113,31 +138,51 @@ const handlePayment = (applicationId, type) => {
   ) : (
     <ul className="space-y-3">
       {/* Bazaar Applications */}
+{/* ========== BAZAAR APPLICATIONS ========== */}
 {bazaars.map((app) => (
-  <li key={app._id} className="bg-white p-4 rounded shadow">
-    <div className="font-semibold">{app.bazaar?.title || "Bazaar"}</div>
-    <div className="text-sm text-gray-600">
-      {app.bazaar?.location} • Booth Size: {app.boothSize}
-    </div>
-    <div className="mt-2 text-sm">
-      <strong>Status:</strong> <span className="text-green-600 font-medium">Accepted</span>
+  <li key={app._id} className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+    <h3 className="font-bold text-lg text-gray-800">{app.bazaar?.title || "Bazaar Booth"}</h3>
+    <p className="text-sm text-gray-600 mt-1">
+      {app.bazaar?.location} • Size: {app.boothSize}
+    </p>
+
+    <div className="mt-4 flex items-center gap-3">
+      {/* ← THIS IS THE MAGIC LINE */}
+      <span className="text-sm font-medium text-gray-700">Status:</span>
+      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+        app.status === "accepted" ? "bg-green-100 text-green-800" :
+        app.status === "rejected" ? "bg-red-100 text-red-800" :
+        "bg-yellow-100 text-yellow-800"
+      }`}>
+        {app.status.toUpperCase()}
+      </span>
     </div>
 
-    {/* Pay Button Logic */}
-    <div className="mt-4">
+    {/* PAYMENT BUTTON LOGIC – CLEAN & BEAUTIFUL VERSION */}
+    <div className="mt-5">
+      
       {app.paid ? (
-        <button disabled className="bg-emerald-100 text-emerald-700 font-medium py-2 px-6 rounded-lg cursor-not-allowed flex items-center gap-2">
-          <CheckCircle size={18} />
+        <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-5 py-3 rounded-lg font-semibold">
+          <CheckCircle size={22} />
           Already Paid
-        </button>
-      ) : (
+        </div>
+      ) : app.paymentDeadline && new Date() > new Date(app.paymentDeadline) ? (
+        <div className="flex items-center gap-2 text-red-700 bg-red-50 px-5 py-3 rounded-lg font-semibold">
+          Payment Expired
+        </div>
+      ) : app.status === "accepted" ? (
         <button
           onClick={() => handlePayment(app._id, "bazaar")}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-6 rounded-lg transition shadow-md"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transform transition hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={loadingPayment === app._id}
         >
-          Pay Now
+          <p className="text-lg font-bold text-emerald-600 mt-3">
+  Amount Due: {calculatePrice(app, "bazaar")} EGP
+</p>
+          {loadingPayment === app._id ? "Processing..." : "Pay Now"}
+          
         </button>
-      )}
+      ) : null}
     </div>
   </li>
 ))}
@@ -152,31 +197,48 @@ const handlePayment = (applicationId, type) => {
   ) : (
     <ul className="space-y-3">
       {/* Booth Applications */}
+{/* ========== BOOTH APPLICATIONS ========== */}
 {booths.map((b) => (
-  <li key={b._id} className="bg-white p-4 rounded shadow">
-    <div className="font-semibold">{b.vendorName || "Booth Application"}</div>
-    <div className="text-sm text-gray-600">
-      <strong>Location:</strong> {b.platformSlot || "—"} •{" "}
-      <strong>Duration:</strong> {b.durationWeeks || "—"} weeks
-    </div>
-    <div className="mt-2 text-sm">
-      <strong>Status:</strong> <span className="text-green-600 font-medium">Accepted</span>
+  <li key={b._id} className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+    <h3 className="font-bold text-lg text-gray-800">{b.vendorName || "Platform Booth"}</h3>
+    <p className="text-sm text-gray-600 mt-1">
+      Location: {b.platformSlot || "—"} • Duration: {b.durationWeeks} weeks
+    </p>
+
+    <div className="mt-4 flex items-center gap-3">
+      <span className="text-sm font-medium text-gray-700">Status:</span>
+      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+        b.status === "accepted" ? "bg-green-100 text-green-800" :
+        b.status === "rejected" ? "bg-red-100 text-red-800" :
+        "bg-yellow-100 text-yellow-800"
+      }`}>
+        {b.status.toUpperCase()}
+      </span>
     </div>
 
-    <div className="mt-4">
+    {/* PAYMENT BUTTON – SAME LOGIC */}
+    <div className="mt-5">
       {b.paid ? (
-        <button disabled className="bg-emerald-100 text-emerald-700 font-medium py-2 px-6 rounded-lg cursor-not-allowed flex items-center gap-2">
-          <CheckCircle size={18} />
+        <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-5 py-3 rounded-lg font-semibold">
+          <CheckCircle size={22} />
           Already Paid
-        </button>
-      ) : (
+        </div>
+      ) : b.paymentDeadline && new Date() > new Date(b.paymentDeadline) ? (
+        <div className="flex items-center gap-2 text-red-700 bg-red-50 px-5 py-3 rounded-lg font-semibold">
+          Payment Expired
+        </div>
+      ) : b.status === "accepted" ? (
         <button
           onClick={() => handlePayment(b._id, "booth")}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-6 rounded-lg transition shadow-md"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transform transition hover:scale-105 disabled:opacity-60"
+          disabled={loadingPayment === b._id}
         >
-          Pay Now
+          <p className="text-lg font-bold text-emerald-600 mt-3">
+  Amount Due: {calculatePrice(b, "booth")} EGP
+</p>
+          {loadingPayment === b._id ? "Processing..." : "Pay Now"}
         </button>
-      )}
+      ) : null}
     </div>
   </li>
 ))}

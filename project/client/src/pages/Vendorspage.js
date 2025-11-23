@@ -134,7 +134,7 @@ const VendorsPage = () => {
             >
               Show Upcoming Bazaars
             </button>
-
+               
             {/* Static booth application form */}
             <Link
               to="/apply-booth"
@@ -149,6 +149,12 @@ const VendorsPage = () => {
             >
               View Applications
             </Link>
+            <Link
+    to="/guc-loyalty-apply"
+    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
+  >
+    Apply for GUC Loyalty Program
+  </Link>
           </div>
 
           {/* Loading / Error */}

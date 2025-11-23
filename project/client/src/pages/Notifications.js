@@ -41,6 +41,8 @@ export default function Notifications() {
       });
       if (!res.ok) throw new Error('Failed to mark as read');
       await fetchNotifs();
+      // notify other components (e.g., bell) to refresh
+      try { window.dispatchEvent(new Event('notifications:changed')); } catch (e) { /* ignore */ }
     } catch (err) {
       console.error(err);
     }
@@ -56,14 +58,14 @@ export default function Notifications() {
       <ul className="space-y-3">
         {items.map(n => (
           <li key={n._id} className={`p-4 rounded border ${n.unread ? 'bg-white' : 'bg-gray-50'}`}>
-            <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start">
               <div>
                 <div className="font-semibold">{n.message}</div>
                 <div className="text-sm text-gray-600">{new Date(n.createdAt).toLocaleString()}</div>
               </div>
               <div>
                 {n.unread && (
-                  <button onClick={() => markRead(n._id)} className="px-3 py-1 bg-blue-600 text-white rounded">Mark read</button>
+                  <button onClick={() => markRead(n._id)} style={{ background: 'var(--teal, #567c8d)', color: 'white', padding: '6px 12px', borderRadius: 6, border: 'none' }}>Mark read</button>
                 )}
               </div>
             </div>

@@ -1,4 +1,4 @@
-// server/models/Conference.js
+// server/models/Conference.js (updated)
 const mongoose = require("mongoose");
 
 // Reusable Review Schema (you can move this to a separate file later if you want)
@@ -44,6 +44,13 @@ const ConferenceSchema = new mongoose.Schema(
 
     // ADD THIS: Reviews from attendees
     reviews: [reviewSchema],
+
+    // ADD THIS: Allowed roles for registration (empty array = open to all)
+    allowedRoles: {
+      type: [String],
+      enum: ["student", "professor", "ta", "staff"],
+      default: [],
+    },
   },
   { 
     timestamps: true, 

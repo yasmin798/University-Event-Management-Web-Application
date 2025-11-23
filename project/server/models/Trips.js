@@ -1,4 +1,4 @@
-// server/models/Trip.js
+// server/models/Trips.js
 const mongoose = require("mongoose");
 
 // Reusable Review Schema (you can also move this to a separate file later)
@@ -41,10 +41,16 @@ const TripSchema = new mongoose.Schema(
 
     // ADD THIS: Reviews from attendees
     reviews: [reviewSchema],
+  // ADD THIS: Allowed roles for registration (empty array = open to all)
+ allowedRoles: {
+    type: [String],
+    enum: ["student", "professor", "ta", "staff"], // Restrict to valid roles (no vendors for trips)
+     default: [],
+   },
   },
-  { 
-    timestamps: true, 
-    collection: "trips" 
+  {
+    timestamps: true,
+    collection: "trips",
   }
 );
 

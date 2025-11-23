@@ -1673,3 +1673,143 @@ body {
   height: auto !important;
   min-height: auto !important;
 }
+.pg-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 12px;
+  background: white;
+  border: 2px solid rgba(47, 65, 86, 0.15);
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-size: 16px;
+}
+
+.pg-btn:hover:not(.current):not(.arrow:disabled) {
+  background: #f0f4f6;
+}
+
+.pg-btn.current {
+  background: #567c8d;
+  border-color: #567c8d;
+  color: white !important;
+}
+
+.pg-btn.arrow {
+  color: rgba(47, 65, 86, 0.6);
+  font-size: 20px;
+}
+
+.pg-btn.arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.analytics-container {
+  margin-top: 30px;
+  background: linear-gradient(to bottom, #f8fafc, #eef2ff);
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* GRID lines like IBM */
+.analytics-container {
+  background-image: linear-gradient(#e5e7eb 1px, transparent 1px),
+    linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-color: #f3f4f6;
+}
+
+.stat-row {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+/* RING CARDS */
+.ring-card {
+  background: white;
+  padding: 20px;
+  width: 180px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.ring-wrapper {
+  position: relative;
+}
+
+.ring-value {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.ring-label {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #475569;
+}
+
+/* Bar chart */
+.chart-card {
+  background: white;
+  padding: 20px;
+  border-radius: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  height: 200px;
+}
+
+.bar {
+  width: 40px;
+  background: #60a5fa;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  color: white;
+  font-size: 12px;
+}
+
+/* Bubble chart */
+.bubble-chart {
+  position: relative;
+  height: 250px;
+  background: #eef2ff;
+  border-radius: 15px;
+}
+
+.bubble {
+  position: absolute;
+  background: #3b82f6;
+  opacity: 0.7;
+  border-radius: 50%;
+}
+.recharts-responsive-container {
+  min-height: 260px !important;
+}
+.filters-no-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.filters-no-card * {
+  box-shadow: none !important;
+}

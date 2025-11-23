@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function NotificationsIcon() {
   const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
+  const tokenRef = useRef(localStorage.getItem('token'));
 
   useEffect(() => {
     let mounted = true;
@@ -12,19 +13,22 @@ export default function NotificationsIcon() {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          setUnread(0);
+          if (mounted) setUnread(0);
           return;
         }
         const res = await fetch('/api/notifications', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (mounted) setUnread(0);
+          return;
+        }
         const data = await res.json();
         if (!mounted) return;
         const count = (data || []).filter(n => n.unread).length;
         setUnread(count);
       } catch (err) {
-        // fail silently
+        if (mounted) setUnread(0);
       }
     };
 
@@ -33,19 +37,27 @@ export default function NotificationsIcon() {
     // refresh every 30s
     const iv = setInterval(fetchCount, 30000);
 
-    // react to storage changes (other tabs) and token changes in this tab
+    // react to storage changes (other tabs)
     const onStorage = (e) => { if (e.key === 'token') fetchCount(); };
     window.addEventListener('storage', onStorage);
+    // react to explicit notifications changes dispatched by other components
+    const onNotifsChanged = () => fetchCount();
+    window.addEventListener('notifications:changed', onNotifsChanged);
 
     // lightweight polling to detect login in same tab (compare token)
-    let tokenRef = localStorage.getItem('token');
     const poll = setInterval(() => {
       const t = localStorage.getItem('token');
-      if (t !== tokenRef) { tokenRef = t; fetchCount(); }
+      if (t !== tokenRef.current) {
+        tokenRef.current = t;
+        fetchCount();
+      }
     }, 1000);
 
-    return () => { mounted = false; clearInterval(iv); clearInterval(poll); window.removeEventListener('storage', onStorage); };
+    return () => { mounted = false; clearInterval(iv); clearInterval(poll); window.removeEventListener('storage', onStorage); window.removeEventListener('notifications:changed', onNotifsChanged); };
   }, []);
+
+  // keep the same visual style as the dropdown bell: white rounded button with teal badge
+  const badge = unread > 0 ? (unread > 99 ? '99+' : String(unread)) : null;
 
   return (
     <button
@@ -54,29 +66,41 @@ export default function NotificationsIcon() {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        background: 'transparent',
+        justifyContent: 'center',
+        width: 40,
+        height: 40,
+        background: 'white',
+        color: '#567c8d',
         border: 'none',
-        color: 'white',
-        cursor: 'pointer'
+        padding: 8,
+        borderRadius: 999,
+        cursor: 'pointer',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
       }}
     >
-      <div style={{ position: 'relative' }}>
-        <Bell size={18} />
-        {unread > 0 && (
-          <span style={{
+      <span style={{ position: 'relative', display: 'inline-block' }} aria-hidden="false">
+        <Bell size={18} aria-hidden="true" />
+        {badge && (
+          <span aria-label={`${badge} unread notifications`} style={{
             position: 'absolute',
-            right: -6,
             top: -6,
-            background: '#ef4444',
+            right: -6,
+            minWidth: 18,
+            height: 18,
+            padding: '0 5px',
+            background: 'var(--teal, #567c8d)',
             color: 'white',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             borderRadius: 999,
-            padding: '2px 6px',
             fontSize: 12,
             fontWeight: 700,
-          }}>{unread}</span>
+            lineHeight: '14px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
+          }}>{badge}</span>
         )}
-      </div>
+      </span>
     </button>
   );
 }
