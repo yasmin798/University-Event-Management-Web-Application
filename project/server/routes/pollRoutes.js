@@ -50,6 +50,44 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.post("/:id/vote", async (req, res) => {
+  try {
+    const { email, candidateId } = req.body;
+    const { id: pollId } = req.params;
+
+    if (!email || !candidateId) {
+      return res.status(400).json({ error: "Email and candidateId are required" });
+    }
+
+    const poll = await Poll.findById(pollId);
+    if (!poll) return res.status(404).json({ error: "Poll not found" });
+
+    // Check if user already voted
+    if (poll.votedUsers.includes(email)) {
+      return res.status(400).json({ error: "You already voted in this poll" });
+    }
+
+    // Find candidate
+    const candidate = poll.candidates.id(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    // Add vote
+    candidate.votes += 1;
+
+    // Add voter email
+    poll.votedUsers.push(email);
+
+    await poll.save();
+
+    return res.json({ message: "Vote recorded successfully!" });
+  } catch (err) {
+    console.error("Vote error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 
 module.exports = router;

@@ -73,6 +73,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 
 
 import CreatePoll from "./pages/CreatePollFromBooths";
+import PollVoting from "./pages/PollVoting";
 
 // Simple 404
 function NotFound() {
@@ -182,7 +183,7 @@ function App() {
         />
         
         <Route path="/create-poll" element={<CreatePoll />} />
-
+        <Route path="/poll-voting" element={<PollVoting />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
