@@ -215,6 +215,12 @@ const StudentDashboard = () => {
     }
   };
 
+  const handlePollsVoting = () => {
+  navigate("/poll-voting");
+  closeSidebar();
+};
+
+
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -318,6 +324,14 @@ const StudentDashboard = () => {
             <Calendar size={18} />
             Gym Sessions
           </button>
+
+          <button
+            onClick={handlePollsVoting}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+            >
+          <Heart size={18} />
+            Polls Voting
+            </button>
 
           <button
             onClick={handleLogout}

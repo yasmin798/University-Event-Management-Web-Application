@@ -75,6 +75,7 @@ import PaymentPage from "./pages/PaymentPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 
 import CreatePoll from "./pages/CreatePollFromBooths";
+import PollVoting from "./pages/PollVoting";
 
 import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
 import PendingVerificationPage from "./pages/PendingVerification";
@@ -195,7 +196,7 @@ function App() {
           element={<MyApplicationsByStatus />}
         />
         <Route path="/create-poll" element={<CreatePoll />} />
-        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
+        <Route path="/poll-voting" element={<PollVoting />} />        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

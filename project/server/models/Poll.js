@@ -32,6 +32,11 @@ const pollSchema = new mongoose.Schema(
       default: true,
     },
     candidates: [candidateSchema],
+
+    votedUsers: {
+      type: [String], // track who voted
+      default: []
+    },
     
     // Optional: link to bazaar if needed
     bazaar: {
