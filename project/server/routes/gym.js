@@ -1,11 +1,11 @@
-// routes/gym.js
+// routes/gym.js (updated with role restrictions and userId handling)
 const express = require("express");
 const router = express.Router();
 const GymSession = require("../models/GymSession");
-const sendEmail = require("../models/Email");
+const User = require("../models/User"); // ← NEW: For role lookup
+const sendEmail = require("../models/Email"); // Assuming this exists; adjust if needed
 
-
-// GET all sessions
+// GET all sessions (visible to all, no filtering)
 router.get("/", async (req, res) => {
   try {
     const sessions = await GymSession.find().sort({ date: 1 });
@@ -15,11 +15,18 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST a new session
+// POST a new session (now includes allowedRoles)
 router.post("/", async (req, res) => {
   try {
-    const { date, time, duration, type, maxParticipants } = req.body;
-    const newSession = new GymSession({ date, time, duration, type, maxParticipants });
+    const { date, time, duration, type, maxParticipants, allowedRoles = [] } = req.body;
+    const newSession = new GymSession({ 
+      date, 
+      time, 
+      duration, 
+      type, 
+      maxParticipants,
+      allowedRoles // ← NEW: Save restrictions
+    });
     const saved = await newSession.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -27,29 +34,26 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ----------------------------------------
-// EDIT SESSION
-// ----------------------------------------
+// EDIT SESSION (updated to handle allowedRoles if sent)
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
     const updated = await GymSession.findByIdAndUpdate(id, req.body, {
       new: true,
+      runValidators: true, // ← NEW: Validates enum for allowedRoles
     });
 
     if (!updated) return res.status(404).json({ error: "Session not found" });
 
-    // Notify all registered users
+    // Notify all registered users (unchanged)
     if (updated.registeredUsers && updated.registeredUsers.length > 0) {
       for (const user of updated.registeredUsers) {
-
         await sendEmail(
           user.email,
           "Gym Session Updated",
           `The gym session you registered for has been updated.\n\nNew Details:\nDate: ${updated.date}\nTime: ${updated.time}\nDuration: ${updated.duration} mins\nType: ${updated.type}`
         );
-
       }
     }
 
@@ -60,10 +64,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-
-// ----------------------------------------
-// DELETE SESSION
-// ----------------------------------------
+// DELETE SESSION (unchanged)
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -71,8 +72,7 @@ router.delete("/:id", async (req, res) => {
     const session = await GymSession.findById(id);
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-
-    // Notify before deleting
+    // Notify before deleting (unchanged)
     if (session.registeredUsers && session.registeredUsers.length > 0) {
       for (const user of session.registeredUsers) {
         await sendEmail(
@@ -92,7 +92,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-
+// REGISTER FOR SESSION (updated with role check and userId)
 router.post("/register", async (req, res) => {
   try {
     const { sessionId, email } = req.body;
@@ -106,24 +106,40 @@ router.post("/register", async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    // ✅ Check if session is full
-    if (session.registeredUsers.length >= session.maxParticipants) {
-      return res
-        .status(400)
-        .json({ error: "This session is already full." });
+    // Find user by email to get role and _id
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    // ❌ Check if email already registered
-    const alreadyRegistered = session.registeredUsers.some(
-      (u) => u.email === email
-    );
+    // ← NEW: Role restriction check
+    const isOpenToAll = !session.allowedRoles || session.allowedRoles.length === 0;
+    if (!isOpenToAll && !session.allowedRoles.includes(user.role)) {
+      const allowed = session.allowedRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1) + "s").join(", ");
+      return res.status(403).json({ 
+        error: `This gym session is intended for ${allowed}!` 
+      });
+    }
 
+    // Check if session is full
+    if (session.registeredUsers.length >= session.maxParticipants) {
+      return res.status(400).json({ error: "This session is already full." });
+    }
+
+    // Check if already registered
+    const alreadyRegistered = session.registeredUsers.some(
+      (u) => u.userId && u.userId.toString() === user._id.toString()
+    );
     if (alreadyRegistered) {
       return res.status(400).json({ error: "Already registered" });
     }
 
-    // ✅ Add user
-    session.registeredUsers.push({ email });
+    // Add user (with userId for consistency)
+    session.registeredUsers.push({ 
+      userId: user._id, 
+      email: user.email,
+      registeredAt: new Date()
+    });
 
     await session.save();
 
@@ -133,10 +149,5 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-
-
-
-
 
 module.exports = router;
