@@ -152,46 +152,78 @@ router.get("/trips/:id", async (req, res) => {
 
 router.post("/trips", async (req, res) => {
   try {
-    const b = req.body || {};
-    const title = normTitle(b);
-    if (!title) return res.status(400).json({ error: "title is required" });
-    if (!b.location)
-      return res.status(400).json({ error: "location is required" });
-    if (!b.startDateTime || !b.endDateTime)
-      return res
-        .status(400)
-        .json({ error: "startDateTime and endDateTime are required" });
-
-    const doc = await Trip.create({
-      type: "trip",
+    const {
       title,
-      location: b.location,
-      shortDescription: b.shortDescription,
-      startDateTime: b.startDateTime,
-      endDateTime: b.endDateTime,
-      registrationDeadline: b.registrationDeadline,
-      price: b.price ?? 0,
-      capacity: b.capacity ?? 0,
-      image: "/trip.jpeg",
+      location,
+      shortDescription,
+      startDateTime,
+      endDateTime,
+      registrationDeadline,
+      price,
+      capacity,
+      allowedRoles = [], // ← Make sure this is accepted
+    } = req.body;
+
+    const trip = new Trip({
+      title,
+      location,
+      shortDescription,
+      startDateTime,
+      endDateTime,
+      registrationDeadline,
+      price: price || 0,
+      capacity: capacity || 0,
+      allowedRoles, // ← This was missing before!
+      registeredUsers: [],
+      registrations: [],
     });
-    res.status(201).json(doc);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+
+    await trip.save();
+    res.status(201).json(trip);
+  } catch (err) {
+    console.error("Create trip error:", err);
+    res.status(400).json({ error: err.message });
   }
 });
-
+/* ------------------- UPDATE TRIP (MISSING BEFORE) ------------------- */
 router.put("/trips/:id", async (req, res) => {
   try {
-    const updates = { ...req.body };
-    if (updates.name && !updates.title) updates.title = updates.name;
-    const doc = await Trip.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true,
-    });
-    if (!doc) return res.status(404).json({ error: "Trip not found" });
-    res.json(doc);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+    const {
+      title,
+      location,
+      shortDescription,
+      startDateTime,
+      endDateTime,
+      registrationDeadline,
+      price,
+      capacity,
+      allowedRoles = [], // ← This now gets saved when editing!
+    } = req.body;
+
+    const updatedTrip = await Trip.findByIdAndUpdate(
+      req.params.id,
+      {
+        title,
+        location,
+        shortDescription,
+        startDateTime,
+        endDateTime,
+        registrationDeadline,
+        price: price || 0,
+        capacity: capacity || 0,
+        allowedRoles, // ← Critical: saves your checkbox selections
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTrip) {
+      return res.status(404).json({ error: "Trip not found" });
+    }
+
+    res.json(updatedTrip);
+  } catch (err) {
+    console.error("Update trip error:", err);
+    res.status(400).json({ error: err.message });
   }
 });
 
