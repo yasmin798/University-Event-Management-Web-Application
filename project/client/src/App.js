@@ -20,6 +20,7 @@ import EventDetails from "./pages/EventDetails";
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
 import GymSessionsForRegister from "./pages/GymSessionsForRegister";
+import VerifiedUsersPage from "./pages/VerifiedUsers";
 
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
@@ -46,6 +47,8 @@ import VendorsPage from "./pages/Vendorspage";
 import LoyaltyVendors from "./pages/LoyaltyVendors";
 import Notifications from "./pages/Notifications";
 
+
+import GUCLoyaltyForm from "./pages/GUCLoyaltyForm";
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
@@ -55,7 +58,7 @@ import AttendeesReport from "./pages/AttendeesReport";
 import AdminAttendeesReport from "./pages/AdminAttendeesReport";
 import SalesReport from "./pages/SalesReport";
 import AdminSalesReport from "./pages/AdminSalesReport";
-
+import AdminAllEvents from "./pages/AdminAllEvents";
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
 import ReserveCourt from "./pages/ReserveCourt";
@@ -70,6 +73,18 @@ import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
 
 import PaymentPage from "./pages/PaymentPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
+
+import CreatePoll from "./pages/CreatePollFromBooths";
+import PollVoting from "./pages/PollVoting";
+
+import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
+import PendingVerificationPage from "./pages/PendingVerification";
+import AdminVendor from "./pages/AdminVendor";
+
+//workshops
+import WorkshopParticipants from "./pages/WorkshopParticipants";
+import WorkshopEditsPage from './pages/WorkshopEditsPage';
+
 
 // Simple 404
 function NotFound() {
@@ -90,9 +105,16 @@ function App() {
         <Route path="/signup/vendor" element={<VendorSignup />} />
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/verified-users" element={<VerifiedUsersPage />} />
         {/* New Admin Users View Page */}
         <Route path="/admin/users" element={<UsersView />} />
         {/* Dashboards */}
+        <Route
+          path="/pending-verification"
+          element={<PendingVerificationPage />}
+        />
+        <Route path="/admin/events" element={<AdminAllEvents />} />
+        <Route path="/admin/vendor-requests" element={<AdminVendor />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
@@ -114,6 +136,8 @@ function App() {
           path="/admin/attendees-report"
           element={<AdminAttendeesReport />}
         />
+        <Route path="/guc-loyalty-apply" element={<GUCLoyaltyForm />} />
+
         <Route path="/admin/sales-report" element={<AdminSalesReport />} />
         <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
@@ -121,6 +145,10 @@ function App() {
         <Route path="/events/list" element={<EventList />} />
         <Route path="/events/choose-type" element={<ChooseEventType />} />
         <Route path="/favorites" element={<FavoritesList />} />
+        <Route
+  path="/professor/workshops/participants/:workshopId"
+  element={<WorkshopParticipants />}
+/>
         {/* Events - Registration */}
         <Route
           path="/events/register/:eventId"
@@ -159,7 +187,7 @@ function App() {
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
         <Route
-          path="/student/courts-availability"
+          path="/courts-availability"
           element={<CourtsAvailabilityWrapper />}
         />
         <Route path="/reserve/:courtId" element={<ReserveCourt />} />
@@ -177,6 +205,10 @@ function App() {
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
         />
+
+        //workshops
+<Route path="/professor/workshops/edits/:id" element={<WorkshopEditsPage />} />        <Route path="/create-poll" element={<CreatePoll />} />
+        <Route path="/poll-voting" element={<PollVoting />} />        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

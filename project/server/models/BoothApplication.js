@@ -31,6 +31,8 @@ const BoothApplicationSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
+    paid: { type: Boolean, default: false },
+    paymentDeadline: { type: Date }, 
     
     bazaar: { type: mongoose.Schema.Types.ObjectId, ref: "Bazaar" },
 

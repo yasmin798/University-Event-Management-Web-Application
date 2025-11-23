@@ -81,12 +81,12 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
     const saved = await doc.save();
     res.status(201).json(saved);
 
-    // Notify Events Office users about new pending booth vendor application
+    // Notify Events Office and Admin users about new pending booth vendor application
     try {
-      const eventsOfficeUsers = await User.find({ role: "events_office", status: "active" }).select("_id email");
+      const recipients = await User.find({ role: { $in: ["events_office", "admin"] }, status: "active" }).select("_id email role");
       const baz = await Bazaar.findById(doc.bazaar);
       const message = `New booth vendor application pending${baz ? ` for bazaar '${baz.title}'` : ''}. Application ID: ${saved._id}`;
-      const notifPromises = eventsOfficeUsers.map(u => {
+      const notifPromises = recipients.map(u => {
         const n = new Notification({
           userId: u._id,
           message,
@@ -96,7 +96,7 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
       });
       await Promise.all(notifPromises);
     } catch (nerr) {
-      console.error("Failed to create notifications for events office:", nerr);
+      console.error("Failed to create notifications for recipients:", nerr);
     }
   } catch (err) {
     console.error("POST /api/booth-applications error:", err);

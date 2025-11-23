@@ -29,11 +29,14 @@ const BazaarApplicationSchema = new mongoose.Schema(
       enum: ["2x2", "4x4"],
       required: true,
     },
+    
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
+    paid: { type: Boolean, default: false },
+  paymentDeadline: { type: Date }, // ← ADD THIS
   },
   { timestamps: true }
 );

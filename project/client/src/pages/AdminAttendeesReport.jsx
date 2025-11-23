@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Search } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Calendar,
+  Users,
+  UserCheck,
+  RefreshCw,
+} from "lucide-react";
+import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
 import "../events.theme.css";
 
 const API_ORIGIN =
   process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
 
 export default function AdminAttendeesReport() {
-  const navigate = useNavigate();
   const [data, setData] = useState({ totalAttendees: 0, breakdown: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
     eventType: "",
     eventName: "",
@@ -32,11 +37,32 @@ export default function AdminAttendeesReport() {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      const txt = await res.text().catch(() => null);
+      let body = null;
+      try {
+        body = txt ? JSON.parse(txt) : null;
+      } catch (err) {
+        body = null;
+      }
+
       if (!res.ok) {
-        const txt = await res.text().catch(() => null);
+        if (res.status === 401 || res.status === 403) {
+          const detected = body?.detectedRole || null;
+          if (detected) {
+            localStorage.removeItem("token");
+            setError(
+              `Access denied: your account role is '${detected}'. Please log in as admin or staff to view this page.`
+            );
+            setLoading(false);
+            return;
+          }
+        }
+
         throw new Error(`${res.status} ${txt || res.statusText}`);
       }
-      const reportData = await res.json();
+
+      const reportData = body || (await res.json());
       setData(reportData);
       setError(null);
     } catch (err) {
@@ -63,228 +89,110 @@ export default function AdminAttendeesReport() {
     return () => clearTimeout(delay);
   }, [filters.eventName]);
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/");
-    }
-  };
-
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {/* Overlay for Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+    <div className="flex h-screen bg-[#f8fafc]">
+      {/* Fixed admin sidebar */}
+      <FixedSidebarAdmin />
 
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="px-4 pb-4">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4">
-          <div className="mt-4">
-            <button
-              onClick={() => navigate("/admin")}
-              className="w-full text-left bg-transparent text-white py-2 px-3 rounded hover:bg-[#3b4f63] mb-2"
-            >
-              Admin Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/admin/attendees-report")}
-              className="w-full text-left bg-transparent text-white py-2 px-3 rounded hover:bg-[#3b4f63] font-semibold mb-2"
-            >
-              Attendees Report
-            </button>
-            <button
-              onClick={() => navigate("/admin/sales-report")}
-              className="w-full text-left bg-transparent text-white py-2 px-3 rounded hover:bg-[#3b4f63]"
-            >
-              Sales Report
-            </button>
-          </div>
-        </nav>
-      </div>
-
-      {/* Main Section */}
-      <div className="flex-1 overflow-auto">
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
+      {/* MAIN CONTENT */}
+      <main className="flex-1 ml-[260px] h-screen overflow-y-auto">
+        {/* HEADER */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-              >
-                <Menu size={24} className="text-[#2f4156]" />
-              </button>
-              <h1 className="text-xl font-bold text-[#2f4156]">
+            <div>
+              <h1 className="text-2xl font-bold text-[#2f4156]">
                 Attendees Report
               </h1>
+              <p className="text-gray-600 mt-1">
+                Track event attendance and registration data
+              </p>
             </div>
-          </div>
-        </header>
-
-        <main
-          style={{
-            flex: 1,
-            padding: "0px",
-          }}
-        >
-          {/* TOP CARD: SEARCH + FILTERS (touching top) */}
-          <div
-            className="bg-white rounded-xl shadow-sm border border-gray-200"
-            style={{
-              marginTop: 0,
-              padding: "20px 24px",
-              width: "100%",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                flexWrap: "wrap",
-              }}
+            <button
+              onClick={fetchReport}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
             >
-              {/* SEARCH BAR */}
-              <div style={{ position: "relative", flex: "1 1 260px" }}>
-                <Search
-                  size={16}
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "10px",
-                    transform: "translateY(-50%)",
-                    color: "var(--teal)",
-                  }}
-                />
+              <RefreshCw size={16} />
+              Refresh
+            </button>
+          </div>
+        </div>
 
-                <input
-                  type="text"
-                  placeholder="Search by event name"
-                  value={filters.eventName}
-                  onChange={(e) =>
-                    setFilters((s) => ({ ...s, eventName: e.target.value }))
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px 8px 34px",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(47,65,86,0.2)",
-                    fontSize: "13px",
-                  }}
-                />
-              </div>
+        {/* FILTER BAR */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Filter size={20} className="text-[#2f4156]" />
+            <h2 className="text-lg font-semibold text-[#2f4156]">Filters</h2>
+          </div>
 
-              {/* EVENT TYPE DROPDOWN */}
-              <select
-                value={filters.eventType}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {/* SEARCH */}
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={filters.eventName}
                 onChange={(e) =>
-                  setFilters((s) => ({ ...s, eventType: e.target.value }))
+                  setFilters((s) => ({ ...s, eventName: e.target.value }))
                 }
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: "12px",
-                  border: "1px solid #d1d5db",
-                  background: "#fff",
-                  minWidth: "140px",
-                  fontSize: "14px",
-                }}
-              >
-                <option value="">All Types</option>
-                <option value="workshop">Workshop</option>
-                <option value="bazaar">Bazaar</option>
-                <option value="trip">Trip</option>
-                <option value="conference">Conference</option>
-                <option value="gymsession">Gym Session</option>
-              </select>
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
+              />
+            </div>
 
-              {/* FROM DATE */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 14px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "12px",
-                  background: "#fff",
-                  minWidth: "160px",
-                }}
-              >
-                <input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) =>
-                    setFilters((s) => ({ ...s, startDate: e.target.value }))
-                  }
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: "14px",
-                    width: "100%",
-                  }}
-                />
-              </div>
+            {/* EVENT TYPE */}
+            <select
+              value={filters.eventType}
+              onChange={(e) =>
+                setFilters((s) => ({ ...s, eventType: e.target.value }))
+              }
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
+            >
+              <option value="">All Event Types</option>
+              <option value="workshop">Workshop</option>
+              <option value="bazaar">Bazaar</option>
+              <option value="trip">Trip</option>
+              <option value="conference">Conference</option>
+              <option value="gymsession">Gym Session</option>
+            </select>
 
-              {/* TO DATE */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 14px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "12px",
-                  background: "#fff",
-                  minWidth: "160px",
-                }}
-              >
-                <input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) =>
-                    setFilters((s) => ({ ...s, endDate: e.target.value }))
-                  }
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: "14px",
-                    width: "100%",
-                  }}
-                />
-              </div>
+            {/* START DATE */}
+            <div className="relative">
+              <Calendar
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, startDate: e.target.value }))
+                }
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
+              />
+            </div>
 
-              {/* FILTER BUTTON */}
+            {/* END DATE */}
+            <div className="relative">
+              <Calendar
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, endDate: e.target.value }))
+                }
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
+              />
+            </div>
+
+            {/* ACTION BUTTONS */}
+            <div className="flex gap-2 col-span-2">
               <button
-                className="btn"
                 onClick={() => {
                   const params = {};
                   if (filters.eventType) params.eventType = filters.eventType;
@@ -293,13 +201,11 @@ export default function AdminAttendeesReport() {
                   if (filters.endDate) params.endDate = filters.endDate;
                   fetchReport(params);
                 }}
+                className="flex-1 bg-[#2f4156] text-white px-4 py-2 rounded-lg hover:bg-[#1f2d3d] transition-colors font-medium"
               >
-                Filter
+                Apply Filters
               </button>
-
-              {/* RESET BUTTON */}
               <button
-                className="btn btn-outline"
                 onClick={() => {
                   setFilters({
                     eventType: "",
@@ -309,139 +215,149 @@ export default function AdminAttendeesReport() {
                   });
                   fetchReport();
                 }}
+                className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300"
               >
                 Reset
               </button>
             </div>
           </div>
+        </div>
 
-          {/* SECOND CARD: OVERVIEW + TABLE */}
-          <div
-            className="bg-white rounded-xl shadow-sm border border-gray-200"
-            style={{
-              marginTop: "20px",
-              padding: "24px",
-              width: "100%",
-            }}
-          >
-            {loading && <p>Loading…</p>}
+        {/* CONTENT */}
+        <div className="p-8">
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2f4156]"></div>
+            </div>
+          )}
 
-            {!loading && error && (
-              <div style={{ marginTop: "8px" }}>
-                <pre style={{ color: "crimson", whiteSpace: "pre-wrap" }}>
-                  {typeof error === "string"
-                    ? error
-                    : JSON.stringify(error, null, 2)}
-                </pre>
-              </div>
-            )}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
 
-            {!loading && !error && (
-              <>
-                <div style={{ marginBottom: "12px" }}>
-                  <h2 style={{ fontSize: "20px", fontWeight: 700 }}>
-                    Overview
-                  </h2>
-                  <p style={{ marginTop: "4px", color: "#555" }}>
-                    Total registered attendees across all events.
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    marginBottom: "20px",
-                    fontSize: "18px",
-                    fontWeight: 700,
-                  }}
-                >
-                  Total Attendees:{" "}
-                  <span style={{ color: "var(--teal)" }}>
-                    {data.totalAttendees}
-                  </span>
-                </div>
-
-                <hr style={{ margin: "16px 0" }} />
-
-                <div style={{ marginTop: 12 }}>
-                  {data.breakdown && data.breakdown.length ? (
-                    <div className="overflow-x-auto">
-                      <table
-                        style={{
-                          width: "100%",
-                          borderCollapse: "collapse",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <thead>
-                          <tr
-                            style={{
-                              backgroundColor: "#f7f7fb",
-                              borderBottom: "1px solid #e5e7eb",
-                            }}
-                          >
-                            <th
-                              style={{
-                                textAlign: "left",
-                                padding: "10px",
-                                fontWeight: 600,
-                              }}
-                            >
-                              Type
-                            </th>
-                            <th
-                              style={{
-                                textAlign: "left",
-                                padding: "10px",
-                                fontWeight: 600,
-                              }}
-                            >
-                              Title
-                            </th>
-                            <th
-                              style={{
-                                textAlign: "right",
-                                padding: "10px",
-                                fontWeight: 600,
-                              }}
-                            >
-                              Attendees
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.breakdown.map((b) => (
-                            <tr
-                              key={b.id}
-                              style={{
-                                borderTop: "1px solid #eee",
-                                backgroundColor: "white",
-                              }}
-                            >
-                              <td style={{ padding: "10px" }}>
-                                {b.eventType || "—"}
-                              </td>
-                              <td style={{ padding: "10px" }}>
-                                {b.title || "—"}
-                              </td>
-                              <td
-                                style={{ padding: "10px", textAlign: "right" }}
-                              >
-                                {b.count ?? 0}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+          {!loading && !error && (
+            <>
+              {/* SUMMARY CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <Users size={24} className="text-blue-600" />
                     </div>
-                  ) : (
-                    <p style={{ color: "#666" }}>No registrations found yet.</p>
-                  )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Attendees
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.totalAttendees || 0}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
-        </main>
-      </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <UserCheck size={24} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Events
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.breakdown?.length || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-purple-50 rounded-lg">
+                      <Users size={24} className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Average Attendance
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.breakdown?.length
+                          ? Math.round(
+                              data.totalAttendees / data.breakdown.length
+                            )
+                          : 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ATTENDEES TABLE */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Attendance Breakdown
+                  </h3>
+                </div>
+
+                {data.breakdown?.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Type
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Title
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Attendees
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {data.breakdown.map((b, index) => (
+                          <tr
+                            key={b.id || index}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                                {b.eventType || "—"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {b.title || "—"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              <span className="font-semibold text-blue-600">
+                                {b.count ?? 0}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users size={48} className="mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-500 text-lg">
+                      No attendance data found
+                    </p>
+                    <p className="text-gray-400 mt-2">
+                      Try adjusting your filters
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

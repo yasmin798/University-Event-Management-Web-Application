@@ -197,7 +197,7 @@ const StudentDashboard = () => {
   };
 
   const handleCourtsAvailability = () => {
-    navigate("/student/courts-availability");
+    navigate("/courts-availability");
     closeSidebar();
   };
 
@@ -214,6 +214,12 @@ const StudentDashboard = () => {
       navigate("/");
     }
   };
+
+  const handlePollsVoting = () => {
+  navigate("/poll-voting");
+  closeSidebar();
+};
+
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -237,7 +243,12 @@ const StudentDashboard = () => {
     });
   };
 
-  const filteredEvents = allEvents;
+  const filteredEvents = allEvents.filter((e) => {
+  // Only show archived events to events office
+  if (e.status === "archived" && userRole !== "events office") return false;
+  return true;
+});
+
 
   if (loading) {
     return (
@@ -313,6 +324,14 @@ const StudentDashboard = () => {
             <Calendar size={18} />
             Gym Sessions
           </button>
+
+          <button
+            onClick={handlePollsVoting}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+            >
+          <Heart size={18} />
+            Polls Voting
+            </button>
 
           <button
             onClick={handleLogout}

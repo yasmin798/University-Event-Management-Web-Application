@@ -1,6 +1,7 @@
+// client/src/pages/TripForm.js
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar"; // ✅ ADD SIDEBAR
+import Sidebar from "../components/Sidebar";
 import FormField from "../components/FormField";
 import { validateTrip, isEditable } from "../utils/validation";
 import "../events.theme.css";
@@ -10,7 +11,7 @@ export default function TripForm() {
   const navigate = useNavigate();
 
   const editing = Boolean(id);
-  const [filter, setFilter] = useState("All"); // sidebar filter state
+  const [filter, setFilter] = useState("All");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [data, setData] = useState({
@@ -23,25 +24,21 @@ export default function TripForm() {
     registrationDeadline: "",
     price: "",
     capacity: "",
+    allowedRoles: [], // open to all by default
   });
 
   const [errors, setErrors] = useState({});
   const canEdit = isEditable(data.startDateTime);
 
-  // ------------------------------
-  // Load trip (editing mode)
-  // ------------------------------
+  // Load trip when editing
   useEffect(() => {
     let cancelled = false;
-
     if (!editing) return;
 
     (async () => {
       const r = await fetch(`/api/trips/${id}`, { cache: "no-store" });
-      if (!r.ok) return;
-
+      if (!r.ok || cancelled) return;
       const doc = await r.json();
-      if (cancelled) return;
 
       setData({
         type: "TRIP",
@@ -55,19 +52,31 @@ export default function TripForm() {
           : "",
         price: doc.price ?? "",
         capacity: doc.capacity ?? "",
+        allowedRoles: doc.allowedRoles || [],
       });
     })();
 
     return () => (cancelled = true);
   }, [editing, id]);
 
-  // handle change
+  // Handle all inputs + checkboxes
   function handleChange(e) {
-    const { name, value } = e.target;
-    setData((d) => ({ ...d, [name]: value }));
+    const { name, value, type, checked } = e.target;
+
+    if (type === "checkbox") {
+      // This handles allowedRoles correctly
+      setData((d) => ({
+        ...d,
+        allowedRoles: checked
+          ? [...d.allowedRoles, value]
+          : d.allowedRoles.filter((r) => r !== value),
+      }));
+    } else {
+      setData((d) => ({ ...d, [name]: value }));
+    }
   }
 
-  // save trip
+  // Save (create or update)
   async function saveTrip() {
     const errs = validateTrip(data);
     setErrors(errs);
@@ -87,6 +96,7 @@ export default function TripForm() {
       registrationDeadline: data.registrationDeadline,
       price: Number(data.price || 0),
       capacity: Number(data.capacity || 0),
+      allowedRoles: data.allowedRoles, // Sent correctly
     };
 
     const method = editing ? "PUT" : "POST";
@@ -107,50 +117,35 @@ export default function TripForm() {
     navigate("/events", { replace: true });
   }
 
-  // submit handler
   function handleSubmit(e) {
     e.preventDefault();
-
     const errs = validateTrip(data);
     setErrors(errs);
     if (Object.keys(errs).length) return;
-
     if (!canEdit && editing) {
       alert("Trips can't be edited after the start time.");
       return;
     }
-
     setConfirmOpen(true);
   }
 
   return (
-    <div
-      className="events-theme"
-      style={{ display: "flex", minHeight: "100vh" }}
-    >
-      {/* 🟣 LEFT SIDEBAR */}
+    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar filter={filter} setFilter={setFilter} />
 
-      {/* 🟡 MAIN CONTENT */}
       <main style={{ flex: 1, marginLeft: "260px", padding: "24px" }}>
-        <h1
-          style={{ marginTop: 0, color: "var(--navy)", marginBottom: "18px" }}
-        >
+        <h1 style={{ marginTop: 0, color: "var(--navy)", marginBottom: "18px" }}>
           {editing ? "Edit Trip" : "Create Trip"}
         </h1>
 
         {!canEdit && editing && (
-          <div className="lock">
-            This trip has started; editing is disabled.
-          </div>
+          <div className="lock">This trip has started; editing is disabled.</div>
         )}
 
-        {/* FORM */}
         <form onSubmit={handleSubmit} className="form form-pro" noValidate>
           {/* Basic info */}
           <fieldset className="form-sec">
             <legend>Basic details</legend>
-
             <div className="form-grid">
               <FormField label="Name" error={errors.name} required>
                 <input
@@ -175,10 +170,7 @@ export default function TripForm() {
                 />
               </FormField>
 
-              <FormField
-                label="Short Description"
-                error={errors.shortDescription}
-              >
+              <FormField label="Short Description" error={errors.shortDescription}>
                 <textarea
                   name="shortDescription"
                   rows={3}
@@ -194,7 +186,6 @@ export default function TripForm() {
           {/* Schedule */}
           <fieldset className="form-sec">
             <legend>Schedule</legend>
-
             <div className="form-grid form-grid-3">
               <FormField label="Start" error={errors.startDateTime} required>
                 <input
@@ -216,10 +207,7 @@ export default function TripForm() {
                 />
               </FormField>
 
-              <FormField
-                label="Registration Deadline"
-                error={errors.registrationDeadline}
-              >
+              <FormField label="Registration Deadline" error={errors.registrationDeadline}>
                 <input
                   type="datetime-local"
                   name="registrationDeadline"
@@ -234,7 +222,6 @@ export default function TripForm() {
           {/* Pricing & Capacity */}
           <fieldset className="form-sec">
             <legend>Capacity & Pricing</legend>
-
             <div className="form-grid form-grid-2">
               <FormField label="Price" error={errors.price}>
                 <input
@@ -260,13 +247,41 @@ export default function TripForm() {
             </div>
           </fieldset>
 
+          {/* FIXED: Role Restrictions */}
+          <fieldset className="form-sec">
+            <legend>Role Restrictions</legend>
+            <p className="help">
+              Select which roles may register. Leave all unchecked = open to everyone.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginTop: "12px" }}>
+              {["student", "professor", "ta", "staff"].map((role) => (
+                <label
+                  key={role}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "15px",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    value={role}
+                    checked={data.allowedRoles.includes(role)}
+                    onChange={handleChange}
+                    disabled={!canEdit && editing}
+                    style={{ width: "18px", height: "18px", marginRight: "8px" }}
+                  />
+                  <span style={{ textTransform: "capitalize" }}>{role}s only</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           {/* Submit */}
           <div className="form-actions">
-            <button
-              className="btn"
-              type="submit"
-              disabled={editing && !canEdit}
-            >
+            <button className="btn" type="submit" disabled={editing && !canEdit}>
               {editing ? "Save Changes" : "Create Trip"}
             </button>
           </div>
@@ -277,24 +292,15 @@ export default function TripForm() {
           <div className="confirm-overlay">
             <div className="confirm">
               <h2>{editing ? "Save changes?" : "Create this trip?"}</h2>
-
               <p>
                 {editing ? (
-                  <>
-                    Save edits to <strong>{data.name || "this trip"}</strong>?
-                  </>
+                  <>Save edits to <strong>{data.name || "this trip"}</strong>?</>
                 ) : (
-                  <>
-                    Create <strong>{data.name || "this trip"}</strong>?
-                  </>
+                  <>Create <strong>{data.name || "this trip"}</strong>?</>
                 )}
               </p>
-
               <div className="confirm-actions">
-                <button
-                  className="btn btn-outline"
-                  onClick={() => setConfirmOpen(false)}
-                >
+                <button className="btn btn-outline" onClick={() => setConfirmOpen(false)}>
                   Cancel
                 </button>
                 <button

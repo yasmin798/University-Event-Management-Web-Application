@@ -1,7 +1,7 @@
 // client/src/pages/EventsHome.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, Bell, X } from "lucide-react";
 import NotificationsDropdown from "../components/NotificationsDropdown";
 
 import workshopPlaceholder from "../images/workshop.png";
@@ -30,6 +30,7 @@ function formatDate(iso) {
 }
 
 function formatMoney(n) {
+
   if (n == null || n === "") return "—";
   const num = Number(n);
   if (Number.isNaN(num)) return String(n);
@@ -48,42 +49,56 @@ function isEditable(startIso) {
 
 // Check if an event has already ended
 function isPastEvent(ev) {
-  const endDate = ev.endDateTime || ev.endDate || ev.endDateTime; // support all types
+  const endDate = ev.endDateTime || ev.endDate;
+  // support all types
   if (!endDate) return false;
   return new Date(endDate).getTime() < Date.now();
 }
+// shared style for "Create Event / Gym / Poll" buttons
+// shared style for "Create Event / Gym / Poll" buttons
+const topActionBtnStyle = {
+  background: "var(--teal)",
+  color: "white",
+  borderRadius: "10px",
+  padding: "10px 18px", // a bit taller & wider (optional)
+  fontWeight: 600,
+  border: "none",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  fontSize: "16px", // ⬅⬅ make font bigger
+  minWidth: "120px",
+  textAlign: "center",
+};
 
 export default function EventsHome() {
   const navigate = useNavigate();
   const [viewEvent, setViewEvent] = useState(null);
   const [conferences, setConferences] = useState([]);
+  // ────────────────────── NOTIFICATIONS ──────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef(null);
 
+  
   const [searchTerm, setSearchTerm] = useState("");
-  const [professorFilter, setProfessorFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
+
   const [dateFilter, setDateFilter] = useState("");
+  
   const [filter, setFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("asc");
   const [params] = useSearchParams();
 
   // Debounced filters
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
-  const [debouncedLocation, setDebouncedLocation] = useState(locationFilter);
+
   const [debouncedDate, setDebouncedDate] = useState(dateFilter);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(t);
   }, [searchTerm]);
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
-    return () => clearTimeout(t);
-  }, [professorFilter]);
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedLocation(locationFilter), 300);
-    return () => clearTimeout(t);
-  }, [locationFilter]);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
     return () => clearTimeout(t);
@@ -103,6 +118,82 @@ export default function EventsHome() {
     confirmLabel: "Delete",
     cancelLabel: "Cancel",
   });
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [docsList, setDocsList] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [viewerName, setViewerName] = useState("");
+
+  const getBackendOrigin = () => {
+    try {
+      const origin = window.location.origin;
+      const u = new URL(origin);
+      if (u.port === "3001") u.port = "3000";
+      return u.origin;
+    } catch (e) {
+      return window.location.origin;
+    }
+  };
+
+  const absoluteUrl = (url) => {
+    if (!url) return url;
+    if (String(url).startsWith("http")) return url;
+    if (String(url).startsWith("/")) return `${getBackendOrigin()}${url}`;
+    return url;
+  };
+
+  const downloadFile = async (url, suggestedName) => {
+    try {
+      const abs = absoluteUrl(url);
+      const token = localStorage.getItem("token");
+      console.log("Downloading file:", abs);
+      const res = await fetch(abs, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) {
+        setToast({ open: true, text: "Failed to download file" });
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = suggestedName || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download error:", err);
+      setToast({ open: true, text: "Error downloading file" });
+    }
+  };
+
+  const openViewer = (url, name) => {
+    try {
+      const abs = absoluteUrl(url);
+      console.log("Opening viewer for:", abs);
+      setDocsModalOpen(false);
+      setViewerUrl(abs);
+      setViewerName(name || "Document");
+      setViewerOpen(true);
+    } catch (err) {
+      console.error("openViewer error:", err);
+      setToast({ open: true, text: "Could not open viewer" });
+    }
+  };
+  const getRoleFromToken = () => {
+    try {
+      const t = localStorage.getItem("token");
+      if (!t) return null;
+      const parts = t.split(".");
+      if (parts.length < 2) return null;
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.role || null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const userRole = getRoleFromToken();
   const [editRequest, setEditRequest] = useState({
     open: false,
     workshopId: null,
@@ -173,6 +264,7 @@ export default function EventsHome() {
           image: conferenceImg,
         }));
       setConferences(normalizedConferences);
+      
 
       setWorkshops(normalized);
     } catch (err) {
@@ -212,12 +304,9 @@ export default function EventsHome() {
       setLoading(false)
     );
   }, [fetchWorkshops, fetchBooths]);
+  
 
-  const refreshAll = useCallback(() => {
-    fetchWorkshops();
-    fetchBooths();
-    refreshEvents();
-  }, [fetchWorkshops, fetchBooths, refreshEvents]);
+ 
   function normalizeConferenceFields(conf) {
     return {
       ...conf,
@@ -229,6 +318,68 @@ export default function EventsHome() {
       extraResources: conf.extraResources || "",
     };
   }
+
+  // FETCH NOTIFICATIONS (optimized + no spam)
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+        setUnreadCount(data.filter(n => n.unread).length);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  }, []);
+  const refreshAll = useCallback(() => {
+    if (document.visibilityState === "visible") {
+      fetchWorkshops();
+      fetchBooths();
+      refreshEvents();
+      fetchNotifications();
+    }
+  }, [fetchWorkshops, fetchBooths, refreshEvents, fetchNotifications]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshAll();
+    }, 8000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshAll(); // instant refresh when user comes back
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshAll]);
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Initial load (only once)
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+  
 
   const allEvents = [
     ...otherEvents.filter((e) => !["CONFERENCE"].includes(e.type)),
@@ -249,7 +400,9 @@ export default function EventsHome() {
         return;
       }
       setToast({ open: true, text: "Event deleted successfully!" });
-      refreshAll();
+      fetchWorkshops();
+fetchBooths();
+refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Delete error:", e);
       setToast({ open: true, text: "Network error: Could not delete" });
@@ -269,7 +422,9 @@ export default function EventsHome() {
         return;
       }
       setToast({ open: true, text: `Workshop ${newStatus} successfully!` });
-      refreshAll();
+    fetchWorkshops();
+fetchBooths();
+refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Update error:", e);
       setToast({ open: true, text: "Network error: Could not update" });
@@ -297,7 +452,9 @@ export default function EventsHome() {
       }
       setToast({ open: true, text: "Edit request sent successfully!" });
       setEditRequest({ open: false, workshopId: null, message: "" });
-      refreshAll();
+   fetchWorkshops();
+fetchBooths();
+refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Edit request error:", e);
       setToast({ open: true, text: "Network error: Could not send request" });
@@ -393,6 +550,45 @@ export default function EventsHome() {
     });
   };
 
+  // Generic Archive Button for any event type
+async function handleArchive(id, type) {
+  // Get user role from localStorage
+  const userRole = localStorage.getItem("role");
+
+  // Only allow EVENTS_OFFICE to archive
+  if (userRole !== "EVENTS_OFFICE") {
+    return alert("You do not have permission to archive this item.");
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/${type}/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: "archived" }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      return alert("Failed to archive: " + errorText);
+    }
+
+    const data = await res.json();
+    alert(data.message);
+
+    // Update UI immediately if needed
+    // e.g., refetch events or update local state
+  } catch (err) {
+    console.error(err);
+    alert("Failed to archive: Network error");
+  }
+}
+
+
+
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
   ---------------------------------------------------- */
@@ -402,28 +598,20 @@ export default function EventsHome() {
       const professors = ev.professorsParticipating?.toLowerCase() || "";
       const location = ev.location?.toLowerCase() || "";
 
+      const term = debouncedSearch.toLowerCase();
+
       const matchSearch =
-        !debouncedSearch || title.includes(debouncedSearch.toLowerCase());
-      const matchProfessor =
-        !debouncedProfessor ||
-        professors.includes(debouncedProfessor.toLowerCase());
-      const matchLocation =
-        !debouncedLocation ||
-        location.includes(debouncedLocation.toLowerCase());
+        !term ||
+        title.includes(term) ||
+        professors.includes(term) ||
+        location.includes(term);
+
       const matchType = filter === "All" || ev.type === filter;
+      const matchDate =
+        !debouncedDate ||
+        (ev.startDateTime && ev.startDateTime.slice(0, 10) === debouncedDate);
 
-      let matchDate = true;
-      if (debouncedDate) {
-        const filterDate = new Date(debouncedDate);
-        const nextDay = new Date(filterDate);
-        nextDay.setDate(filterDate.getDate() + 1);
-        const eventDate = new Date(ev.startDateTime || ev.startDate || ev.date);
-        matchDate = eventDate >= filterDate && eventDate < nextDay;
-      }
-
-      return (
-        matchSearch && matchProfessor && matchLocation && matchType && matchDate
-      );
+      return matchSearch && matchType && matchDate;
     })
     .sort((a, b) => {
       const dateA = new Date(a.startDateTime || a.startDate || a.date);
@@ -491,7 +679,7 @@ export default function EventsHome() {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ position: "relative", width: "180px" }}>
+            <div style={{ position: "relative", width: "260px" }}>
               <Search
                 size={16}
                 style={{
@@ -504,7 +692,7 @@ export default function EventsHome() {
               />
               <input
                 type="text"
-                placeholder="Search by title"
+                placeholder="Search by title, professor, location"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -516,50 +704,26 @@ export default function EventsHome() {
                 }}
               />
             </div>
-            <input
-              type="text"
-              placeholder="Professor"
-              value={professorFilter}
-              onChange={(e) => setProfessorFilter(e.target.value)}
-              style={{
-                width: "130px",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid rgba(47,65,86,0.2)",
-                fontSize: "13px",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Location"
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              style={{
-                width: "130px",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid rgba(47,65,86,0.2)",
-                fontSize: "13px",
-              }}
-            />
+
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               style={{
-                width: "150px",
-                padding: "8px 12px",
+                width: "120px",
+                padding: "6px 10px",
                 borderRadius: "10px",
                 border: "1px solid rgba(47,65,86,0.2)",
                 fontSize: "13px",
               }}
             />
+
             <button
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
               style={{
-                padding: "8px 12px",
+                padding: "6px 10px",
                 borderRadius: "10px",
                 border: "1px solid rgba(47,65,86,0.2)",
                 background: "white",
@@ -568,103 +732,174 @@ export default function EventsHome() {
                 whiteSpace: "nowrap",
               }}
             >
-              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
 
           {/* RIGHT: action buttons */}
-          <div style={{ display: "flex", gap: "10px", alignItems: 'center' }}>
-            {/* Notifications dropdown placed to the LEFT of Create Event */}
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {/* Notifications dropdown */}
             <div>
               <React.Suspense fallback={null}>
                 <NotificationsDropdown />
               </React.Suspense>
             </div>
+
+            { (userRole === 'events_office' || userRole === 'admin') && (
             <button
-              className="btn"
-              style={{
-                background: "var(--teal)",
-                color: "white",
-                borderRadius: "10px",
-                fontWeight: "700",
-                padding: "8px 14px",
+              style={{ ...topActionBtnStyle, background: "#567c8d" }}
+              onClick={async () => {
+                setDocsLoading(true);
+                setDocsList([]);
+                try {
+                  const token = localStorage.getItem("token");
+                  const [bRes, boRes] = await Promise.all([
+                    fetch(`/api/bazaar-applications`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    fetch(`/api/booth-applications`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                  ]);
+
+                  const bJson = await (bRes.ok ? bRes.json() : []);
+                  const boJson = await (boRes.ok ? boRes.json() : []);
+
+                  const gather = (arr) => {
+                    if (!arr || !Array.isArray(arr)) return [];
+                    return arr.flatMap((r) => {
+                      const attendees = Array.isArray(r.attendees) ? r.attendees : [];
+                      return attendees
+                        .filter((a) => a && a.idDocument)
+                        .map((a) => ({
+                          name: a.name || a.fullName || "Unnamed",
+                          email: a.email || a.emailAddress || "",
+                          url:
+                            String(a.idDocument).startsWith("/")
+                              ? `${window.location.origin}${a.idDocument}`
+                              : String(a.idDocument),
+                          source: r.vendorName || r._id || "vendor",
+                        }));
+                    });
+                  };
+
+                  const bazList = Array.isArray(bJson) ? gather(bJson) : gather(bJson.requests || []);
+                  const boothList = Array.isArray(boJson) ? gather(boJson) : gather(boJson.requests || []);
+
+                  setDocsList([...bazList, ...boothList]);
+                  setDocsModalOpen(true);
+                } catch (err) {
+                  console.error("Error fetching docs:", err);
+                  setToast({ open: true, text: "Failed to load documents" });
+                } finally {
+                  setDocsLoading(false);
+                }
               }}
+            >
+              View Docs
+            </button>
+            )}
+
+            <button
+              style={topActionBtnStyle}
               onClick={() => setChooseOpen(true)}
             >
               Create Event
             </button>
+
             <button
-              className="btn"
-              style={{
-                background: "var(--teal)",
-                color: "white",
-                borderRadius: "10px",
-                fontWeight: "700",
-                padding: "8px 14px",
-              }}
+              style={topActionBtnStyle}
               onClick={() => navigate("/gym-manager")}
             >
               Create Gym
             </button>
-            {chooseOpen && (
+
+            <button
+              style={topActionBtnStyle}
+              onClick={() => navigate("/create-poll")}
+            >
+              Create Poll
+            </button>
+          </div>
+          <div>
+            {viewerOpen && (
               <div
-                className="confirm-overlay"
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
+                  position: 'fixed',
+                  inset: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.45)',
+                  zIndex: 9999,
                 }}
               >
-                <div
-                  style={{
-                    background: "white",
-                    padding: "20px",
-                    borderRadius: "12px",
-                    width: "320px",
-                    boxShadow: "var(--shadow)",
-                  }}
-                >
-                  <h3 style={{ marginBottom: "15px", textAlign: "center" }}>
-                    Select Event Type
-                  </h3>
-                  <select
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      marginBottom: "15px",
-                    }}
-                    value={chosenType}
-                    onChange={(e) => setChosenType(e.target.value)}
-                  >
-                    <option value="">-- choose --</option>
-                    <option value="bazaar">Bazaar</option>
-                    <option value="conference">Conference</option>
-                    <option value="trip">Trip</option>
-                  </select>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button
-                      className="btn btn-outline"
-                      style={{ flex: 1 }}
-                      onClick={() => setChooseOpen(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="btn"
-                      style={{ flex: 1 }}
-                      onClick={() => {
-                        if (!chosenType) return alert("Pick a type");
-                        if (chosenType === "bazaar")
-                          navigate("/bazaars/create");
-                        if (chosenType === "conference")
-                          navigate("/conferences/create");
-                        if (chosenType === "trip") navigate("/trips/create");
+                <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ background: '#3B82F6', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{viewerName}</h3>
+                      <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+                    </div>
+                    <button onClick={() => setViewerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer' }}>✕</button>
+                  </div>
+                <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                    <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+                  ) : (
+                    <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+                      <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                    </div>
+                  )}
+                </div>
+                  <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={() => setViewerOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {chooseOpen && (
+              <div className="confirm-overlay" role="dialog" aria-modal="true">
+                <div className="confirm">
+                  <h2>Choose Event Type</h2>
+                  <div style={{ marginTop: 12 }}>
+                    <select
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #ccc",
+                        marginBottom: "15px",
                       }}
+                      value={chosenType}
+                      onChange={(e) => setChosenType(e.target.value)}
                     >
-                      Continue
-                    </button>
+                      <option value="">-- choose --</option>
+                      <option value="bazaar">Bazaar</option>
+                      <option value="conference">Conference</option>
+                      <option value="trip">Trip</option>
+                    </select>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button
+                        className="btn btn-outline"
+                        style={{ flex: 1 }}
+                        onClick={() => setChooseOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="btn"
+                        style={{ flex: 1 }}
+                        onClick={() => {
+                          if (!chosenType) return alert("Pick a type");
+                          if (chosenType === "bazaar") navigate("/bazaars/create");
+                          if (chosenType === "conference") navigate("/conferences/create");
+                          if (chosenType === "trip") navigate("/trips/create");
+                        }}
+                      >
+                        Continue
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -756,7 +991,8 @@ export default function EventsHome() {
               const archived = isPastEvent(ev); // true if the event has already ended
               const isWorkshop = typeRaw === "WORKSHOP";
               const isBooth = typeRaw === "BOOTH";
-              const isBazaar = typeRaw === "BAZAAR";
+              const isBazaar = ev.type?.toLowerCase() === "bazaar";
+
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
 
@@ -804,277 +1040,437 @@ export default function EventsHome() {
                       flexWrap: "wrap",
                     }}
                   >
-                    {/* BAZAAR */}
-                    {isBazaar && (
-                      <>
-                        {/* VIEW + EXPORT (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+                 {/* BAZAAR */}
+{isBazaar && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
 
-                        {editable && !archived ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/bazaars/${id}`)}
-                          >
-                            Edit
-                          </button>
-                        ) : (
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                        )}
+    {/* MANUAL ARCHIVE BUTTON — only for past events */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const typeMap = {
+              TRIP: "trips",
+              BAZAAR: "bazaars",
+              CONFERENCE: "conferences",
+              WORKSHOP: "workshops",
+              BOOTH: "booths",
+            };
 
-                        <button
-                          className="btn btn-danger"
-                          disabled={archived || ev.registrations?.length > 0}
-                          onClick={() => handleDelete(id, "bazaars")}
-                          title={
-                            ev.registrations?.length > 0
-                              ? "Cannot delete: participants registered"
-                              : archived
-                              ? "Cannot delete: event archived"
-                              : "Delete this bazaar"
-                          }
-                        >
-                          Delete
-                        </button>
+            const path = typeMap[ev.type.toUpperCase()];
+            if (!path) return alert("Unknown event type: " + ev.type);
 
-                        <button
-                          className="btn"
-                          style={{ background: "var(--teal)", color: "white" }}
-                          onClick={() =>
-                            navigate(`/bazaars/${id}/vendor-requests`)
-                          }
-                          disabled={archived}
-                          title={archived ? "Archived event" : ""}
-                        >
-                          Vendor Requests
-                        </button>
+            const token = localStorage.getItem("token"); // adjust if using context
+            const res = await fetch(`/api/${path}/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
 
-                        <button
-                          className="btn"
-                          style={{ background: "#c88585", color: "white" }}
-                          onClick={() => exportAttendees(id, "bazaars")}
-                          disabled={archived}
-                          title={archived ? "Archived event" : ""}
-                        >
-                          Export Excel
-                        </button>
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
 
-                    {/* TRIP */}
-                    {isTrip && (
-                      <>
-                        {/* VIEW + EXPORT (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+            // Update local state so UI reflects immediately
+            ev.status = "archived";
+            alert("Event archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
 
-                        {editable && !archived ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/trips/${id}`)}
-                          >
-                            Edit
-                          </button>
-                        ) : (
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                        )}
+    {editable && ev.status !== "archived" ? (
+      <button className="btn" onClick={() => navigate(`/bazaars/${ev._id}`)}>
+        Edit
+      </button>
+    ) : (
+      <button className="btn btn-disabled" disabled>
+        Edit
+      </button>
+    )}
 
-                        <button
-                          className="btn btn-danger"
-                          disabled={archived}
-                          onClick={() => handleDelete(id, "trips")}
-                          title={
-                            archived
-                              ? "Cannot delete: event archived"
-                              : "Delete this trip"
-                          }
-                        >
-                          Delete
-                        </button>
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived" || ev.registrations?.length > 0}
+      onClick={() => handleDelete(ev._id, "bazaars")}
+      title={
+        ev.registrations?.length > 0
+          ? "Cannot delete: participants registered"
+          : "Cannot delete archived event"
+      }
+    >
+      Delete
+    </button>
 
-                        <button
-                          className="btn"
-                          style={{ background: "#c88585", color: "white" }}
-                          onClick={() => exportAttendees(id, "trips")}
-                          disabled={archived}
-                          title={archived ? "Archived event" : ""}
-                        >
-                          Export Excel
-                        </button>
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+    <button
+      className="btn"
+      onClick={() => navigate(`/bazaars/${ev._id}/vendor-requests`)}
+    >
+      Vendor Requests
+    </button>
 
-                    {/* CONFERENCE */}
-                    {isConference && (
-                      <>
-                        {/* VIEW ONLY (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+    <button
+      className="btn"
+      style={{ background: "#c88585", color: "white" }}
+      onClick={() => exportAttendees(ev._id, "bazaars")}
+      disabled={ev.status === "archived"}
+    >
+      Export Excel
+    </button>
 
-                        {editable && !archived ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/conferences/${id}`)}
-                          >
-                            Edit
-                          </button>
-                        ) : (
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                        )}
+    {ev.status === "archived" && (
+      <div
+        className="chip"
+        style={{ background: "#666", color: "white", marginTop: "8px" }}
+      >
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
 
-                        <button
-                          className="btn btn-danger"
-                          disabled={archived}
-                          onClick={() => handleDelete(id, "conferences")}
-                          title={
-                            archived
-                              ? "Cannot delete: event archived"
-                              : "Delete this conference"
-                          }
-                        >
-                          Delete
-                        </button>
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
 
-                    {/* WORKSHOP */}
-                    {isWorkshop && (
-                      <>
-                        {/* VIEW ALWAYS (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
 
-                        {!archived &&
-                          (ev.status === "pending" ||
-                            ev.status === "edits_requested") && (
-                            <>
-                              <button
-                                className="btn btn-success"
-                                onClick={() => handleAccept(id)}
-                              >
-                                Accept & Publish
-                              </button>
-                              <button
-                                className="btn btn-danger"
-                                onClick={() => handleReject(id)}
-                              >
-                                Reject
-                              </button>
-                              <button
-                                className="btn btn-warning"
-                                onClick={() => handleRequestEdits(id)}
-                              >
-                                Request Edits
-                              </button>
-                            </>
-                          )}
+                   {/* TRIP */}
+{isTrip && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
 
-                        {ev.status === "published" && (
-                          <button
-                            className="btn"
-                            style={{ background: "#c88585", color: "white" }}
-                            onClick={() => exportAttendees(id, "workshops")}
-                          >
-                            Export Excel
-                          </button>
-                        )}
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+    {/* ARCHIVE BUTTON — only shows if trip has passed and not yet archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const typeMap = {
+              TRIP: "trips",
+              BAZAAR: "bazaars",
+              CONFERENCE: "conferences",
+              WORKSHOP: "workshops",
+              BOOTH: "booths",
+            };
 
-                    {/* BOOTH */}
-                    {isBooth && (
-                      <>
-                        {/* VIEW + EXPORT (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+            const path = typeMap[ev.type.toUpperCase()];
+            if (!path) return alert("Unknown event type: " + ev.type);
 
-                        {!archived && (
-                          <button
-                            className="btn btn-danger"
-                            onClick={() => handleDelete(id, "booths")}
-                          >
-                            Delete
-                          </button>
-                        )}
-                        <button
-                          className="btn"
-                          style={{ background: "#c88585", color: "white" }}
-                          onClick={() => exportAttendees(id, "booths")}
-                        >
-                          Export Excel
-                        </button>
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+            const token = localStorage.getItem("token"); // adjust if using context
+            const res = await fetch(`/api/${path}/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            // Update local state so UI reflects immediately
+            ev.status = "archived";
+            alert("Trip archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Edit button */}
+    {editable && ev.status !== "archived" ? (
+      <button className="btn" onClick={() => navigate(`/trips/${ev._id}`)}>
+        Edit
+      </button>
+    ) : (
+      <button className="btn btn-disabled" disabled>
+        Edit
+      </button>
+    )}
+
+    {/* Delete button */}
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived"}
+      onClick={() => handleDelete(ev._id, "trips")}
+      title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this trip"}
+    >
+      Delete
+    </button>
+
+    {/* Export Excel */}
+    <button
+      className="btn"
+      style={{ background: "#c88585", color: "white" }}
+      onClick={() => exportAttendees(ev._id, "trips")}
+      disabled={ev.status === "archived"}
+    >
+      Export Excel
+    </button>
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
+
+                   {/* CONFERENCE */}
+{isConference && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
+
+    {/* ARCHIVE BUTTON — only appears if conference has ended and is not yet archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const typeMap = {
+              TRIP: "trips",
+              BAZAAR: "bazaars",
+              CONFERENCE: "conferences",
+              WORKSHOP: "workshops",
+              BOOTH: "booths",
+            };
+
+            const path = typeMap[ev.type.toUpperCase()];
+            if (!path) return alert("Unknown event type: " + ev.type);
+
+            const token = localStorage.getItem("token"); // adjust if using context
+            const res = await fetch(`/api/${path}/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            // Update local state so UI reflects immediately
+            ev.status = "archived";
+            alert("Conference archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Edit button */}
+    {editable && ev.status !== "archived" ? (
+      <button className="btn" onClick={() => navigate(`/conferences/${ev._id}`)}>
+        Edit
+      </button>
+    ) : (
+      <button className="btn btn-disabled" disabled>
+        Edit
+      </button>
+    )}
+
+    {/* Delete button */}
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived"}
+      onClick={() => handleDelete(ev._id, "conferences")}
+      title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this conference"}
+    >
+      Delete
+    </button>
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
+
+                   {/* WORKSHOP */}
+{isWorkshop && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
+
+    {/* ARCHIVE BUTTON — only shows if workshop has ended and is NOT archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/workshops/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            // Update status locally
+            ev.status = "archived";
+            alert("Workshop archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Accept/Reject/Request Edits — only if NOT archived */}
+    {ev.status !== "archived" &&
+      (ev.status === "pending" || ev.status === "edits_requested") && (
+        <>
+          <button className="btn btn-success" onClick={() => handleAccept(id)}>
+            Accept & Publish
+          </button>
+          <button className="btn btn-danger" onClick={() => handleReject(id)}>
+            Reject
+          </button>
+          <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
+            Request Edits
+          </button>
+        </>
+      )}
+
+    {/* Export Excel — only for published workshops and NOT archived */}
+    {ev.status === "published" && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#c88585", color: "white" }}
+        onClick={() => exportAttendees(id, "workshops")}
+      >
+        Export Excel
+      </button>
+    )}
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
+
+                   {/* BOOTH */}
+{isBooth && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
+
+    {/* ARCHIVE BUTTON — only shows if booth has ended and is NOT archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/booths/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            ev.status = "archived"; // update UI immediately
+            alert("Booth archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Delete — disabled when archived */}
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived"}
+      onClick={() => handleDelete(id, "booths")}
+    >
+      Delete
+    </button>
+
+    {/* Export Excel — disabled when archived */}
+    <button
+      className="btn"
+      style={{ background: "#c88585", color: "white" }}
+      onClick={() => exportAttendees(id, "booths")}
+      disabled={ev.status === "archived"}
+    >
+      Export Excel
+    </button>
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
                   </div>
                 </article>
               );
@@ -1206,6 +1602,29 @@ export default function EventsHome() {
               ×
             </button>
 
+            {/* ADD THIS BUTTON — SEE ALL REVIEWS */}
+            <button
+              onClick={() => {
+                const reviewsUrl = `/event-reviews/${viewEvent._id}`;
+                window.open(reviewsUrl, "_blank");
+              }}
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "50px",
+                background: "#567c8d",
+                color: "white",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                fontSize: "14px",
+              }}
+            >
+              Ratings & Reviews
+            </button>
+
             <h2 style={{ fontWeight: 800, marginBottom: "10px" }}>
               {viewEvent.title || viewEvent.name}
             </h2>
@@ -1295,39 +1714,62 @@ export default function EventsHome() {
                 )}
               </>
             )}
+{/* ==================== TRIP ==================== */}
+{viewEvent.type === "TRIP" && (
+  <>
+    <div>
+      <strong>Location:</strong> {viewEvent.location || "—"}
+    </div>
+    <div>
+      <strong>Price:</strong> {formatMoney(viewEvent.price)}
+    </div>
+    <div>
+      <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+    </div>
+    <div>
+      <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+    </div>
+    <div>
+      <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+    </div>
 
-            {/* ==================== TRIP ==================== */}
-            {viewEvent.type === "TRIP" && (
-              <>
-                <div>
-                  <strong>Location:</strong> {viewEvent.location || "—"}
-                </div>
-                <div>
-                  <strong>Price:</strong> {formatMoney(viewEvent.price)}
-                </div>
-                <div>
-                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
-                </div>
-                <div>
-                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
-                </div>
-                <div>
-                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
-                </div>
-                <div>
-                  <strong>Registration Deadline:</strong>{" "}
-                  {formatDate(viewEvent.registrationDeadline)}
-                </div>
+    {/* THIS IS THE NEW CLEAR RESTRICTION DISPLAY */}
+    <div style={{ 
+      margin: "16px 0", 
+      padding: "12px", 
+      backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
+      borderRadius: "8px",
+      border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
+      fontWeight: "bold",
+      fontSize: "15px",
+      color: "#1f2937"
+    }}>
+      {viewEvent.allowedRoles?.length > 0 ? (
+        <>
+          Restricted to: {" "}
+          {viewEvent.allowedRoles
+            .map(role => role.charAt(0).toUpperCase() + role.slice(1) + "s")
+            .join(", ")}
+        </>
+      ) : (
+        <>Open to ALL users (Students, Professors, TAs, Staff)</>
+      )}
+    </div>
 
-                {viewEvent.shortDescription && (
-                  <div style={{ marginTop: "10px" }}>
-                    <strong>Description:</strong>
-                    <p>{viewEvent.shortDescription}</p>
-                  </div>
-                )}
-              </>
-            )}
+    <div>
+      <strong>Registration Deadline:</strong>{" "}
+      {formatDate(viewEvent.registrationDeadline)}
+    </div>
 
+    {viewEvent.shortDescription && (
+      <div style={{ marginTop: "10px" }}>
+        <strong>Description:</strong>
+        <p>{viewEvent.shortDescription}</p>
+      </div>
+    )}
+  </>
+)}
+            
             {/* ==================== WORKSHOP ==================== */}
             {viewEvent.type === "WORKSHOP" && (
               <>
@@ -1416,6 +1858,83 @@ export default function EventsHome() {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Documents Modal (Events Office) ===== */}
+      {docsModalOpen && (
+        <div
+          className="confirm-overlay"
+          role="dialog"
+          aria-modal="true"
+          style={{ display: "flex", justifyContent: "center", alignItems: "center" }}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: 0,
+              width: "580px",
+              maxHeight: "90vh",
+              overflow: "hidden",
+              borderRadius: "12px",
+              position: "relative",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div style={{ background: '#3B82F6', color: 'white', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Uploaded Attendee Documents</h3>
+                <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Uploaded IDs</p>
+              </div>
+              <button onClick={() => setDocsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
+              {docsLoading ? (
+                <div style={{ padding: 16, textAlign: "center" }}>Loading...</div>
+              ) : docsList.length === 0 ? (
+                <div style={{ padding: 16, color: "#6B7280", textAlign: "center" }}>No uploaded documents found.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid #E5E7EB" }}>
+                      <th style={{ padding: 8 }}>Name</th>
+                      <th style={{ padding: 8 }}>Email</th>
+                      <th style={{ padding: 8 }}>Source</th>
+                      <th style={{ padding: 8 }}>Document</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {docsList.map((d, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                        <td style={{ padding: 8 }}>{d.name}</td>
+                        <td style={{ padding: 8 }}>{d.email}</td>
+                        <td style={{ padding: 8 }}>{d.source}</td>
+                        <td style={{ padding: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                          <button
+                            onClick={() => openViewer(d.url, d.name)}
+                            style={{ background: 'transparent', border: '1px solid #2563EB', color: '#2563EB', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => downloadFile(d.url, `${d.name || 'document'}`)}
+                            style={{ background: '#2563EB', border: 'none', color: 'white', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            Download
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setDocsModalOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+            </div>
           </div>
         </div>
       )}
