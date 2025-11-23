@@ -89,12 +89,14 @@ app.use("/api/booths", require("./routes/booths"));
 app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
 
+app.use("/api/events", require("./routes/reviews"));
+
 app.use("/api/reservations", reservationRoutes);
 // Payment routes / Stripe webhook temporarily disabled because `paymentRoutes` / `stripeWebhook` are not defined in this branch.
 // If you add Stripe integration, require and mount it here, e.g.:
 // const paymentRoutes = require('./routes/paymentRoutes');
-// app.use('/api/payments', paymentRoutes);
-// app.post('/webhook/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
+app.use('/api/payments', paymentRoutes);
+app.post('/webhook/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
 
 // Reviews router is not present in this version — keep events routes mounted above.
 

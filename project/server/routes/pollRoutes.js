@@ -88,6 +88,42 @@ router.post("/:id/vote", async (req, res) => {
   }
 });
 
+// routes/pollRoutes.js — Replace your remove-vote route with this
+router.post("/:id/remove-vote", async (req, res) => {
+  try {
+    const { email, candidateId } = req.body;  // ← now we get candidateId from frontend
+    const poll = await Poll.findById(req.params.id);
+
+    if (!poll || !email || !candidateId) {
+      return res.status(400).json({ error: "Email and candidateId required" });
+    }
+
+    // Check if user actually voted
+    if (!poll.votedUsers.includes(email)) {
+      return res.status(400).json({ error: "You haven't voted in this poll" });
+    }
+
+    // Find the candidate and subtract 1 vote
+    const candidate = poll.candidates.find(c => c._id.toString() === candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    if (candidate.votes > 0) {
+      candidate.votes -= 1;
+    }
+
+    // Remove user from votedUsers
+    poll.votedUsers = poll.votedUsers.filter(e => e !== email);
+
+    await poll.save();
+
+    res.json({ message: "Vote removed – you can vote again!" });
+  } catch (err) {
+    console.error("Remove vote error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 module.exports = router;

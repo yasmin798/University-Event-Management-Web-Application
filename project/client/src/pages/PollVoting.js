@@ -7,282 +7,242 @@ export default function PollVoting() {
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("success");
-  const [showModal, setShowModal] = useState(false);
 
-  // Auto-hide modal after 4 seconds
-  useEffect(() => {
-    if (showModal) {
-      const timer = setTimeout(() => setShowModal(false), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [showModal]);
-
-  useEffect(() => {
-    const fetchPolls = async () => {
-      try {
-        const res = await axios.get(API_URL);
-        setPolls(res.data || []);
-        setMessage("");
-      } catch (error) {
-        setMessageType("error");
-        setMessage("Failed to load polls.");
-        setShowModal(true);
-      } finally {
-        setLoading(false);
+  // Get logged-in user's email
+  const getUserEmail = () => {
+    try {
+      const userData = localStorage.getItem("user") || localStorage.getItem("currentUser");
+      if (userData) {
+        const user = JSON.parse(userData);
+        return user.email || user.user?.email;
       }
-    };
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  };
 
+  const userEmail = getUserEmail();
+
+  useEffect(() => {
     fetchPolls();
   }, []);
 
-  const submitVote = async (pollId, candidateId) => {
-    let email = null;
-
+  const fetchPolls = async () => {
     try {
-      const raw =
-        localStorage.getItem("user") || localStorage.getItem("currentUser");
-
-      if (raw) {
-        const u = JSON.parse(raw);
-        if (u && u.email) {
-          email = u.email;
-        }
-      }
+      const res = await axios.get(API_URL);
+      setPolls(res.data || []);
     } catch (err) {
-      console.error("Failed to read user from localStorage:", err);
+      showMessage("Failed to load polls", "error");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (!email) {
-      setMessageType("error");
-      setMessage("Error: User is not logged in.");
-      setShowModal(true);
+  const showMessage = (msg, type = "success") => {
+    setMessage({ text: msg, type });
+    setTimeout(() => setMessage(""), 4000);
+  };
+
+  const submitVote = async (pollId, candidateId, vendorName) => {
+    if (!userEmail) {
+      showMessage("Please log in to vote", "error");
       return;
     }
 
     try {
       await axios.post(`${API_URL}/${pollId}/vote`, {
+        email: userEmail,
         candidateId,
-        email,
       });
 
-      setMessageType("success");
-      setMessage("Your vote has been successfully submitted!");
-      setShowModal(true);
-    } catch (error) {
-      setMessageType("error");
-      setMessage(error.response?.data?.error || "Failed to vote.");
-      setShowModal(true);
+      showMessage(`Voted for ${vendorName}!`);
+      fetchPolls(); // refresh to update votes
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || "Failed to vote";
+      showMessage(errorMsg.includes("already voted") ? "You already voted!" : errorMsg, "error");
     }
   };
 
-  if (loading) return <p>Loading polls...</p>;
+  const removeVote = async (pollId, candidateId) => {  // ← now accepts candidateId
+  if (!userEmail) {
+    showMessage("Not logged in", "error");
+    return;
+  }
+
+  try {
+    await axios.post(`${API_URL}/${pollId}/remove-vote`, {
+      email: userEmail,
+      candidateId: candidateId,   // ← send the candidate they voted for
+    });
+
+    showMessage("Vote removed – you can vote again!");
+    fetchPolls(); // refresh UI
+  } catch (err) {
+    showMessage(err.response?.data?.error || "Failed to remove vote", "error");
+  }
+};
+
+  if (loading) return <div style={{ textAlign: "center", padding: "40px" }}>Loading polls...</div>;
 
   return (
-    <div style={{ padding: "20px", position: "relative" }}>
-      {/* ===== POPUP MODAL MESSAGE ===== */}
-      {showModal && (
-        <>
-          {/* Dim Background */}
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: "rgba(0,0,0,0.4)",
-              backdropFilter: "blur(2px)",
-              zIndex: 1000,
-            }}
-            onClick={() => setShowModal(false)}
-          ></div>
-
-          {/* Popup Box */}
-          <div
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%) scale(1)",
-              background: "#fff",
-              padding: "25px 30px",
-              borderRadius: "12px",
-              width: "350px",
-              maxWidth: "90%",
-              textAlign: "center",
-              boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
-              zIndex: 1001,
-              animation: "fadeIn 0.25s ease",
-            }}
-          >
-            <h3
-              style={{
-                marginBottom: "10px",
-                color: messageType === "success" ? "#0f5132" : "#842029",
-              }}
-            >
-              {messageType === "success" ? "Success!" : "Error"}
-            </h3>
-
-            <p style={{ marginBottom: "20px" }}>{message}</p>
-
-            <button
-              onClick={() => setShowModal(false)}
-              style={{
-                padding: "8px 20px",
-                borderRadius: "8px",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: "600",
-                background: messageType === "success" ? "#0f5132" : "#842029",
-                color: "white",
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </>
+    <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "30px 20px", fontFamily: "system-ui, sans-serif" }}>
+      {/* Floating Message */}
+      {message && (
+        <div style={{
+          position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 1000,
+          background: message.type === "error" ? "#fee2e2" : "#d1fae5",
+          color: message.type === "error" ? "#991b1b" : "#065f46",
+          padding: "12px 24px", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          fontWeight: "600"
+        }}>
+          {message.text}
+        </div>
       )}
 
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translate(-50%, -45%) scale(0.95); }
-            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          }
-        `}
-      </style>
-
-      <h1
-        style={{
-          textAlign: "center",
-          marginBottom: "25px",
-          fontSize: "2rem",
-          fontWeight: "700",
-        }}
-      >
-        Vote on Booth Conflict Polls
+      <h1 style={{ textAlign: "center", fontSize: "2.5rem", fontWeight: "800", color: "#1e293b", marginBottom: "40px" }}>
+        Booth Vendor Voting
       </h1>
 
-      {/* ======================== POLLS ======================== */}
       {polls.length === 0 ? (
-        <p>No polls found.</p>
+        <p style={{ textAlign: "center", color: "#64748b", fontSize: "1.2rem" }}>No active polls right now.</p>
       ) : (
-        polls.map((poll) => (
-          <div
-            key={poll._id}
-            style={{
-              border: "1px solid #ccc",
-              padding: "25px",
-              borderRadius: "12px",
-              marginBottom: "25px",
-              maxWidth: "650px",
-              marginInline: "auto",
-              background: "#ffffff",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            }}
-          >
-            <h2 style={{ textAlign: "center", marginBottom: "10px" }}>
-              {poll.title}
-            </h2>
+        polls.map(poll => {
+          const totalVotes = poll.candidates.reduce((sum, c) => sum + c.votes, 0);
+          const userHasVoted = userEmail && poll.votedUsers.includes(userEmail);
+          const userVotedFor = userHasVoted
+            ? poll.candidates.find(c => c._id.toString() === poll.votedUsers.find(e => e === userEmail)?.candidateId)
+            : null;
 
-            <p style={{ textAlign: "center", color: "#666" }}>
-              <strong>Ends:</strong>{" "}
-              {new Date(poll.endDate).toLocaleString()}
-            </p>
+          return (
+            <div key={poll._id} style={{
+              maxWidth: "750px", margin: "40px auto", background: "white",
+              borderRadius: "20px", overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+            }}>
+              {/* Header */}
+              <div style={{ background: "linear-gradient(135deg, #8b5cf6, #3b82f6)", color: "white", padding: "25px", textAlign: "center" }}>
+                <h2 style={{ margin: 0, fontSize: "1.8rem", fontWeight: "700" }}>{poll.title}</h2>
+                <p style={{ margin: "10px 0 0", opacity: 0.9 }}>
+                  Ends: {new Date(poll.endDate).toLocaleString()}
+                </p>
+              </div>
 
-            {/* Booth Details */}
-            <div
-              style={{
-                background: "#f1f5f9",
-                padding: "15px",
-                borderRadius: "10px",
-                marginBottom: "20px",
-                textAlign: "center",
-              }}
-            >
-              <h3 style={{ marginBottom: "10px", color: "#333" }}>
-                Booth Details
-              </h3>
-              <p>
-                <strong>Booth Size:</strong>{" "}
-                {poll.candidates[0]?.boothSize}
-              </p>
-              <p>
-                <strong>Duration (Weeks):</strong>{" "}
-                {poll.candidates[0]?.durationWeeks}
-              </p>
-              <p>
-                <strong>Platform Slot:</strong>{" "}
-                {poll.candidates[0]?.platformSlot}
-              </p>
-            </div>
+              {/* Booth Info */}
+              <div style={{ padding: "20px", background: "#f8fafc", textAlign: "center", fontSize: "1.1rem" }}>
+                <strong>Slot:</strong> {poll.candidates[0]?.platformSlot} • 
+                <strong> Size:</strong> {poll.candidates[0]?.boothSize} • 
+                <strong> Duration:</strong> {poll.candidates[0]?.durationWeeks} weeks
+                <div style={{ marginTop: "10px", color: "#6366f1", fontWeight: "600" }}>
+                  Total Votes: {totalVotes}
+                </div>
+              </div>
 
-            {/* Candidates */}
-            <h3 style={{ textAlign: "center", marginBottom: "15px" }}>
-              Vendors Competing
-            </h3>
+              {/* Candidates */}
+              <div style={{ padding: "25px" }}>
+                {poll.candidates.map(c => {
+                  const percentage = totalVotes > 0 ? (c.votes / totalVotes) * 100 : 0;
+                  const isLeading = c.votes === Math.max(...poll.candidates.map(x => x.votes));
+                  const isUserVote = userHasVoted && userEmail === c.votedBy; // fallback if needed
 
-            {poll.candidates.map((c) => (
-  <div
-    key={c._id}
-    style={{
-      marginBottom: "15px",
-      padding: "15px",
-      border: "1px solid #e5e7eb",
-      borderRadius: "10px",
-      background: "#fafafa",
-      textAlign: "center",
-    }}
-  >
-    {/* Vendor Name */}
-    <p
-      style={{
-        fontSize: "1.1rem",
-        fontWeight: "600",
-        marginBottom: "5px",
-      }}
-    >
-      {c.vendorName}
-    </p>
+                  return (
+                    <div key={c._id} style={{
+                      marginBottom: "20px", padding: "20px", borderRadius: "16px",
+                      background: isLeading ? "#f0e8ff" : "#ffffff",
+                      border: isLeading ? "2px solid #8b5cf6" : "2px solid #e2e8f0",
+                      position: "relative", boxShadow: isLeading ? "0 6px 20px rgba(139,92,246,0.15)" : "0 4px 12px rgba(0,0,0,0.05)"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                        <h3 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "700", color: "#1e293b" }}>
+                          {c.vendorName}
+                        </h3>
+                        {isLeading && totalVotes > 0 && (
+                          <span style={{ background: "#8b5cf6", color: "white", padding: "6px 12px", borderRadius: "20px", fontSize: "0.9rem", fontWeight: "600" }}>
+                            Leading
+                          </span>
+                        )}
+                        {userHasVoted && c.votes > 0 && c.votes === poll.candidates.find(cc => poll.votedUsers.includes(userEmail))?.votes && (
+                          <span style={{ background: "#10b981", color: "white", padding: "6px 12px", borderRadius: "20px", fontSize: "0.9rem", fontWeight: "600" }}>
+                            Your Vote
+                          </span>
+                        )}
+                      </div>
 
-    {/* Vote Count */}
-    <p
-      style={{
-        fontSize: "0.95rem",
-        fontWeight: "500",
-        color: "#444",
-        marginBottom: "12px",
-      }}
-    >
-      Votes: <strong>{c.votes}</strong>
-    </p>
+                      {/* Progress Bar */}
+                      <div style={{ margin: "15px 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "0.95rem", color: "#475569" }}>
+                          <span>{c.votes} vote{c.votes !== 1 ? "s" : ""}</span>
+                          <span>{percentage.toFixed(0)}%</span>
+                        </div>
+                        <div style={{ height: "12px", background: "#e2e8f0", borderRadius: "6px", overflow: "hidden" }}>
+                          <div style={{
+                            height: "100%", width: `${percentage}%`,
+                            background: isLeading ? "#8b5cf6" : "#3b82f6",
+                            borderRadius: "6px",
+                            transition: "width 0.6s ease"
+                          }}></div>
+                        </div>
+                      </div>
 
-    {/* Vote button */}
+                      <div style={{ marginTop: "12px" }}>
+  {/* Normal Vote Button */}
+  {!userHasVoted && (
     <button
-      onClick={() => submitVote(poll._id, c._id)}
+      onClick={() => submitVote(poll._id, c._id, c.vendorName)}
       style={{
+        width: "100%",
+        padding: "14px",
+        borderRadius: "12px",
+        fontWeight: "700",
         background: "#2563eb",
         color: "white",
         border: "none",
-        padding: "10px 20px",
-        borderRadius: "8px",
         cursor: "pointer",
-        fontSize: "1rem",
-        fontWeight: "600",
-        transition: "0.2s",
       }}
-      onMouseOver={(e) => (e.target.style.background = "#1d4ed8")}
-      onMouseOut={(e) => (e.target.style.background = "#2563eb")}
     >
       Vote for {c.vendorName}
     </button>
-  </div>
-))}
+  )}
 
-          </div>
-        ))
+  {/* You Already Voted – Show Remove Vote Button */}
+  {userHasVoted && (
+    <div style={{ display: "flex", gap: "10px" }}>
+      <button
+        onClick={() => removeVote(poll._id, c._id)}
+        style={{
+          flex: 1,
+          padding: "12px",
+          borderRadius: "10px",
+          background: "#ef4444",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: "600",
+        }}
+      >
+      Remove Vote
+      </button>
+
+      <div style={{
+        flex: 1,
+        padding: "12px",
+        background: "#10b981",
+        color: "white",
+        borderRadius: "10px",
+        textAlign: "center",
+        fontWeight: "600",
+      }}>
+        You Voted!
+      </div>
+    </div>
+  )}
+</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
