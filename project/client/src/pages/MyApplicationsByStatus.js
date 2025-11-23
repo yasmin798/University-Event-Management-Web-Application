@@ -19,6 +19,32 @@ export default function MyApplicationsByStatus() {
   const [loadingPayment, setLoadingPayment] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+
+const handleCancel = async (appId, type) => {
+  if (!window.confirm("Are you sure you want to cancel this application?")) return;
+
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/${type}-applications/${appId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) throw new Error("Failed to cancel application");
+
+    // Update frontend state
+    if (type === "bazaar") {
+      setBazaars(prev => prev.filter(app => app._id !== appId));
+    } else {
+      setBooths(prev => prev.filter(app => app._id !== appId));
+    }
+
+    alert("Application canceled successfully!");
+  } catch (err) {
+    console.error(err);
+    alert("Could not cancel application.");
+  }
+};
+
+
   const calculatePrice = (app, type) => {
     if (type === "bazaar") {
       const size = app.boothSize || "";
@@ -326,27 +352,34 @@ export default function MyApplicationsByStatus() {
 
                       {/* PAYMENT BUTTON LOGIC */}
                       <div className="mt-5">
-                        {app.paid ? (
-                          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-5 py-3 rounded-lg font-semibold">
-                            <CheckCircle size={22} />
-                            Already Paid
-                          </div>
-                        ) : app.paymentDeadline && new Date() > new Date(app.paymentDeadline) ? (
-                          <div className="flex items-center gap-2 text-red-700 bg-red-50 px-5 py-3 rounded-lg font-semibold">
-                            Payment Expired
-                          </div>
-                        ) : app.status === "accepted" ? (
-                          <button
-                            onClick={() => handlePayment(app._id, "bazaar")}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transform transition hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
-                            disabled={loadingPayment === app._id}
-                          >
-                            <p className="text-lg font-bold text-emerald-600 mt-3">
-                              Amount Due: {calculatePrice(app, "bazaar")} EGP
-                            </p>
-                            {loadingPayment === app._id ? "Processing..." : "Pay Now"}
-                          </button>
-                        ) : null}
+                        {app.status === "accepted" &&
+ !app.paid &&
+ (!app.paymentDeadline || new Date() <= new Date(app.paymentDeadline)) && (
+  <div className="flex gap-3 mt-4">
+  {/* Pay Now button */}
+  <button
+    onClick={() => handlePayment(app._id, "bazaar")}
+    className={`flex-1 py-2 px-4 rounded-lg font-semibold text-white text-sm shadow-md transform transition-all duration-200
+      bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700
+      ${loadingPayment === app._id ? "opacity-60 cursor-not-allowed" : ""}`}
+    disabled={loadingPayment === app._id}
+  >
+    {loadingPayment === app._id ? "Processing..." : `Pay ${calculatePrice(app, "bazaar")} EGP`}
+  </button>
+
+  {/* Cancel button */}
+  <button
+    onClick={() => handleCancel(app._id, "bazaar")}
+    className="flex-1 py-2 px-4 rounded-lg font-semibold text-white text-sm shadow-md
+      bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
+      transition-all duration-200"
+  >
+    Cancel
+  </button>
+</div>
+
+)}
+
                       </div>
                     </li>
                   ))}
@@ -381,27 +414,33 @@ export default function MyApplicationsByStatus() {
 
                       {/* PAYMENT BUTTON – SAME LOGIC */}
                       <div className="mt-5">
-                        {b.paid ? (
-                          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-5 py-3 rounded-lg font-semibold">
-                            <CheckCircle size={22} />
-                            Already Paid
-                          </div>
-                        ) : b.paymentDeadline && new Date() > new Date(b.paymentDeadline) ? (
-                          <div className="flex items-center gap-2 text-red-700 bg-red-50 px-5 py-3 rounded-lg font-semibold">
-                            Payment Expired
-                          </div>
-                        ) : b.status === "accepted" ? (
-                          <button
-                            onClick={() => handlePayment(b._id, "booth")}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transform transition hover:scale-105 disabled:opacity-60"
-                            disabled={loadingPayment === b._id}
-                          >
-                            <p className="text-lg font-bold text-emerald-600 mt-3">
-                              Amount Due: {calculatePrice(b, "booth")} EGP
-                            </p>
-                            {loadingPayment === b._id ? "Processing..." : "Pay Now"}
-                          </button>
-                        ) : null}
+                        {b.status === "accepted" &&
+ !b.paid &&
+ (!b.paymentDeadline || new Date() <= new Date(b.paymentDeadline)) && (
+  <div className="flex gap-3">
+    {/* Pay Now button */}
+   <button
+  onClick={() => handlePayment(b._id, "booth")}
+  className={`flex-1 py-2 px-4 rounded-lg font-semibold text-white text-sm shadow-md transform transition-all duration-200
+    bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700
+    ${loadingPayment === b._id ? "opacity-60 cursor-not-allowed" : ""}`}
+  disabled={loadingPayment === b._id}
+>
+  {loadingPayment === b._id ? "Processing..." : `Pay ${calculatePrice(b, "booth")} EGP`}
+</button>
+
+<button
+  onClick={() => handleCancel(b._id, "booth")}
+  className="flex-1 py-2 px-4 rounded-lg font-semibold text-white text-sm shadow-md
+    bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
+    transition-all duration-200"
+>
+  Cancel
+</button>
+
+  </div>
+)}
+
                       </div>
                     </li>
                   ))}

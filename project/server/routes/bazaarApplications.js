@@ -191,5 +191,30 @@ router.get("/:bazaarId", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch applications for this bazaar" });
   }
 });
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid application ID" });
+    }
+
+    const app = await BazaarApplication.findById(id);
+    if (!app) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    // Optional: prevent canceling paid applications
+    if (app.paid) {
+      return res.status(400).json({ error: "Cannot cancel a paid application" });
+    }
+
+    await BazaarApplication.findByIdAndDelete(id);
+
+    res.json({ success: true, message: "Application canceled successfully" });
+  } catch (err) {
+    console.error("DELETE /api/bazaar-applications/:id error:", err);
+    res.status(500).json({ error: "Server error canceling application" });
+  }
+});
 module.exports = router;

@@ -162,5 +162,16 @@ router.delete("/:id", /* adminOnly, */ async (req, res) => {
     res.status(500).json({ error: "Failed to delete application" });
   }
 });
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "invalid id" });
+    await BoothApplication.findByIdAndDelete(id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/booth-applications/:id error:", err);
+    res.status(500).json({ error: "Failed to delete application" });
+  }
+});
 
 module.exports = router;
