@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 
 /* -------------------------------------------------------------------------- */
 /* DONUT CHART (CSS) */
@@ -780,7 +781,8 @@ export default function Admin() {
                 Admin Dashboard
               </h1>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <NotificationsDropdown />
               <button
                 onClick={() => {
                   setCreateUserRole("admin");

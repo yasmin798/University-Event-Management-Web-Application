@@ -38,10 +38,11 @@ export default function FixedSidebarAdmin() {
     >
       {/* Logo / title */}
       <div className="px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
           {/* Add your logo here */}
           <img src="/path-to-your-logo.png" alt="Logo" className="w-8 h-8" />
           <h1 className="text-xl font-bold tracking-wide">Admin</h1>
+          
         </div>
       </div>
 
