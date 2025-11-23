@@ -2,32 +2,47 @@
 import React, { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import axios from "axios";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionId = searchParams.get("session_id");
-useEffect(() => {
-  const sessionId = searchParams.get("session_id");
-  const appId = searchParams.get("appId");
-  const type = searchParams.get("type");
+   const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const appId = params.get("appId");
+  const type = params.get("type");
 
+useEffect(() => {
   if (!sessionId || !appId || !type) return;
 
   const confirmPayment = async () => {
     try {
+      // 1️⃣ Confirm Stripe payment
       await fetch("http://localhost:3001/api/payments/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, appId, type }),
       });
+
+      // 2️⃣ Send receipt email
+      await fetch("http://localhost:3001/api/payment/send-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appId, type }),
+      });
+
+      console.log("Payment confirmed and receipt sent!");
     } catch (err) {
-      console.error("Payment confirm failed:", err);
+      console.error("Error confirming payment or sending receipt:", err);
     }
   };
 
   confirmPayment();
 }, []);
+   
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -36,7 +51,7 @@ useEffect(() => {
 
     return () => clearTimeout(timer);
   }, [navigate]);
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-md w-full text-center">
