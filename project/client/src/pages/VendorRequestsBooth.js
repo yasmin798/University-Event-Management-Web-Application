@@ -17,17 +17,44 @@ import Sidebar from "../components/Sidebar";
 
 function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
   if (!open) return null;
+
+  const isAccept = title.toLowerCase().includes("accept");
+
   return (
     <div className="confirm-overlay" role="dialog" aria-modal="true">
       <div className="confirm">
         <h2>{title}</h2>
         <p>{body}</p>
         <div className="confirm-actions">
-          <button className="btn btn-outline" onClick={onCancel}>
+          <button
+            className="btn btn-outline"
+            onClick={onCancel}
+            style={{
+              backgroundColor: "#9CA3AF",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "8px 16px",
+              cursor: "pointer",
+              marginRight: "8px",
+            }}
+          >
             Cancel
           </button>
-          <button className="btn" onClick={onConfirm}>
-            OK
+          <button
+            className="btn"
+            onClick={onConfirm}
+            style={{
+              backgroundColor: isAccept ? "#10B981" : "#EF4444",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "8px 16px",
+              cursor: "pointer",
+              fontWeight: "500",
+            }}
+          >
+            {isAccept ? "Accept" : "Reject"}
           </button>
         </div>
       </div>
