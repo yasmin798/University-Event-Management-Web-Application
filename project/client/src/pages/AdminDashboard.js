@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, Bell, User, LogOut } from "lucide-react";
+import { Search, Menu, User, LogOut } from "lucide-react";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 
@@ -12,6 +13,7 @@ const AdminDashboard = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Debounced search to avoid filtering on every keystroke
@@ -55,6 +57,8 @@ const AdminDashboard = () => {
           params.append("type", eventTypeFilter.toUpperCase());
         }
         if (debouncedDate) params.append("date", debouncedDate);
+        params.append("sort", "startDateTime");
+        params.append("order", sortOrder);
 
         const response = await fetch(
           `http://localhost:3001/api/events/all?${params.toString()}`
@@ -73,6 +77,7 @@ const AdminDashboard = () => {
     debouncedLocation,
     eventTypeFilter,
     debouncedDate,
+    sortOrder,
   ]);
 
   const handleLogout = () => {
@@ -106,12 +111,6 @@ const AdminDashboard = () => {
             <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
             <span className="text-xl font-bold">EventHub</span>
           </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 hover:bg-[#567c8d] rounded-lg transition-colors"
-          >
-            <Menu size={20} />
-          </button>
         </div>
 
         <div className="flex-1 px-4 mt-4">
@@ -129,12 +128,6 @@ const AdminDashboard = () => {
         {/* Top navigation */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
           {/* Menu toggle */}
-          <button
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-          >
-            <Menu size={24} className="text-[#2f4156]" />
-          </button>
 
           {/* Search + filter */}
           <div className="relative flex-1 max-w-2xl flex flex-wrap items-center gap-2">
@@ -175,13 +168,21 @@ const AdminDashboard = () => {
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}
             />
+            <button
+              onClick={() =>
+                setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+            >
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+            </button>
           </div>
 
           {/* Notification bell & user */}
           <div className="flex items-center gap-2 md:gap-4 ml-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
-              <Bell size={20} className="text-[#567c8d]" />
-            </button>
+            <div>
+              <NotificationsDropdown />
+            </div>
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
             </div>

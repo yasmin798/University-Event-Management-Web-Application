@@ -1,3 +1,4 @@
+// client/src/pages/ConferenceForm.js (updated)
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import FormField from "../components/FormField";
@@ -24,6 +25,7 @@ export default function ConferenceForm() {
     requiredBudget: "",
     fundingSource: "",
     extraResources: "",
+    allowedRoles: [], // ADD THIS: Default to empty (open to all)
   });
 
   const [errors, setErrors] = useState({});
@@ -47,6 +49,7 @@ export default function ConferenceForm() {
           name: c.name || c.title,
           startDateTime: c.startDateTime ? c.startDateTime.slice(0, 16) : "",
           endDateTime: c.endDateTime ? c.endDateTime.slice(0, 16) : "",
+          allowedRoles: c.allowedRoles || [], // ADD THIS: Load from backend
         });
       })
       .catch((e) => {
@@ -61,8 +64,17 @@ export default function ConferenceForm() {
 
   // ===================== CHANGE HANDLER ======================
   function handleChange(e) {
-    const { name, value } = e.target;
-    setData((d) => ({ ...d, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    if (type === "checkbox") { // ADD THIS: Handle checkbox for roles
+      setData((d) => ({
+        ...d,
+        allowedRoles: checked
+          ? [...d.allowedRoles, value]
+          : d.allowedRoles.filter((r) => r !== value),
+      }));
+    } else {
+      setData((d) => ({ ...d, [name]: value }));
+    }
   }
 
   // ===================== SAVE ======================
@@ -80,7 +92,11 @@ export default function ConferenceForm() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, title: data.name }),
+        body: JSON.stringify({ 
+          ...data, 
+          title: data.name,
+          allowedRoles: data.allowedRoles, // ADD THIS: Include in payload
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to save conference");
@@ -256,6 +272,27 @@ export default function ConferenceForm() {
                 disabled={!canEdit && editing}
               />
             </FormField>
+          </fieldset>
+
+          {/* ADD THIS: Role Restrictions */}
+          <fieldset className="form-sec">
+            <legend>Role Restrictions</legend>
+            <p className="help">Select roles allowed to register. Leave unchecked for open to all.</p>
+            <div className="form-grid form-grid-2" style={{ display: "flex", flexWrap: "wrap" }}>
+              {["student", "professor", "ta", "staff"].map((role) => (
+                <label key={role} style={{ display: "flex", alignItems: "center", marginRight: "20px" }}>
+                  <input
+                    type="checkbox"
+                    name="allowedRoles"
+                    value={role}
+                    checked={data.allowedRoles.includes(role)}
+                    onChange={handleChange}
+                    disabled={!canEdit && editing}
+                  />
+                  {role.charAt(0).toUpperCase() + role.slice(1)}s
+                </label>
+              ))}
+            </div>
           </fieldset>
 
           {/* Submit */}

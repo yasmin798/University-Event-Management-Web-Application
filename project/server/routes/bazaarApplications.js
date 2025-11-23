@@ -2,13 +2,46 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 const BazaarApplication = require("../models/BazaarApplication");
 const Bazaar = require("../models/Bazaar");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
+
+// Ensure uploads directory exists
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "ids");
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (_req, file, cb) {
+    const safe = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    cb(null, safe);
+  },
+});
+
+const upload = multer({ storage });
 
 // CREATE BAZAAR APPLICATION
-router.post("/", async (req, res) => {
+// Expects multipart/form-data with `attendees` (JSON string) and `idFiles` array of files
+router.post("/", upload.array("idFiles", 5), async (req, res) => {
   try {
-    const { bazaar, attendees, boothSize } = req.body;
+    // attendees may be sent as JSON string in multipart requests
+    const { bazaar, boothSize } = req.body;
+    let attendees = req.body.attendees;
+    if (typeof attendees === "string") {
+      try {
+        attendees = JSON.parse(attendees);
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid attendees JSON" });
+      }
+    }
+
+    const files = req.files || [];
 
     // === VALIDATE INPUT ===
     if (!bazaar) {
@@ -20,6 +53,11 @@ router.post("/", async (req, res) => {
 
     if (!Array.isArray(attendees) || attendees.length < 1 || attendees.length > 5) {
       return res.status(400).json({ error: "attendees must be array of 1-5" });
+    }
+
+    // Require an ID file for each attendee (vendors must upload IDs for entire duration)
+    if (files.length !== attendees.length) {
+      return res.status(400).json({ error: "An ID file must be uploaded for every attendee (field name 'idFiles')." });
     }
 
     if (!["2x2", "4x4"].includes(boothSize)) {
@@ -38,6 +76,14 @@ router.post("/", async (req, res) => {
       if (!/^\S+@\S+\.\S+$/.test(a.email.trim())) {
         return res.status(400).json({ error: `Attendee ${i + 1}: invalid email format` });
       }
+      // Ensure corresponding file exists
+      const file = files[i];
+      if (!file) {
+        return res.status(400).json({ error: `Missing ID file for attendee ${i + 1}` });
+      }
+      // Attach file path to attendee object
+      a.idDocument = `/uploads/ids/${path.basename(file.path)}`;
+      a.attendingEntireDuration = true;
     }
 
     // === CHECK BAZAAR EXISTS ===
@@ -53,6 +99,8 @@ router.post("/", async (req, res) => {
         userId: a.userId || null,
         name: a.name.trim(),
         email: a.email.trim(),
+        idDocument: a.idDocument,
+        attendingEntireDuration: !!a.attendingEntireDuration,
       })),
       boothSize,
     });
@@ -86,6 +134,22 @@ router.post("/", async (req, res) => {
     // Return updated bazaar
     const updatedBazaar = await Bazaar.findById(bazaar);
 
+    // Notify Events Office users about new pending vendor application
+    try {
+      // notify both events office and admin users
+      const recipients = await User.find({ role: { $in: ["events_office", "admin"] }, status: "active" }).select("_id email role");
+      const notifPromises = recipients.map(u => {
+        const n = new Notification({
+          userId: u._id,
+          message: `New vendor application pending for bazaar '${baz.title || updatedBazaar.title || bazaar}'. Application ID: ${savedApp._id}`,
+          type: 'vendor_application'
+        });
+        return n.save();
+      });
+      await Promise.all(notifPromises);
+    } catch (nerr) {
+      console.error("Failed to create notifications for recipients:", nerr);
+    }
     return res.status(201).json({
       success: true,
       application: savedApp,

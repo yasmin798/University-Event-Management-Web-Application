@@ -28,7 +28,7 @@ import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
 const now = new Date();
 const ProfessorDashboard = () => {
   const navigate = useNavigate();
-  const [currentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [workshops, setWorkshops] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +37,8 @@ const ProfessorDashboard = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [sortOrder, setSortOrder] = useState("asc");
   const [workshopsLoading, setWorkshopsLoading] = useState(true);
   const [booths, setBooths] = useState([]);
   const [boothsLoading, setBoothsLoading] = useState(true);
@@ -79,31 +81,31 @@ const ProfessorDashboard = () => {
 
   // Fetch workshops same way as EventsHome
   const fetchWorkshops = useCallback(async () => {
-  setWorkshopsLoading(true);
-  try {
-    const data = await workshopAPI.getAllWorkshops();
+    setWorkshopsLoading(true);
+    try {
+      const data = await workshopAPI.getAllWorkshops();
 
-    const normalizedWorkshops = data
-      .filter((w) => w.status === "published")
-      .map((w) => ({
-        ...w,
-        type: "WORKSHOP",
-        title: w.workshopName,
-        startDateTime: new Date(w.startDateTime).toISOString(),
-        endDateTime: new Date(w.endDateTime).toISOString(),
-        date: new Date(w.startDateTime).toISOString().split("T")[0],
-        image: w.image || workshopPlaceholder,
-        description: w.shortDescription,
-      }));
+      const normalizedWorkshops = data
+        .filter((w) => w.status === "published")
+        .map((w) => ({
+          ...w,
+          type: "WORKSHOP",
+          title: w.workshopName,
+          startDateTime: new Date(w.startDateTime).toISOString(),
+          endDateTime: new Date(w.endDateTime).toISOString(),
+          date: new Date(w.startDateTime).toISOString().split("T")[0],
+          image: w.image || workshopPlaceholder,
+          description: w.shortDescription,
+        }));
 
-    setWorkshops(normalizedWorkshops);
-  } catch (err) {
-    console.error("Error fetching workshops:", err);
-    setWorkshops([]);
-  } finally {
-    setWorkshopsLoading(false);
-  }
-}, []);
+      setWorkshops(normalizedWorkshops);
+    } catch (err) {
+      console.error("Error fetching workshops:", err);
+      setWorkshops([]);
+    } finally {
+      setWorkshopsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchWorkshops();
@@ -205,6 +207,11 @@ const ProfessorDashboard = () => {
     closeSidebar(); // close the sidebar after navigation
   };
 
+  const handleFavorites = () => {
+    navigate("/favorites");
+    closeSidebar();
+  };
+
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
       navigate("/");
@@ -248,7 +255,21 @@ const ProfessorDashboard = () => {
           false);
       const matchesType =
         eventTypeFilter === "All" || e.type === eventTypeFilter;
-      return matchesSearch && matchesType;
+
+      // Filter by selected calendar date if one is selected
+      let matchesCalendarDate = true;
+      if (selectedCalendarDate) {
+        const eventDate = new Date(e.startDateTime || e.startDate || e.date);
+        matchesCalendarDate =
+          eventDate.toDateString() === selectedCalendarDate.toDateString();
+      }
+
+      return matchesSearch && matchesType && matchesCalendarDate;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.startDateTime || a.startDate || a.date);
+      const dateB = new Date(b.startDateTime || b.startDate || b.date);
+      return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
     });
 
   const handleGymSessions = () => {
@@ -274,17 +295,26 @@ const ProfessorDashboard = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Calculate how many weeks we need to display all days of the month
+    const daysNeeded = firstDay + daysInMonth;
+    const weeksNeeded = Math.ceil(daysNeeded / 7);
+    const totalDays = weeksNeeded * 7;
+
     const days = [];
     const startDate = new Date(year, month, 1 - firstDay);
 
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < totalDays; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
 
       const dateString = date.toDateString();
-      const hasWorkshop = workshops.some((workshop) => {
-        const workshopDate = new Date(workshop.startDateTime);
-        return workshopDate.toDateString() === dateString;
+      const hasEvent = allEvents.some((event) => {
+        const eventDate = new Date(
+          event.startDateTime || event.startDate || event.date
+        );
+        return eventDate.toDateString() === dateString;
       });
 
       days.push({
@@ -292,7 +322,7 @@ const ProfessorDashboard = () => {
         fullDate: date,
         isCurrentMonth: date.getMonth() === month,
         isToday: dateString === new Date().toDateString(),
-        hasWorkshop: hasWorkshop,
+        hasEvent: hasEvent,
       });
     }
 
@@ -347,6 +377,24 @@ const ProfessorDashboard = () => {
   // 🔔 Notifications state
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const markNotification = async (notifId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`/api/notifications/${notifId}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      // update local state: mark as read
+      setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n)));
+      setUnreadCount((c) => Math.max(0, (c || 0) - 1));
+      try { window.dispatchEvent(new Event('notifications:changed')); } catch (e) { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to mark notification read', err);
+    }
+  };
 
   // 🔹 Fetch notifications from backend
   useEffect(() => {
@@ -633,6 +681,14 @@ const ProfessorDashboard = () => {
           </button>
 
           <button
+            onClick={handleFavorites}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
+          >
+            <Heart size={20} />
+            <span>Favorites</span>
+          </button>
+
+          <button
             onClick={handleGymSessions}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
           >
@@ -692,6 +748,14 @@ const ProfessorDashboard = () => {
                 selected={eventTypeFilter}
                 onChange={setEventTypeFilter}
               />
+              <button
+                onClick={() =>
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
+                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+              >
+                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              </button>
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
@@ -741,12 +805,19 @@ const ProfessorDashboard = () => {
                               notif.unread ? "bg-[#f5efeb]" : ""
                             }`}
                           >
-                            <p className="text-sm text-[#2f4156] mb-1">
-                              {notif.message}
-                            </p>
-                            <p className="text-xs text-[#567c8d]">
-                              {notif.time}
-                            </p>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-sm text-[#2f4156] mb-1">{notif.message}</p>
+                                <p className="text-xs text-[#567c8d]">{notif.time}</p>
+                              </div>
+                              <div>
+                                {notif.unread && (
+                                  <button onClick={() => markNotification(notif.id)} style={{ background: 'var(--teal, #567c8d)', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none' }}>
+                                    Mark
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         ))
                       )}
@@ -774,7 +845,6 @@ const ProfessorDashboard = () => {
                 </h1>
               </div>
 
-              
               <h2 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
                 Available Events
               </h2>
@@ -851,8 +921,9 @@ const ProfessorDashboard = () => {
                         )}
                         <p className="text-sm text-[#567c8d] truncate">
                           <p className="text-sm text-[#567c8d] truncate">
-  Type: {e.workshopName ? "WORKSHOP" : e.type || "N/A"}
-</p>
+                            Type:{" "}
+                            {e.workshopName ? "WORKSHOP" : e.type || "N/A"}
+                          </p>
                         </p>
                         <p className="text-sm text-[#567c8d] truncate">
                           Date:{" "}
@@ -893,10 +964,24 @@ const ProfessorDashboard = () => {
                     {getMonthYear(currentDate)}
                   </h3>
                   <div className="flex gap-2">
-                    <button className="p-1 hover:bg-[#f5efeb] rounded transition-colors">
+                    <button
+                      onClick={() => {
+                        const newDate = new Date(currentDate);
+                        newDate.setMonth(currentDate.getMonth() - 1);
+                        setCurrentDate(newDate);
+                      }}
+                      className="p-1 hover:bg-[#f5efeb] rounded transition-colors"
+                    >
                       <ChevronLeft size={20} className="text-[#567c8d]" />
                     </button>
-                    <button className="p-1 hover:bg-[#f5efeb] rounded transition-colors">
+                    <button
+                      onClick={() => {
+                        const newDate = new Date(currentDate);
+                        newDate.setMonth(currentDate.getMonth() + 1);
+                        setCurrentDate(newDate);
+                      }}
+                      className="p-1 hover:bg-[#f5efeb] rounded transition-colors"
+                    >
                       <ChevronRight size={20} className="text-[#567c8d]" />
                     </button>
                   </div>
@@ -922,11 +1007,19 @@ const ProfessorDashboard = () => {
                       ? "text-[#2f4156]"
                       : "text-[#c8d9e6]";
 
-                    if (day.isToday) {
+                    const isSelected =
+                      selectedCalendarDate &&
+                      day.fullDate.toDateString() ===
+                        selectedCalendarDate.toDateString();
+
+                    if (isSelected) {
+                      bgColor = "bg-[#2f4156]";
+                      textColor = "text-white font-bold";
+                    } else if (day.isToday) {
                       bgColor = "bg-[#567c8d]";
                       textColor = "text-white font-bold";
-                    } else if (day.hasWorkshop && day.isCurrentMonth) {
-                      // Check if it's an upcoming workshop
+                    } else if (day.hasEvent && day.isCurrentMonth) {
+                      // Check if it's an upcoming event
                       const isUpcoming = day.fullDate > new Date();
                       if (isUpcoming) {
                         bgColor = "bg-[#c8d9e6] hover:bg-[#b8c9d6]"; // Highlight color for upcoming
@@ -940,14 +1033,24 @@ const ProfessorDashboard = () => {
                     return (
                       <button
                         key={idx}
+                        onClick={() => {
+                          if (day.isCurrentMonth) {
+                            // Toggle: if clicking same date, clear filter; otherwise set new date
+                            if (isSelected) {
+                              setSelectedCalendarDate(null);
+                            } else {
+                              setSelectedCalendarDate(day.fullDate);
+                            }
+                          }
+                        }}
                         className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-colors relative
                           ${bgColor} ${textColor}
                         `}
                         title={
-                          day.hasWorkshop
+                          day.hasEvent
                             ? day.fullDate > new Date()
-                              ? "Upcoming workshop"
-                              : "Past workshop"
+                              ? "Upcoming event"
+                              : "Past event"
                             : ""
                         }
                       >

@@ -20,6 +20,7 @@ import EventDetails from "./pages/EventDetails";
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
 import GymSessionsForRegister from "./pages/GymSessionsForRegister";
+import VerifiedUsersPage from "./pages/VerifiedUsers";
 
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
@@ -43,7 +44,11 @@ import ConferenceForm from "./pages/ConferenceForm";
 import VendorRequests from "./pages/VendorRequests";
 import VendorRequestsBooth from "./pages/VendorRequestsBooth";
 import VendorsPage from "./pages/Vendorspage";
+import LoyaltyVendors from "./pages/LoyaltyVendors";
+import Notifications from "./pages/Notifications";
 
+
+import GUCLoyaltyForm from "./pages/GUCLoyaltyForm";
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
@@ -53,7 +58,7 @@ import AttendeesReport from "./pages/AttendeesReport";
 import AdminAttendeesReport from "./pages/AdminAttendeesReport";
 import SalesReport from "./pages/SalesReport";
 import AdminSalesReport from "./pages/AdminSalesReport";
-
+import AdminAllEvents from "./pages/AdminAllEvents";
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
 import ReserveCourt from "./pages/ReserveCourt";
@@ -66,6 +71,15 @@ import MyApplications from "./pages/MyApplications";
 
 import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
 
+import PaymentPage from "./pages/PaymentPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
+
+import CreatePoll from "./pages/CreatePollFromBooths";
+import PollVoting from "./pages/PollVoting";
+
+import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
+import PendingVerificationPage from "./pages/PendingVerification";
+import AdminVendor from "./pages/AdminVendor";
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -85,9 +99,16 @@ function App() {
         <Route path="/signup/vendor" element={<VendorSignup />} />
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/verified-users" element={<VerifiedUsersPage />} />
         {/* New Admin Users View Page */}
         <Route path="/admin/users" element={<UsersView />} />
         {/* Dashboards */}
+        <Route
+          path="/pending-verification"
+          element={<PendingVerificationPage />}
+        />
+        <Route path="/admin/events" element={<AdminAllEvents />} />
+        <Route path="/admin/vendor-requests" element={<AdminVendor />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
@@ -109,6 +130,8 @@ function App() {
           path="/admin/attendees-report"
           element={<AdminAttendeesReport />}
         />
+        <Route path="/guc-loyalty-apply" element={<GUCLoyaltyForm />} />
+
         <Route path="/admin/sales-report" element={<AdminSalesReport />} />
         <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
@@ -149,10 +172,12 @@ function App() {
         <Route path="/conferences/:id" element={<ConferenceForm />} />
         {/* Vendors */}
         <Route path="/vendors" element={<VendorsPage />} />
+        <Route path="/vendors/loyalty" element={<LoyaltyVendors />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         {/* Courts */}
         <Route
-          path="/student/courts-availability"
+          path="/courts-availability"
           element={<CourtsAvailabilityWrapper />}
         />
         <Route path="/reserve/:courtId" element={<ReserveCourt />} />
@@ -163,10 +188,15 @@ function App() {
           element={<GymSessionsForRegister />}
         />
         <Route path="/gym-manager" element={<GymManager />} />
+        <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<div>Payment Cancelled</div>} />
         <Route
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
         />
+        <Route path="/create-poll" element={<CreatePoll />} />
+        <Route path="/poll-voting" element={<PollVoting />} />        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

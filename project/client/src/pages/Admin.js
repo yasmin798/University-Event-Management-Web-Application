@@ -1,14 +1,107 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu } from "lucide-react";
+import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
+import NotificationsDropdown from "../components/NotificationsDropdown";
+
+/* -------------------------------------------------------------------------- */
+/* DONUT CHART (CSS) */
+/* -------------------------------------------------------------------------- */
+function DonutChart({ data, title }) {
+  if (!data || data.length === 0 || data.every((d) => d.value === 0)) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
+        No data available
+      </div>
+    );
+  }
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  let cumulativePercent = 0;
+  const COLORS = ["#8B5CF6", "#10B981", "#EF4444", "#3B82F6", "#F59E0B"];
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-56 h-56">
+        <svg
+          viewBox="0 0 200 200"
+          className="w-full h-full transform -rotate-90"
+        >
+          {/* Background ring */}
+          <circle
+            cx="100"
+            cy="100"
+            r="90"
+            fill="none"
+            stroke="#f3f4f6"
+            strokeWidth="18"
+          />
+          {/* Colored segments */}
+          {data.map((item, i) => {
+            const percent = (item.value / total) * 100;
+            const dashArray = (percent * 2.827).toFixed(3);
+            const dashOffset = (cumulativePercent * 2.827).toFixed(3);
+            cumulativePercent += percent;
+
+            return (
+              <circle
+                key={i}
+                cx="100"
+                cy="100"
+                r="90"
+                fill="none"
+                stroke={COLORS[i % COLORS.length]}
+                strokeWidth="18"
+                strokeDasharray={`${dashArray} 283`}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="butt" // CHANGE FROM "round" TO "butt"
+                className="transition-all duration-1000 ease-out"
+              />
+            );
+          })}
+        </svg>
+        {/* Center total */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="text-4xl font-bold text-[#2f4156]">{total}</div>
+          <div className="text-sm text-gray-600 mt-1">{title}</div>
+        </div>
+      </div>
+      {/* Legend */}
+      <div className="mt-6 space-y-2 w-full">
+        {data.map((item, i) => (
+          <div key={i} className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: COLORS[i % COLORS.length] }}
+              />
+              <span className="text-gray-700">{item.name}</span>
+            </div>
+            <span className="font-semibold text-[#2f4156]">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* CARD COMPONENT */
+/* -------------------------------------------------------------------------- */
+function DashboardCard({ title, children }) {
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 transition-transform duration-300 hover:scale-[1.03] hover:shadow-2xl hover:-translate-y-1"
+      style={{
+        animation: "fadeInUp 0.6s ease both",
+      }}
+    >
+      <h3 className="text-xl font-bold text-[#2f4156] mb-6">{title}</h3>
+      {children}
+    </div>
+  );
+}
 
 export default function Admin() {
-  const navigate = useNavigate();
-
-  // ===== Sidebar UI state =====
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const closeSidebar = () => setIsSidebarOpen(false);
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+  // Sidebar is provided by FixedSidebarAdmin (shared design with Events office)
 
   // ===== State =====
   const [verifiedUsers, setVerifiedUsers] = useState([]);
@@ -32,11 +125,21 @@ export default function Admin() {
     email: "",
     password: "",
   });
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [docsList, setDocsList] = useState([]);
+  const [docsTitle, setDocsTitle] = useState("");
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [viewerName, setViewerName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [viewEvent, setViewEvent] = useState(null);
+
 
   // Debounced admin filters to avoid per-keystroke filtering
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -72,6 +175,64 @@ export default function Admin() {
   }, [dateFilter]);
 
   const API_ORIGIN = "http://localhost:3001";
+
+  // ===== Chart Data =====
+  const userPie = [
+    { name: "Verified", value: verifiedUsers.length },
+    { name: "Pending", value: pendingUsers.length },
+  ];
+
+  const vendorPie = [
+    {
+      name: "Accepted",
+      value:
+        vendorBazaarRequests.filter((r) => r.status === "accepted").length +
+        vendorBoothRequests.filter((r) => r.status === "accepted").length,
+    },
+    {
+      name: "Pending",
+      value:
+        vendorBazaarRequests.filter((r) => r.status === "pending").length +
+        vendorBoothRequests.filter((r) => r.status === "pending").length,
+    },
+    {
+      name: "Rejected",
+      value:
+        vendorBazaarRequests.filter((r) => r.status === "rejected").length +
+        vendorBoothRequests.filter((r) => r.status === "rejected").length,
+    },
+  ];
+
+  const eventPie = [
+    {
+      name: "Workshops",
+      value: events.filter(
+        (e) => e.type === "WORKSHOP" || e.eventType === "workshop"
+      ).length,
+    },
+    {
+      name: "Trips",
+      value: events.filter((e) => e.type === "TRIP" || e.eventType === "trip")
+        .length,
+    },
+    {
+      name: "Conferences",
+      value: events.filter(
+        (e) => e.type === "CONFERENCE" || e.eventType === "conference"
+      ).length,
+    },
+    {
+      name: "Bazaars",
+      value: events.filter(
+        (e) => e.type === "BAZAAR" || e.eventType === "bazaar"
+      ).length,
+    },
+    {
+      name: "Booths",
+      value: events.filter((e) => e.type === "BOOTH" || e.eventType === "booth")
+        .length,
+    },
+  ];
 
   // ===== Helper functions =====
   const tryFetchJson = async (url) => {
@@ -286,6 +447,9 @@ export default function Admin() {
           params.append("type", debouncedEventFilter.toUpperCase());
         }
         if (debouncedDateFilter) params.append("date", debouncedDateFilter);
+        params.append("sort", "startDateTime");
+        // Reverse the order for server because server logic is inverted
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
         const unifiedAttempt = await tryFetchJson(
           `${API_ORIGIN}/api/events/all?${params.toString()}`
@@ -355,6 +519,13 @@ export default function Admin() {
       // Add filtered booth events to all events
       allEvents.push(...filteredBoothEvents);
 
+      // Sort combined events by date (reverse logic to match server behavior)
+      allEvents.sort((a, b) => {
+        const dateA = new Date(a.startDateTime || a.startDate || a.date);
+        const dateB = new Date(b.startDateTime || b.startDate || b.date);
+        return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
+      });
+
       console.log("Combined events:", allEvents);
       setEvents(allEvents);
       setEventFetchErrors(errors);
@@ -382,6 +553,7 @@ export default function Admin() {
     debouncedLocationFilter,
     debouncedEventFilter,
     debouncedDateFilter,
+    sortOrder,
   ]);
 
   const handleDelete = async (userId) => {
@@ -552,11 +724,7 @@ export default function Admin() {
     setPreviewLink(`${API_ORIGIN}/api/verify/${token}-for-${userId}`);
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/");
-    }
-  };
+  // Logout is handled inside the FixedSidebarAdmin component
 
   const handleCreateUser = async () => {
     if (
@@ -601,6 +769,106 @@ export default function Admin() {
     }
   };
 
+  const openDocsModal = async () => {
+    setDocsLoading(true);
+    setDocsList([]);
+    setDocsTitle("Vendor Documents");
+
+    try {
+      const bazaars = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
+      const booths = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
+
+      const gather = (arr) => {
+        if (!arr || !Array.isArray(arr)) return [];
+        return arr.flatMap((r) => {
+          const attendees = Array.isArray(r.attendees) ? r.attendees : [];
+          return attendees
+            .filter((a) => a && a.idDocument)
+            .map((a) => ({
+              name: a.name || a.fullName || "Unnamed",
+              email: a.email || a.emailAddress || "",
+              url:
+                String(a.idDocument).startsWith("/")
+                  ? `${API_ORIGIN}${a.idDocument}`
+                  : String(a.idDocument),
+              source: r.vendorName || r._id || "vendor",
+            }));
+        });
+      };
+
+      const bazList = bazaars.ok && Array.isArray(bazaars.data) ? gather(bazaars.data) : [];
+      const boothList = booths.ok && Array.isArray(booths.data) ? gather(booths.data) : [];
+
+      const combined = [...bazList, ...boothList];
+      setDocsList(combined);
+      setDocsModalOpen(true);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      setMessage("❌ Could not fetch documents. Check server.");
+    } finally {
+      setDocsLoading(false);
+    }
+  };
+
+  const getBackendOrigin = () => {
+    try {
+      const origin = window.location.origin;
+      const u = new URL(origin);
+      if (u.port === "3001") u.port = "3000";
+      return u.origin;
+    } catch (e) {
+      return window.location.origin;
+    }
+  };
+
+  const absoluteUrl = (url) => {
+    if (!url) return url;
+    if (String(url).startsWith("http")) return url;
+    if (String(url).startsWith("/")) return `${getBackendOrigin()}${url}`;
+    return url;
+  };
+
+  const downloadFile = async (url, suggestedName) => {
+    try {
+      const abs = absoluteUrl(url);
+      console.log("Downloading file:", abs);
+      const token = localStorage.getItem("token");
+      const res = await fetch(abs, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        setMessage("❌ Failed to download file");
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = suggestedName || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download error:", err);
+      setMessage("❌ Error downloading file");
+    }
+  };
+
+  const openViewer = (url, name) => {
+    try {
+      const abs = absoluteUrl(url);
+      console.log("Opening viewer for:", abs);
+      setDocsModalOpen(false);
+      setViewerUrl(abs);
+      setViewerName(name || "Document");
+      setViewerOpen(true);
+    } catch (err) {
+      console.error("openViewer error:", err);
+      setMessage("❌ Could not open viewer");
+    }
+  };
+
   if (loading)
     return (
       <p style={{ textAlign: "center" }}>
@@ -610,81 +878,43 @@ export default function Admin() {
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Overlay for Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="px-4 pb-4">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4">
-          {/* Admin quick links */}
-          <div className="mt-2 flex flex-col gap-2">
-            <button
-              onClick={() => navigate("/admin/attendees-report")}
-              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
-              title="View attendees report"
-            >
-              Attendees Report
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/sales-report")}
-              className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#3b4f63] transition-colors"
-              title="View sales report"
-            >
-              Sales Report
-            </button>
-          </div>
-        </nav>
-      </div>
+      {/* Fixed admin sidebar (shared design with events office) */}
+      <FixedSidebarAdmin />
 
       {/* Main Section */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" style={{ marginLeft: "260px" }}>
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={toggleSidebar}
-                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-              >
-                <Menu size={24} className="text-[#2f4156]" />
-              </button>
               <h1 className="text-xl font-bold text-[#2f4156]">
                 Admin Dashboard
               </h1>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <NotificationsDropdown />
+              {(() => {
+                try {
+                  const t = localStorage.getItem("token");
+                  if (!t) return null;
+                  const p = t.split(".");
+                  if (p.length < 2) return null;
+                  const role = JSON.parse(atob(p[1])).role;
+                  if (role === "events_office" || role === "admin") {
+                    return (
+                      <button
+                        onClick={openDocsModal}
+                        style={{ ...createBtnStyle, backgroundColor: "#3B82F6" }}
+                        title="View uploaded attendee documents"
+                      >
+                        View Docs
+                      </button>
+                    );
+                  }
+                } catch (e) {
+                  return null;
+                }
+                return null;
+              })()}
               <button
                 onClick={() => {
                   setCreateUserRole("admin");
@@ -708,6 +938,28 @@ export default function Admin() {
         </header>
 
         <main className="p-4 md:p-8">
+          {/* Loading */}
+          {loading && (
+            <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+              <div className="text-3xl font-bold text-[#8B5CF6]">
+                Loading Dashboard...
+              </div>
+            </div>
+          )}
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16">
+            <DashboardCard title="Users Overview">
+              <DonutChart data={userPie} title="Total Users" />
+            </DashboardCard>
+            <DashboardCard title="Vendor Requests">
+              <DonutChart data={vendorPie} title="Total Requests" />
+            </DashboardCard>
+            <DashboardCard title="Events Distribution">
+              <DonutChart data={eventPie} title="Total Events" />
+            </DashboardCard>
+          </div>
+
           <div
             style={{
               padding: "30px 0",
@@ -735,87 +987,6 @@ export default function Admin() {
               </p>
             )}
 
-            <SectionVerified
-              verifiedUsers={verifiedUsers}
-              handleDelete={handleDelete}
-              handleBlock={handleBlock}
-            />
-
-            <SectionPending
-              pendingUsers={pendingUsers}
-              assignedRoles={assignedRoles}
-              setAssignedRoles={setAssignedRoles}
-              setMailTarget={setMailTarget}
-              generatePreviewLink={generatePreviewLink}
-              setShowMailPopup={setShowMailPopup}
-              handleDelete={handleDelete}
-              handleBlock={handleBlock}
-              handleSendMail={handleSendMail}
-            />
-
-            <SectionBazaarRequests
-              requests={vendorBazaarRequests}
-              processingId={processingId}
-              handleVendorRequestStatus={handleVendorRequestStatus}
-            />
-
-            <SectionBoothRequests
-              requests={vendorBoothRequests}
-              processingId={processingId}
-              handleVendorRequestStatus={handleVendorRequestStatus}
-            />
-
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-              <input
-                type="text"
-                placeholder="Search by title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/5"
-              />
-              <input
-                type="text"
-                placeholder="Filter by professor..."
-                value={professorFilter}
-                onChange={(e) => setProfessorFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/5"
-              />
-              <input
-                type="text"
-                placeholder="Filter by location..."
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/5"
-              />
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/6"
-              />
-              <select
-                value={eventFilter}
-                onChange={(e) => setEventFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/6"
-              >
-                <option value="">All Types</option>
-                <option value="trip">Trip</option>
-                <option value="conference">Conference</option>
-                <option value="bazaar">Bazaar</option>
-                <option value="workshop">Workshop</option>
-                <option value="booth">Booth</option>
-              </select>
-            </div>
-
-            <SectionEvents
-              events={events}
-              searchQuery={debouncedSearchQuery}
-              eventFilter={debouncedEventFilter}
-              eventFetchErrors={eventFetchErrors}
-              processingId={processingId}
-              handleDeleteEvent={handleDeleteEvent}
-            />
-
             {showMailPopup && mailTarget && (
               <MailPopup
                 onClose={() => setShowMailPopup(false)}
@@ -839,7 +1010,181 @@ export default function Admin() {
                 sending={sending}
               />
             )}
+
+            {docsModalOpen && (
+              <div style={{ ...popupOverlayStyle, width: 520 }}>
+                <div style={popupHeaderStyle}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>{docsTitle}</h3>
+                    <p style={{ color: "#E5E7EB", fontSize: 14 }}>Uploaded IDs</p>
+                  </div>
+                  <button
+                    onClick={() => setDocsModalOpen(false)}
+                    style={closeBtnStyle}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ padding: 12, maxHeight: 380, overflowY: "auto" }}>
+                  {docsLoading ? (
+                    <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
+                  ) : docsList.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 20, color: "#6B7280" }}>
+                      No uploaded documents found.
+                    </div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ textAlign: "left", borderBottom: "1px solid #E5E7EB" }}>
+                          <th style={{ padding: 8 }}>Name</th>
+                          <th style={{ padding: 8 }}>Email</th>
+                          <th style={{ padding: 8 }}>Source</th>
+                          <th style={{ padding: 8 }}>Document</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {docsList.map((d, i) => (
+                          <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                            <td style={{ padding: 8 }}>{d.name}</td>
+                            <td style={{ padding: 8 }}>{d.email}</td>
+                            <td style={{ padding: 8 }}>{d.source}</td>
+                            <td style={{ padding: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                              <button
+                                onClick={() => openViewer(d.url, d.name)}
+                                style={{ background: 'transparent', border: '1px solid #2563EB', color: '#2563EB', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => downloadFile(d.url, `${d.name || 'document'}`)}
+                                style={{ background: '#2563EB', border: 'none', color: 'white', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                              >
+                                Download
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <div style={popupFooterStyle}>
+                  <button onClick={() => setDocsModalOpen(false)} style={cancelBtnStyle}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+            {viewerOpen && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.45)',
+                  zIndex: 9999,
+                }}
+              >
+                <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ ...popupHeaderStyle, display: 'flex', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{viewerName}</h3>
+                      <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+                    </div>
+                    <button onClick={() => setViewerOpen(false)} style={{ marginLeft: 'auto', ...closeBtnStyle }}>
+                      ✕
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                      <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+                    ) : (
+                      <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+                        <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ ...popupFooterStyle, margin: 0 }}>
+                    <button onClick={() => setViewerOpen(false)} style={cancelBtnStyle}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+          
+          {viewEvent && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      background: "rgba(0,0,0,0.45)",
+      zIndex: 9999,
+    }}
+  >
+    <div style={{
+      background: "white",
+      width: "80%",
+      maxWidth: 800,
+      borderRadius: 10,
+      padding: 20,
+      boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
+      maxHeight: "90vh",
+      overflowY: "auto",
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+        <h2 style={{ margin: 0 }}>{viewEvent.title || viewEvent.name || "Untitled Event"}</h2>
+        <button
+          onClick={() => setViewEvent(null)}
+          style={{
+            background: "transparent",
+            border: "none",
+            fontSize: 18,
+            cursor: "pointer",
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <p><strong>Type:</strong> {viewEvent.type || viewEvent.eventType || "Event"}</p>
+      <p><strong>Location:</strong> {viewEvent.location || viewEvent.venue || "—"}</p>
+      <p><strong>Start:</strong> {viewEvent.startDateTime ? new Date(viewEvent.startDateTime).toLocaleString() : "—"}</p>
+      <p><strong>End:</strong> {viewEvent.endDateTime ? new Date(viewEvent.endDateTime).toLocaleString() : "—"}</p>
+      <p><strong>Description:</strong> {viewEvent.description || "No description provided"}</p>
+
+      {viewEvent.registrations && viewEvent.registrations.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <strong>Registrations:</strong>
+          <ul>
+            {viewEvent.registrations.map((r, i) => (
+              <li key={i}>{r.name || r.fullName || r.email || "Anonymous"}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div style={{ marginTop: 20, textAlign: 'right' }}>
+        <button
+          onClick={() => setViewEvent(null)}
+          style={{
+            ...cancelBtnStyle,
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
         </main>
       </div>
     </div>
@@ -1332,6 +1677,7 @@ function SectionEvents({
   eventFetchErrors,
   processingId,
   handleDeleteEvent,
+  setViewEvent
 }) {
   const navigate = useNavigate();
   // Server already filtered events, so just use them directly
@@ -1390,20 +1736,30 @@ function SectionEvents({
                       : "—"}
                   </td>
                   <td style={tdStyle}>
-                    <button
-                      onClick={() =>
-                        navigate(`/events/${event._id}`, {
-                          state: { fromAdmin: true },
-                        })
-                      }
-                      style={{
-                        ...verifyBtnStyle,
-                        backgroundColor: "#3B82F6",
-                        marginRight: 5,
-                      }}
-                    >
-                      Details
-                    </button>
+                    {/* Details opens modal */}
+<button
+  onClick={() => setViewEvent(event)}
+  style={{
+    ...verifyBtnStyle,
+    backgroundColor: "#3B82F6",
+    marginRight: 5,
+  }}
+>
+  Details
+</button>
+
+{/* Reviews still navigates */}
+<button
+  onClick={() => navigate(`/events/${event._id}/reviews`)}
+  style={{
+    ...verifyBtnStyle,
+    backgroundColor: "#0EA5E9",
+    marginRight: 5,
+  }}
+  title="View all reviews & comments for this event"
+>
+  Reviews
+</button>
                     <button
                       onClick={() =>
                         handleDeleteEvent(

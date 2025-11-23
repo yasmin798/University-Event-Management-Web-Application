@@ -143,7 +143,7 @@ const StudentDashboard = () => {
 
         params.append("sort", "startDateTime");
 
-        params.append("order", sortOrder);
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
         const res = await fetch(`/api/events/all?${params}`);
 
@@ -197,7 +197,7 @@ const StudentDashboard = () => {
   };
 
   const handleCourtsAvailability = () => {
-    navigate("/student/courts-availability");
+    navigate("/courts-availability");
     closeSidebar();
   };
 
@@ -214,6 +214,12 @@ const StudentDashboard = () => {
       navigate("/");
     }
   };
+
+  const handlePollsVoting = () => {
+  navigate("/poll-voting");
+  closeSidebar();
+};
+
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -238,12 +244,11 @@ const StudentDashboard = () => {
   };
 
   const filteredEvents = allEvents.filter((e) => {
-    if (e.type === "BOOTH") return true;
+  // Only show archived events to events office
+  if (e.status === "archived" && userRole !== "events office") return false;
+  return true;
+});
 
-    const eventDate = new Date(e.startDateTime || e.startDate || e.date);
-
-    return eventDate > now;
-  });
 
   if (loading) {
     return (
@@ -321,6 +326,14 @@ const StudentDashboard = () => {
           </button>
 
           <button
+            onClick={handlePollsVoting}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+            >
+          <Heart size={18} />
+            Polls Voting
+            </button>
+
+          <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
           >
@@ -394,7 +407,7 @@ const StudentDashboard = () => {
               }
               className="px-4 py-2 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg transition-colors whitespace-nowrap"
             >
-              Sort {sortOrder === "asc" ? "Ascending" : "Descending"} Date
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
             </button>
           </div>
 

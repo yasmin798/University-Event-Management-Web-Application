@@ -1,5 +1,14 @@
-// server/models/Conference.js
+// server/models/Conference.js (updated)
 const mongoose = require("mongoose");
+
+// Reusable Review Schema (you can move this to a separate file later if you want)
+const reviewSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  userName: { type: String, required: true },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
 
 const ConferenceSchema = new mongoose.Schema(
   {
@@ -14,23 +23,43 @@ const ConferenceSchema = new mongoose.Schema(
     requiredBudget: { type: Number, required: true },
     fundingSource: { type: String, required: true, enum: ["GUC", "external"] },
     extraResources: { type: String, trim: true },
+    
     status: {
       type: String,
       enum: ["draft", "published", "cancelled"],
       default: "published",
     },
+
+    // Registrations (logged-in + guest users)
     registrations: {
       type: [
         {
-          userId: { type: String },
+          userId: { type: String }, // null for guests
           email: { type: String, required: true },
           registeredAt: { type: Date, default: Date.now },
         },
       ],
-      default: [],  // Ensure new documents have empty array
+      default: [],
+    },
+
+    // ADD THIS: Reviews from attendees
+    reviews: [reviewSchema],
+
+    // ADD THIS: Allowed roles for registration (empty array = open to all)
+    allowedRoles: {
+      type: [String],
+      enum: ["student", "professor", "ta", "staff"],
+      default: [],
     },
   },
-  { timestamps: true, collection: "conferences" }
+  { 
+    timestamps: true, 
+    collection: "conferences" 
+  }
 );
+
+// Indexes for better performance
+ConferenceSchema.index({ startDateTime: 1 });
+ConferenceSchema.index({ "reviews.createdAt": -1 });
 
 module.exports = mongoose.model("Conference", ConferenceSchema);
