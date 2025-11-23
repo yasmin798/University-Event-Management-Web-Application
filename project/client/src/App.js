@@ -80,6 +80,7 @@ import PollVoting from "./pages/PollVoting";
 import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
 import PendingVerificationPage from "./pages/PendingVerification";
 import AdminVendor from "./pages/AdminVendor";
+import WorkshopParticipants from "./pages/WorkshopParticipants";
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -139,6 +140,10 @@ function App() {
         <Route path="/events/list" element={<EventList />} />
         <Route path="/events/choose-type" element={<ChooseEventType />} />
         <Route path="/favorites" element={<FavoritesList />} />
+        <Route
+  path="/professor/workshops/participants/:workshopId"
+  element={<WorkshopParticipants />}
+/>
         {/* Events - Registration */}
         <Route
           path="/events/register/:eventId"

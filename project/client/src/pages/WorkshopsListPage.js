@@ -1,35 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo for dynamic locations
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Calendar, MapPin, Users, Clock, UserCheck } from 'lucide-react'; // Added UserCheck for participants btn
 import { workshopAPI } from '../api/workshopApi';
 
 const WorkshopsListPage = () => {
   const navigate = useNavigate();
   const [workshops, setWorkshops] = useState([]);
+  const [loading, setLoading] = useState(true); // Added: For fetch spinner
   const [filter, setFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [facultyFilter, setFacultyFilter] = useState('all');
 
   const user = JSON.parse(localStorage.getItem("user"));
-const currentProfessorId = user?.id;
+  const currentProfessorId = user?.id;
+
   useEffect(() => {
-  const fetchWorkshops = async () => {
-    try {
-      let data = [];
-      if (filter === 'mine') {
-        data = await workshopAPI.getMyWorkshops(); // fetch only my workshops
-      } else if (filter === 'others') {
-        data = await workshopAPI.getOtherWorkshops(); // fetch others
-      } else {
-        data = await workshopAPI.getAllWorkshops();
+    const fetchWorkshops = async () => {
+      setLoading(true); // Added: Set loading
+      try {
+        let data = [];
+        if (filter === 'mine') {
+          data = await workshopAPI.getMyWorkshops();
+        } else if (filter === 'others') {
+          data = await workshopAPI.getOtherWorkshops();
+        } else {
+          data = await workshopAPI.getAllWorkshops();
+        }
+        setWorkshops(data);
+      } catch (error) {
+        console.error('Error fetching workshops:', error);
+      } finally {
+        setLoading(false); // Added: Clear loading
       }
-      setWorkshops(data);
-    } catch (error) {
-      console.error('Error fetching workshops:', error);
-    }
-  };
-  fetchWorkshops();
-}, [filter]);
+    };
+    fetchWorkshops();
+  }, [filter]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this workshop?')) {
@@ -53,11 +58,12 @@ const currentProfessorId = user?.id;
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // 🔹 Unique locations from workshops
- const uniqueLocations = ['all', 'GUC Cairo', 'GUC Berlin'];
+  // Dynamic locations (from workshops data, not static)
+  const uniqueLocations = useMemo(() => {
+    const locations = [...new Set(workshops.map(w => w.location))];
+    return ['all', ...locations].sort();
+  }, [workshops]);
 
-
-  // 🔹 Static faculty options
   const faculties = [
     { value: 'all', label: 'All Faculties' },
     { value: 'MET', label: 'MET - Media Engineering and Technology' },
@@ -70,13 +76,11 @@ const currentProfessorId = user?.id;
     { value: 'LAW', label: 'LAW - Law and Legal Studies' },
   ];
 
-  // 🔹 Combined filtering logic
   const filteredWorkshops = workshops.filter((w) => {
-  const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
-  const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
-  return locationMatch && facultyMatch;
-});
-
+    const locationMatch = locationFilter === 'all' ? true : w.location === locationFilter;
+    const facultyMatch = facultyFilter === 'all' ? true : w.facultyResponsible === facultyFilter;
+    return locationMatch && facultyMatch;
+  });
 
   return (
     <div className="min-h-screen bg-[#f5efeb]">
@@ -102,67 +106,68 @@ const currentProfessorId = user?.id;
       </div>
 
       <div className="max-w-6xl mx-auto p-8">
-        {/* 🔹 Filter controls - UPDATED (counts removed) */}
-<div className="flex flex-wrap gap-4 mb-6">
-  <button
-    onClick={() => setFilter('all')}
-    className={`px-4 py-2 rounded-lg transition-colors ${
-      filter === 'all'
-        ? 'bg-[#567c8d] text-white'
-        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-    }`}
-  >
-    All
-  </button>
-  <button
-    onClick={() => setFilter('mine')}
-    className={`px-4 py-2 rounded-lg transition-colors ${
-      filter === 'mine'
-        ? 'bg-[#567c8d] text-white'
-        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-    }`}
-  >
-    My Workshops
-  </button>
-  <button
-    onClick={() => setFilter('others')}
-    className={`px-4 py-2 rounded-lg transition-colors ${
-      filter === 'others'
-        ? 'bg-[#567c8d] text-white'
-        : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
-    }`}
-  >
-    Other Professors
-  </button>
+        <div className="flex flex-wrap gap-4 mb-6">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              filter === 'all'
+                ? 'bg-[#567c8d] text-white'
+                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilter('mine')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              filter === 'mine'
+                ? 'bg-[#567c8d] text-white'
+                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+            }`}
+          >
+            My Workshops
+          </button>
+          <button
+            onClick={() => setFilter('others')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              filter === 'others'
+                ? 'bg-[#567c8d] text-white'
+                : 'bg-white text-[#567c8d] border border-[#c8d9e6]'
+            }`}
+          >
+            Other Professors
+          </button>
 
-  {/* Location & Faculty dropdowns stay the same */}
-  <select
-    value={locationFilter}
-    onChange={(e) => setLocationFilter(e.target.value)}
-    className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
-  >
-    {uniqueLocations.map((loc) => (
-      <option key={loc} value={loc}>
-        {loc === 'all' ? 'All Locations' : loc}
-      </option>
-    ))}
-  </select>
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+          >
+            {uniqueLocations.map((loc) => (
+              <option key={loc} value={loc}>
+                {loc === 'all' ? 'All Locations' : loc}
+              </option>
+            ))}
+          </select>
 
-  <select
-    value={facultyFilter}
-    onChange={(e) => setFacultyFilter(e.target.value)}
-    className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
-  >
-    {faculties.map((fac) => (
-      <option key={fac.value} value={fac.value}>
-        {fac.label}
-      </option>
-    ))}
-  </select>
-</div>
+          <select
+            value={facultyFilter}
+            onChange={(e) => setFacultyFilter(e.target.value)}
+            className="px-4 py-2 border border-[#c8d9e6] rounded-lg text-[#2f4156] bg-white"
+          >
+            {faculties.map((fac) => (
+              <option key={fac.value} value={fac.value}>
+                {fac.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        {/* 🔹 Workshop Cards */}
-        {filteredWorkshops.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#567c8d]"></div>
+          </div>
+        ) : filteredWorkshops.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center border border-[#c8d9e6]">
             <div className="w-16 h-16 bg-[#c8d9e6] rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar size={32} className="text-[#567c8d]" />
@@ -180,74 +185,101 @@ const currentProfessorId = user?.id;
           </div>
         ) : (
           <div className="grid gap-6">
-            {filteredWorkshops.map((workshop) => (
-              <div
-                key={workshop._id}
-                className="bg-white rounded-xl p-6 border border-[#c8d9e6] hover:shadow-lg transition-shadow"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-[#2f4156]">
-                      {workshop.workshopName}
-                    </h3>
-                    <p className="text-[#567c8d] mb-4">{workshop.shortDescription}</p>
-                  </div>
-                  {/* Edit / Delete buttons - show ONLY when filter === 'mine' OR when the workshop belongs to the current user */}
-<div className="flex gap-2">
-  {/* Show buttons only for the current professor's workshops */}
-  {workshop.createdBy === currentProfessorId && (
-    <>
-      <button
-        onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
-        className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
-        title="Edit"
-      >
-        <Edit size={18} className="text-[#567c8d]" />
-      </button>
-      <button
-        onClick={() => handleDelete(workshop._id)}
-        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-        title="Delete"
-      >
-        <Trash2 size={18} className="text-red-500" />
-      </button>
-    </>
-  )}
-</div>
-                </div>
+            {filteredWorkshops.map((workshop) => {
+              const registeredCount = workshop.registeredUsers?.length || 0; // Added: For spots calc
+              const remainingSpots = (workshop.capacity || 0) - registeredCount;
+              const isMyWorkshop = workshop.createdBy === currentProfessorId; // Renamed for clarity
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-[#567c8d]">
-                    <MapPin size={16} />
-                    <span>{workshop.location}</span>
+              return (
+                <div
+                  key={workshop._id}
+                  className="bg-white rounded-xl p-6 border border-[#c8d9e6] hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-[#2f4156]">
+                        {workshop.workshopName}
+                      </h3>
+                      <p className="text-[#567c8d] mb-4">{workshop.shortDescription}</p>
+                    </div>
+                    {/* ADDED: Participants button for published workshops (any prof can view) */}
+                    <div className="flex gap-2">
+                      {workshop.status === "published" && (
+                        <button
+                          onClick={() => navigate(`/professor/workshops/participants/${workshop._id}`)}
+                          className="p-2 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg transition-colors"
+                          title={`View ${registeredCount} registered students`}
+                        >
+                          <UserCheck size={18} />
+                        </button>
+                      )}
+                      {/* Edit/Delete only for my workshops */}
+                      {isMyWorkshop && (
+                        <>
+                          <button
+                            onClick={() => navigate(`/professor/workshops/edit/${workshop._id}`)}
+                            className="p-2 hover:bg-[#c8d9e6] rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit size={18} className="text-[#567c8d]" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(workshop._id)}
+                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={18} className="text-red-500" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-[#567c8d]">
-                    <Calendar size={16} />
-                    <span>{formatDate(workshop.startDateTime)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#567c8d]">
-                    <Clock size={16} />
-                    <span>{formatTime(workshop.startDateTime)} - {formatTime(workshop.endDateTime)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#567c8d]">
-                    <Users size={16} />
-                    <span>{workshop.capacity} participants</span>
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap gap-2 pt-4 border-t border-[#c8d9e6]">
-                  <span className="px-3 py-1 bg-[#c8d9e6] text-[#2f4156] rounded-full text-xs">
-                    {workshop.facultyResponsible}
-                  </span>
-                  <span className="px-3 py-1 bg-[#c8d9e6] text-[#2f4156] rounded-full text-xs">
-                    Budget: {workshop.requiredBudget} EGP
-                  </span>
-                  <span className="px-3 py-1 bg-[#c8d9e6] text-[#2f4156] rounded-full text-xs">
-                    {workshop.fundingSource}
-                  </span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                      <MapPin size={16} />
+                      <span>{workshop.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                      <Calendar size={16} />
+                      <span>{formatDate(workshop.startDateTime)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                      <Clock size={16} />
+                      <span>{formatTime(workshop.startDateTime)} - {formatTime(workshop.endDateTime)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-medium"> {/* Updated: Dynamic spots */}
+                      <Users size={16} className={remainingSpots <= 5 ? "text-red-500" : "text-[#567c8d]"} />
+                      <span className={remainingSpots <= 5 ? "text-red-600" : "text-[#567c8d]"}>
+                        {registeredCount}/{workshop.capacity} ({remainingSpots} left)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-[#c8d9e6]">
+                    <span className="px-3 py-1 bg-[#c8d9e6] text-[#2f4156] rounded-full text-xs">
+                      {workshop.facultyResponsible}
+                    </span>
+                    <span className="px-3 py-1 bg-[#c8d9e6] text-[#2f4156] rounded-full text-xs">
+                      Budget: {workshop.requiredBudget} EGP
+                    </span>
+                    <span className="px-3 py-1 bg-[#c8d9e6] text-[#2f4156] rounded-full text-xs">
+                      {workshop.fundingSource}
+                    </span>
+                    {/* Added: Status badge */}
+                    {workshop.status && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        workshop.status === "published" ? "bg-green-100 text-green-700" :
+                        workshop.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>
+                        {workshop.status.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
