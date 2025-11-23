@@ -89,11 +89,13 @@ const EventDetails = () => {
     const eventType = event.type?.toUpperCase(); // TRIP, WORKSHOP, BOOTH, BAZAAR, CONFERENCE
     const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
 
-    // CASE A: BOOTH / BAZAAR / CONFERENCE → anyone can review
-    if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
-      setCanReview(!alreadyReviewed); // Only block if already reviewed
-      return;
-    }
+    const hasEnded = new Date(event.endDateTime || event.startDateTime || event.startDate) < new Date();
+
+if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
+  setCanReview(!alreadyReviewed && hasEnded);
+  return;
+}
+
 
     // CASE B: TRIPS / WORKSHOPS → must be registered AND event ended
     const hasPassed = new Date(event.endDateTime || event.startDateTime || event.startDate) < new Date();
