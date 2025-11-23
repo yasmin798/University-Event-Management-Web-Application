@@ -45,6 +45,8 @@ const StaffDashboard = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [userId, setUserId] = useState(null);
 
+  
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(t);
@@ -201,6 +203,8 @@ const StaffDashboard = () => {
     loadReviews(event._id);
   };
 
+  
+
   const closeModal = () => setSelectedEvent(null);
 
  const filteredEvents = allEvents
@@ -252,6 +256,13 @@ const StaffDashboard = () => {
           <button onClick={() => { navigate("/favorites"); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"><Heart size={18} /> Favorites</button>
           <button onClick={() => { navigate("/courts-availability"); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"><Map size={18} /> Courts Availability</button>
           <button onClick={() => { navigate("/gym-sessions-register"); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"><Calendar size={18} /> Gym Sessions</button>
+          <button
+                      onClick={() => { navigate("/poll-voting"); setIsSidebarOpen(false); }}
+                      className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+                      >
+                    <Heart size={18} />
+                      Polls Voting
+                      </button>
           <button onClick={() => window.confirm("Logout?") && navigate("/")} className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg"><LogOut size={18} /> Logout</button>
         </div>
       </div>

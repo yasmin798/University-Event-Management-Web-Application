@@ -7,12 +7,57 @@ const WorkshopsListPage = () => {
   const navigate = useNavigate();
   const [workshops, setWorkshops] = useState([]);
   const [loading, setLoading] = useState(true); // Added: For fetch spinner
+  const [editRequests, setEditRequests] = useState({}); // New: Map of workshopId to edit messages
   const [filter, setFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [facultyFilter, setFacultyFilter] = useState('all');
 
   const user = JSON.parse(localStorage.getItem("user"));
   const currentProfessorId = user?.id;
+
+  // New: Fetch edit requests for current prof
+  const fetchEditRequests = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch('/api/notifications', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const notifications = await res.json();
+      const editNotifs = notifications.filter(n => n.type === 'edit_request' && n.workshopId);
+      
+      const requestsMap = {};
+      editNotifs.forEach(n => {
+        let wsId = null;
+        
+        // Safe extraction: Handle ObjectId, string, or populated object
+        if (n.workshopId) {
+          if (typeof n.workshopId === 'object' && n.workshopId._id) {
+            // Populated object: e.g., { _id: ObjectId('...'), name: '...' }
+            wsId = n.workshopId._id.toString();
+          } else {
+            // Direct ObjectId or string
+            wsId = n.workshopId.toString();
+          }
+        }
+        
+        if (wsId && !requestsMap[wsId]) {
+          requestsMap[wsId] = [];
+        }
+        if (wsId) {
+          requestsMap[wsId].push(n.message || 'Edit requested');
+        }
+      });
+      
+      console.log('Fetched edit requests:', requestsMap); // Now: { "64f...abc": ["Edit1", "Edit2", ...] }
+      setEditRequests(requestsMap);
+    } else {
+      console.error('Failed to fetch notifications:', res.status);
+    }
+  } catch (error) {
+    console.error('Error fetching edit requests:', error);
+  }
+};
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -34,6 +79,7 @@ const WorkshopsListPage = () => {
       }
     };
     fetchWorkshops();
+    fetchEditRequests(); // New: Fetch edits on load
   }, [filter]);
 
   const handleDelete = async (id) => {
@@ -189,6 +235,8 @@ const WorkshopsListPage = () => {
               const registeredCount = workshop.registeredUsers?.length || 0; // Added: For spots calc
               const remainingSpots = (workshop.capacity || 0) - registeredCount;
               const isMyWorkshop = workshop.createdBy === currentProfessorId; // Renamed for clarity
+              const wsId = workshop._id.toString();
+              const hasEdits = editRequests[wsId] && editRequests[wsId].length > 0; // New: Check for edits
 
               return (
                 <div
@@ -211,6 +259,20 @@ const WorkshopsListPage = () => {
                           title={`View ${registeredCount} registered students`}
                         >
                           <UserCheck size={18} />
+                        </button>
+                      )}
+                      {/* UPDATED: Edits button for EVERY workshop tab/card (my workshops only; always visible, with conditional styling) */}
+                      {isMyWorkshop && (
+                        <button
+                          onClick={() => navigate(`/professor/workshops/edits/${workshop._id}`)}
+                          className={`p-2 rounded-lg transition-colors text-xs ${
+                            hasEdits
+                              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                              : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+                          }`}
+                          title={hasEdits ? "View edit requests" : "No edits pending"}
+                        >
+                          <Edit size={16} />
                         </button>
                       )}
                       {/* Edit/Delete only for my workshops */}
