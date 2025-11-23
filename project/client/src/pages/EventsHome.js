@@ -48,7 +48,8 @@ function isEditable(startIso) {
 
 // Check if an event has already ended
 function isPastEvent(ev) {
-  const endDate = ev.endDateTime || ev.endDate || ev.endDateTime; // support all types
+  const endDate = ev.endDateTime || ev.endDate;
+  // support all types
   if (!endDate) return false;
   return new Date(endDate).getTime() < Date.now();
 }
@@ -727,7 +728,8 @@ export default function EventsHome() {
               const archived = isPastEvent(ev); // true if the event has already ended
               const isWorkshop = typeRaw === "WORKSHOP";
               const isBooth = typeRaw === "BOOTH";
-              const isBazaar = typeRaw === "BAZAAR";
+              const isBazaar = ev.type?.toLowerCase() === "bazaar";
+
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
 
@@ -816,12 +818,9 @@ export default function EventsHome() {
 
                         <button
                           className="btn"
-                          style={{ background: "var(--teal)", color: "white" }}
                           onClick={() =>
                             navigate(`/bazaars/${id}/vendor-requests`)
                           }
-                          disabled={archived}
-                          title={archived ? "Archived event" : ""}
                         >
                           Vendor Requests
                         </button>
