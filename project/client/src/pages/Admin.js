@@ -125,6 +125,13 @@ export default function Admin() {
     email: "",
     password: "",
   });
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [docsList, setDocsList] = useState([]);
+  const [docsTitle, setDocsTitle] = useState("");
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [viewerName, setViewerName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
@@ -760,6 +767,106 @@ export default function Admin() {
     }
   };
 
+  const openDocsModal = async () => {
+    setDocsLoading(true);
+    setDocsList([]);
+    setDocsTitle("Vendor Documents");
+
+    try {
+      const bazaars = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
+      const booths = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
+
+      const gather = (arr) => {
+        if (!arr || !Array.isArray(arr)) return [];
+        return arr.flatMap((r) => {
+          const attendees = Array.isArray(r.attendees) ? r.attendees : [];
+          return attendees
+            .filter((a) => a && a.idDocument)
+            .map((a) => ({
+              name: a.name || a.fullName || "Unnamed",
+              email: a.email || a.emailAddress || "",
+              url:
+                String(a.idDocument).startsWith("/")
+                  ? `${API_ORIGIN}${a.idDocument}`
+                  : String(a.idDocument),
+              source: r.vendorName || r._id || "vendor",
+            }));
+        });
+      };
+
+      const bazList = bazaars.ok && Array.isArray(bazaars.data) ? gather(bazaars.data) : [];
+      const boothList = booths.ok && Array.isArray(booths.data) ? gather(booths.data) : [];
+
+      const combined = [...bazList, ...boothList];
+      setDocsList(combined);
+      setDocsModalOpen(true);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      setMessage("❌ Could not fetch documents. Check server.");
+    } finally {
+      setDocsLoading(false);
+    }
+  };
+
+  const getBackendOrigin = () => {
+    try {
+      const origin = window.location.origin;
+      const u = new URL(origin);
+      if (u.port === "3001") u.port = "3000";
+      return u.origin;
+    } catch (e) {
+      return window.location.origin;
+    }
+  };
+
+  const absoluteUrl = (url) => {
+    if (!url) return url;
+    if (String(url).startsWith("http")) return url;
+    if (String(url).startsWith("/")) return `${getBackendOrigin()}${url}`;
+    return url;
+  };
+
+  const downloadFile = async (url, suggestedName) => {
+    try {
+      const abs = absoluteUrl(url);
+      console.log("Downloading file:", abs);
+      const token = localStorage.getItem("token");
+      const res = await fetch(abs, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        setMessage("❌ Failed to download file");
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = suggestedName || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download error:", err);
+      setMessage("❌ Error downloading file");
+    }
+  };
+
+  const openViewer = (url, name) => {
+    try {
+      const abs = absoluteUrl(url);
+      console.log("Opening viewer for:", abs);
+      setDocsModalOpen(false);
+      setViewerUrl(abs);
+      setViewerName(name || "Document");
+      setViewerOpen(true);
+    } catch (err) {
+      console.error("openViewer error:", err);
+      setMessage("❌ Could not open viewer");
+    }
+  };
+
   if (loading)
     return (
       <p style={{ textAlign: "center" }}>
@@ -783,6 +890,29 @@ export default function Admin() {
             </div>
             <div className="flex gap-2 items-center">
               <NotificationsDropdown />
+              {(() => {
+                try {
+                  const t = localStorage.getItem("token");
+                  if (!t) return null;
+                  const p = t.split(".");
+                  if (p.length < 2) return null;
+                  const role = JSON.parse(atob(p[1])).role;
+                  if (role === "events_office" || role === "admin") {
+                    return (
+                      <button
+                        onClick={openDocsModal}
+                        style={{ ...createBtnStyle, backgroundColor: "#3B82F6" }}
+                        title="View uploaded attendee documents"
+                      >
+                        View Docs
+                      </button>
+                    );
+                  }
+                } catch (e) {
+                  return null;
+                }
+                return null;
+              })()}
               <button
                 onClick={() => {
                   setCreateUserRole("admin");
@@ -877,6 +1007,110 @@ export default function Admin() {
                 onCreate={handleCreateUser}
                 sending={sending}
               />
+            )}
+
+            {docsModalOpen && (
+              <div style={{ ...popupOverlayStyle, width: 520 }}>
+                <div style={popupHeaderStyle}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>{docsTitle}</h3>
+                    <p style={{ color: "#E5E7EB", fontSize: 14 }}>Uploaded IDs</p>
+                  </div>
+                  <button
+                    onClick={() => setDocsModalOpen(false)}
+                    style={closeBtnStyle}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ padding: 12, maxHeight: 380, overflowY: "auto" }}>
+                  {docsLoading ? (
+                    <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
+                  ) : docsList.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 20, color: "#6B7280" }}>
+                      No uploaded documents found.
+                    </div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ textAlign: "left", borderBottom: "1px solid #E5E7EB" }}>
+                          <th style={{ padding: 8 }}>Name</th>
+                          <th style={{ padding: 8 }}>Email</th>
+                          <th style={{ padding: 8 }}>Source</th>
+                          <th style={{ padding: 8 }}>Document</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {docsList.map((d, i) => (
+                          <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                            <td style={{ padding: 8 }}>{d.name}</td>
+                            <td style={{ padding: 8 }}>{d.email}</td>
+                            <td style={{ padding: 8 }}>{d.source}</td>
+                            <td style={{ padding: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                              <button
+                                onClick={() => openViewer(d.url, d.name)}
+                                style={{ background: 'transparent', border: '1px solid #2563EB', color: '#2563EB', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => downloadFile(d.url, `${d.name || 'document'}`)}
+                                style={{ background: '#2563EB', border: 'none', color: 'white', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                              >
+                                Download
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <div style={popupFooterStyle}>
+                  <button onClick={() => setDocsModalOpen(false)} style={cancelBtnStyle}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+            {viewerOpen && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.45)',
+                  zIndex: 9999,
+                }}
+              >
+                <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ ...popupHeaderStyle, display: 'flex', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{viewerName}</h3>
+                      <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+                    </div>
+                    <button onClick={() => setViewerOpen(false)} style={{ marginLeft: 'auto', ...closeBtnStyle }}>
+                      ✕
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                      <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+                    ) : (
+                      <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+                        <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ ...popupFooterStyle, margin: 0 }}>
+                    <button onClick={() => setViewerOpen(false)} style={cancelBtnStyle}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </main>
