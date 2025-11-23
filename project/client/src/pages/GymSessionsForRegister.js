@@ -210,42 +210,49 @@ const registerSession = async (sessionId) => {
                           verticalAlign: "middle",
                         }}
                       >
-                        {session ? (
-  <div
-    style={{
-      background: "#e0e0e0",
-      color: "#333",
-      padding: "10px",
-      borderRadius: "8px",
-      fontWeight: 600,
-    }}
-  >
-    {session.type.toUpperCase()} <br />
-    {session.duration} min
-    <br />
-    Max: {session.maxParticipants}
-    <br />
-    Spots: {session.registeredUsers?.length || 0} / {session.maxParticipants}
-    <br />
-
-    {/* REGISTER BUTTON */}
-    <button
-      onClick={() => registerSession(session._id)}
-      style={{
-        marginTop: "6px",
-        padding: "6px 14px",
-        fontSize: "14px",
-        borderRadius: "10px",
-        background: "#4CAF50",
-        color: "white",
-        border: "none",
-        cursor: "pointer",
-      }}
-    >
-      Register
-    </button>
-  </div>
-) : (
+                                                {session ? (
+                          <div
+                            style={{
+                              background: "#e0e0e0",
+                              color: "#333",
+                              padding: "10px",
+                              borderRadius: "8px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {session.type.toUpperCase()} <br />
+                            {session.duration} min<br />
+                            Max: {session.maxParticipants}<br />
+                            Spots: {session.registeredUsers?.length || 0} / {session.maxParticipants}<br />
+                            {/* NEW: Show restriction */}
+                            {session.allowedRoles?.length > 0 ? (
+                              <div style={{ color: "#d32f2f", fontSize: "12px", fontWeight: "bold", marginTop: "4px" }}>
+                                Only for: {session.allowedRoles
+                                  .map(r => r === "ta" ? "TAs" : r + "s")
+                                  .join(", ")}
+                              </div>
+                            ) : (
+                              <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>
+                                Open to everyone
+                              </div>
+                            )}
+                            <button
+                              onClick={() => registerSession(session._id)}
+                              style={{
+                                marginTop: "8px",
+                                padding: "6px 14px",
+                                fontSize: "14px",
+                                borderRadius: "10px",
+                                background: "#4CAF50",
+                                color: "white",
+                                border: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Register
+                            </button>
+                          </div>
+                        ) : (
 
                           <div
                             style={{

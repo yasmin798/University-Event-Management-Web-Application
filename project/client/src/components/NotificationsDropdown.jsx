@@ -87,6 +87,8 @@ export default function NotificationsDropdown() {
         // remove the item from the local list and decrement the badge
         setItems((s) => s.filter(n => n._id !== id));
         setUnreadCount((c) => Math.max(0, (c || 0) - 1));
+        // notify other components (bell icon, other tabs) to refresh counts
+        try { window.dispatchEvent(new Event('notifications:changed')); } catch (e) { /* ignore */ }
       }
     } catch (err) { console.error(err); }
   };
@@ -113,6 +115,8 @@ export default function NotificationsDropdown() {
 
       // clear local view
       setItems([]);
+      // notify other components
+      try { window.dispatchEvent(new Event('notifications:changed')); } catch (e) { /* ignore */ }
     } catch (err) {
       console.error('Failed to clear notifications', err);
     }
@@ -152,7 +156,7 @@ export default function NotificationsDropdown() {
                 minWidth: 18,
                 height: 18,
                 padding: '0 5px',
-                background: 'var(--teal)',
+                background: 'var(--teal, #567c8d)',
                 color: 'white',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -195,7 +199,7 @@ export default function NotificationsDropdown() {
                   <div style={{ fontSize: 13 }}>{n.message}</div>
                   <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{new Date(n.createdAt).toLocaleString()}</div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); markRead(n._id); setItems((s) => s.filter(x => x._id !== n._id)); }} style={{ background: 'var(--teal)', color: 'white', border: 'none', padding: '6px 8px', borderRadius: 6 }}>Mark</button>
+                  <button onClick={(e) => { e.stopPropagation(); markRead(n._id); setItems((s) => s.filter(x => x._id !== n._id)); }} style={{ background: 'var(--teal, #567c8d)', color: 'white', border: 'none', padding: '6px 8px', borderRadius: 6 }}>Mark</button>
               </div>
             ))}
           </div>

@@ -20,6 +20,7 @@ import EventDetails from "./pages/EventDetails";
 import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
 import GymSessionsForRegister from "./pages/GymSessionsForRegister";
+import VerifiedUsersPage from "./pages/VerifiedUsers";
 
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
@@ -55,7 +56,7 @@ import AttendeesReport from "./pages/AttendeesReport";
 import AdminAttendeesReport from "./pages/AdminAttendeesReport";
 import SalesReport from "./pages/SalesReport";
 import AdminSalesReport from "./pages/AdminSalesReport";
-
+import AdminAllEvents from "./pages/AdminAllEvents";
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
 import ReserveCourt from "./pages/ReserveCourt";
@@ -71,9 +72,11 @@ import MyApplicationsByStatus from "./pages/MyApplicationsByStatus";
 import PaymentPage from "./pages/PaymentPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 
-
 import CreatePoll from "./pages/CreatePollFromBooths";
 
+import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
+import PendingVerificationPage from "./pages/PendingVerification";
+import AdminVendor from "./pages/AdminVendor";
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -93,9 +96,16 @@ function App() {
         <Route path="/signup/vendor" element={<VendorSignup />} />
         {/* 🧑‍💼 Admin page */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/verified-users" element={<VerifiedUsersPage />} />
         {/* New Admin Users View Page */}
         <Route path="/admin/users" element={<UsersView />} />
         {/* Dashboards */}
+        <Route
+          path="/pending-verification"
+          element={<PendingVerificationPage />}
+        />
+        <Route path="/admin/events" element={<AdminAllEvents />} />
+        <Route path="/admin/vendor-requests" element={<AdminVendor />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
@@ -180,10 +190,8 @@ function App() {
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
         />
-        
         <Route path="/create-poll" element={<CreatePoll />} />
-
-
+        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

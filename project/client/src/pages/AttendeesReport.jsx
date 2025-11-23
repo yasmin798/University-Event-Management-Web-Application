@@ -4,7 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { reportAPI } from "../api/reportApi";
 import "../events.theme.css";
 import Sidebar from "../components/Sidebar";
-import { Search } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Calendar,
+  Users,
+  UserCheck,
+  RefreshCw,
+} from "lucide-react";
 
 export default function AttendeesReport() {
   const navigate = useNavigate();
@@ -57,6 +64,7 @@ export default function AttendeesReport() {
     fetchReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   // Auto-search when typing in the eventName field
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -74,85 +82,67 @@ export default function AttendeesReport() {
   }, [filters.eventName]);
 
   return (
-    <div
-      className="events-theme"
-      style={{ display: "flex", minHeight: "100vh" }}
-    >
+    <div className="flex h-screen bg-[#f8fafc]">
       {/* SIDEBAR */}
       <Sidebar filter={filter} setFilter={setFilter} />
 
       {/* MAIN CONTENT */}
-      {/* padding-top = 0 so the first card touches the top */}
-      <main
-        style={{
-          flex: 1,
-          padding: "0px", // REMOVE all padding
-          marginLeft: "260px",
-        }}
-      >
-        {/* TOP CARD: SEARCH + FILTERS (touching top) */}
-        <div
-          className="bg-white rounded-xl shadow-sm border border-gray-200"
-          style={{
-            marginTop: 0, // IMPORTANT: no gap at top
-            padding: "20px 24px",
-            width: "100%",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            {/* SEARCH BAR */}
-            <div style={{ position: "relative", flex: "1 1 260px" }}>
+      <main className="flex-1 ml-[260px] h-screen overflow-y-auto">
+        {/* HEADER */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[#2f4156]">
+                Attendees Report
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Track event attendance and registration data
+              </p>
+            </div>
+            <button
+              onClick={fetchReport}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* FILTER BAR */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Filter size={20} className="text-[#2f4156]" />
+            <h2 className="text-lg font-semibold text-[#2f4156]">Filters</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {/* SEARCH */}
+            <div className="relative">
               <Search
                 size={16}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "10px",
-                  transform: "translateY(-50%)",
-                  color: "var(--teal)",
-                }}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
               />
-
               <input
                 type="text"
-                placeholder="Search by event name"
+                placeholder="Search events..."
                 value={filters.eventName}
                 onChange={(e) =>
                   setFilters((s) => ({ ...s, eventName: e.target.value }))
                 }
-                style={{
-                  width: "100%",
-                  padding: "8px 12px 8px 34px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(47,65,86,0.2)",
-                  fontSize: "13px",
-                }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
               />
             </div>
 
-            {/* EVENT TYPE DROPDOWN */}
+            {/* EVENT TYPE */}
             <select
               value={filters.eventType}
               onChange={(e) =>
                 setFilters((s) => ({ ...s, eventType: e.target.value }))
               }
-              style={{
-                padding: "10px 14px",
-                borderRadius: "12px",
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                minWidth: "140px",
-                fontSize: "14px",
-              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
             >
-              <option value="">All Types</option>
+              <option value="">All Event Types</option>
               <option value="workshop">Workshop</option>
               <option value="bazaar">Bazaar</option>
               <option value="trip">Trip</option>
@@ -160,203 +150,184 @@ export default function AttendeesReport() {
               <option value="gymsession">Gym Session</option>
             </select>
 
-            {/* FROM DATE */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 14px",
-                border: "1px solid #d1d5db",
-                borderRadius: "12px",
-                background: "#fff",
-                minWidth: "160px",
-              }}
-            >
+            {/* START DATE */}
+            <div className="relative">
+              <Calendar
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
               <input
                 type="date"
                 value={filters.startDate}
                 onChange={(e) =>
                   setFilters((s) => ({ ...s, startDate: e.target.value }))
                 }
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: "14px",
-                  width: "100%",
-                }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
               />
             </div>
 
-            {/* TO DATE */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 14px",
-                border: "1px solid #d1d5db",
-                borderRadius: "12px",
-                background: "#fff",
-                minWidth: "160px",
-              }}
-            >
+            {/* END DATE */}
+            <div className="relative">
+              <Calendar
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
               <input
                 type="date"
                 value={filters.endDate}
                 onChange={(e) =>
                   setFilters((s) => ({ ...s, endDate: e.target.value }))
                 }
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: "14px",
-                  width: "100%",
-                }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
               />
             </div>
 
-            {/* FILTER BUTTON */}
-            <button
-              className="btn"
-              onClick={() => {
-                const params = {};
-                if (filters.eventType) params.eventType = filters.eventType;
-                if (filters.eventName) params.eventName = filters.eventName;
-                if (filters.startDate) params.startDate = filters.startDate;
-                if (filters.endDate) params.endDate = filters.endDate;
-                fetchReport(params);
-              }}
-            >
-              Filter
-            </button>
-
-            {/* RESET BUTTON */}
-            <button
-              className="btn btn-outline"
-              onClick={() => {
-                setFilters({
-                  eventType: "",
-                  eventName: "",
-                  startDate: "",
-                  endDate: "",
-                });
-                fetchReport();
-              }}
-            >
-              Reset
-            </button>
+            {/* ACTION BUTTONS */}
+            <div className="flex gap-2 col-span-2">
+              <button
+                onClick={() => {
+                  const params = {};
+                  if (filters.eventType) params.eventType = filters.eventType;
+                  if (filters.eventName) params.eventName = filters.eventName;
+                  if (filters.startDate) params.startDate = filters.startDate;
+                  if (filters.endDate) params.endDate = filters.endDate;
+                  fetchReport(params);
+                }}
+                className="flex-1 bg-[#2f4156] text-white px-4 py-2 rounded-lg hover:bg-[#1f2d3d] transition-colors font-medium"
+              >
+                Apply Filters
+              </button>
+              <button
+                onClick={() => {
+                  setFilters({
+                    eventType: "",
+                    eventName: "",
+                    startDate: "",
+                    endDate: "",
+                  });
+                  fetchReport();
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* SECOND CARD: OVERVIEW + TABLE */}
-        <div
-          className="bg-white rounded-xl shadow-sm border border-gray-200"
-          style={{
-            marginTop: "20px",
-            padding: "24px",
-            width: "100%",
-          }}
-        >
-          {loading && <p>Loading…</p>}
+        {/* CONTENT */}
+        <div className="p-8">
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2f4156]"></div>
+            </div>
+          )}
 
-          {!loading && error && (
-            <div style={{ marginTop: "8px" }}>
-              <pre style={{ color: "crimson", whiteSpace: "pre-wrap" }}>
-                {typeof error === "string"
-                  ? error
-                  : JSON.stringify(error, null, 2)}
-              </pre>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-700">{error}</p>
             </div>
           )}
 
           {!loading && !error && (
             <>
-              <div style={{ marginBottom: "12px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: 700 }}>Overview</h2>
-                <p style={{ marginTop: "4px", color: "#555" }}>
-                  Total registered attendees across all events.
-                </p>
+              {/* SUMMARY CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <Users size={24} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Attendees
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.totalAttendees || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <UserCheck size={24} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Events
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.breakdown?.length || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-purple-50 rounded-lg">
+                      <Users size={24} className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Average Attendance
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.breakdown?.length
+                          ? Math.round(
+                              data.totalAttendees / data.breakdown.length
+                            )
+                          : 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div
-                style={{
-                  marginBottom: "20px",
-                  fontSize: "18px",
-                  fontWeight: 700,
-                }}
-              >
-                Total Attendees:{" "}
-                <span style={{ color: "var(--teal)" }}>
-                  {data.totalAttendees}
-                </span>
-              </div>
+              {/* ATTENDEES TABLE */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Attendance Breakdown
+                  </h3>
+                </div>
 
-              <hr style={{ margin: "16px 0" }} />
-
-              <div style={{ marginTop: 12 }}>
-                {data.breakdown && data.breakdown.length ? (
+                {data.breakdown?.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table
-                      style={{
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        fontSize: "14px",
-                      }}
-                    >
-                      <thead>
-                        <tr
-                          style={{
-                            backgroundColor: "#f7f7fb",
-                            borderBottom: "1px solid #e5e7eb",
-                          }}
-                        >
-                          <th
-                            style={{
-                              textAlign: "left",
-                              padding: "10px",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Type
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Type
                           </th>
-                          <th
-                            style={{
-                              textAlign: "left",
-                              padding: "10px",
-                              fontWeight: 600,
-                            }}
-                          >
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Title
                           </th>
-                          <th
-                            style={{
-                              textAlign: "right",
-                              padding: "10px",
-                              fontWeight: 600,
-                            }}
-                          >
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Attendees
                           </th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {data.breakdown.map((b) => (
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {data.breakdown.map((b, index) => (
                           <tr
-                            key={b.id}
-                            style={{
-                              borderTop: "1px solid #eee",
-                              backgroundColor: "white",
-                            }}
+                            key={b.id || index}
+                            className="hover:bg-gray-50 transition-colors"
                           >
-                            <td style={{ padding: "10px" }}>
-                              {b.eventType || "—"}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                                {b.eventType || "—"}
+                              </span>
                             </td>
-                            <td style={{ padding: "10px" }}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               {b.title || "—"}
                             </td>
-                            <td style={{ padding: "10px", textAlign: "right" }}>
-                              {b.count ?? 0}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              <span className="font-semibold text-blue-600">
+                                {b.count ?? 0}
+                              </span>
                             </td>
                           </tr>
                         ))}
@@ -364,7 +335,15 @@ export default function AttendeesReport() {
                     </table>
                   </div>
                 ) : (
-                  <p style={{ color: "#666" }}>No registrations found yet.</p>
+                  <div className="text-center py-12">
+                    <Users size={48} className="mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-500 text-lg">
+                      No attendance data found
+                    </p>
+                    <p className="text-gray-400 mt-2">
+                      Try adjusting your filters
+                    </p>
+                  </div>
                 )}
               </div>
             </>

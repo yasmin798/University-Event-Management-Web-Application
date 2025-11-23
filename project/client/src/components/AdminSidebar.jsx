@@ -1,6 +1,7 @@
 // client/src/components/AdminSidebar.js
 import React from "react";
 import { LogOut } from "lucide-react";
+import NotificationsDropdown from "./NotificationsDropdown";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminSidebar() {
@@ -38,6 +39,11 @@ export default function AdminSidebar() {
       >
         Admin Panel
       </h2>
+
+      {/* Notifications bell for admin (shows unread count and dropdown) */}
+      <div style={{ marginBottom: 18 }}>
+        <NotificationsDropdown />
+      </div>
 
       <div style={{ flex: 1 }} />
 

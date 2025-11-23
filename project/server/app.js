@@ -88,10 +88,13 @@ app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
 
 app.use("/api/reservations", reservationRoutes);
-app.use("/api/payments", paymentRoutes);// Raw body needed for Stripe signature
-app.post("/webhook/stripe", express.raw({ type: "application/json" }), stripeWebhook);
+// Payment routes / Stripe webhook temporarily disabled because `paymentRoutes` / `stripeWebhook` are not defined in this branch.
+// If you add Stripe integration, require and mount it here, e.g.:
+// const paymentRoutes = require('./routes/paymentRoutes');
+// app.use('/api/payments', paymentRoutes);
+// app.post('/webhook/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
 
-app.use("/api/events", reviewsRouter);
+// Reviews router is not present in this version — keep events routes mounted above.
 
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";

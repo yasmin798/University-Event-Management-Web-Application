@@ -1,33 +1,76 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../events.theme.css";
-import { LogOut } from "lucide-react";
+import {
+  LogOut,
+  Search,
+  Filter,
+  Clock,
+  MapPin,
+  Ruler,
+  Mail,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+} from "lucide-react";
 import Sidebar from "../components/Sidebar";
+
 function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
   if (!open) return null;
+
+  const isAccept = title.toLowerCase().includes("accept");
+
   return (
     <div className="confirm-overlay" role="dialog" aria-modal="true">
       <div className="confirm">
         <h2>{title}</h2>
         <p>{body}</p>
         <div className="confirm-actions">
-          <button className="btn btn-outline" onClick={onCancel}>
+          <button
+            className="btn btn-outline"
+            onClick={onCancel}
+            style={{
+              backgroundColor: "#9CA3AF",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "8px 16px",
+              cursor: "pointer",
+              marginRight: "8px",
+            }}
+          >
             Cancel
           </button>
-          <button className="btn" onClick={onConfirm}>
-            OK
+          <button
+            className="btn"
+            onClick={onConfirm}
+            style={{
+              backgroundColor: isAccept ? "#10B981" : "#EF4444",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "8px 16px",
+              cursor: "pointer",
+              fontWeight: "500",
+            }}
+          >
+            {isAccept ? "Accept" : "Reject"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
 function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
   const isAccepted = vendorTarget.newStatus === "accepted";
-  const typeCapitalized = vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
+  const typeCapitalized =
+    vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
   let detailsString = "";
   if (vendorTarget.type === "booth") {
-    detailsString = `Booth ID: ${vendorTarget.details.boothId}\nLocation: ${vendorTarget.details.location}\nDuration: ${vendorTarget.details.duration || "N/A"}`;
+    detailsString = `Booth ID: ${vendorTarget.details.boothId}\nLocation: ${
+      vendorTarget.details.location
+    }\nDuration: ${vendorTarget.details.duration || "N/A"}`;
   }
   return (
     <div style={popupOverlayStyle}>
@@ -45,11 +88,15 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
           <b>To:</b> {vendorTarget.vendorEmail}
         </div>
         <div style={mailRowStyle}>
-          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been {isAccepted ? "Accepted" : "Rejected"}
+          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been{" "}
+          {isAccepted ? "Accepted" : "Rejected"}
         </div>
         <div style={mailBodyStyle}>
           <p>Dear {vendorTarget.vendorName},</p>
-          <p>Your {vendorTarget.type} vendor request has been {vendorTarget.newStatus} by the admin.</p>
+          <p>
+            Your {vendorTarget.type} vendor request has been{" "}
+            {vendorTarget.newStatus} by the admin.
+          </p>
           <p>Details:</p>
           <pre style={{ whiteSpace: "pre-wrap" }}>{detailsString}</pre>
           {isAccepted ? (
@@ -71,6 +118,7 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
     </div>
   );
 }
+
 export default function VendorRequestsBooth() {
   const { id: bazaarId } = useParams();
   const navigate = useNavigate();
@@ -79,6 +127,8 @@ export default function VendorRequestsBooth() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
   // modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState({
@@ -90,7 +140,17 @@ export default function VendorRequestsBooth() {
   const [showVendorMailPopup, setShowVendorMailPopup] = useState(false);
   const [vendorTarget, setVendorTarget] = useState(null);
   const [sending, setSending] = useState(false);
+
   const API_ORIGIN = "http://localhost:3001";
+
+  // Filter requests based on search
+  const filteredRequests = requests.filter(
+    (req) =>
+      req.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // ---------- FETCH REQUESTS ----------
   useEffect(() => {
     const fetchRequests = async () => {
@@ -166,99 +226,116 @@ export default function VendorRequestsBooth() {
     };
     fetchRequests();
   }, [bazaarId]);
+
   // ---------- PATCH STATUS ----------
   const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
-  const urls = [
-    `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
-    `${API_ORIGIN}/api/booth-applications/${appId}`,
-    `${API_ORIGIN}/api/booth-vendor-requests/${appId}`,
-  ];
+    const urls = [
+      `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
+      `${API_ORIGIN}/api/booth-applications/${appId}`,
+      `${API_ORIGIN}/api/booth-vendor-requests/${appId}`,
+    ];
 
-  const payload = { status: newStatus, ...extraPayload };
+    const payload = { status: newStatus, ...extraPayload };
 
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) return true;
-    } catch (e) {
-      console.log("Failed endpoint:", url);
-    }
-  }
-  throw new Error("All endpoints failed");
-};
-  const handleSendVendorMail = async () => {
-  if (!vendorTarget) return;
-  setSending(true);
-  setProcessingId(vendorTarget.requestId);
-
-  try {
-    // 1. Update status + add payment deadline (only on accept)
-    const updatePayload = {
-      status: vendorTarget.newStatus,
-    };
-
-    // ONLY ADD DEADLINE IF ACCEPTED
-    if (vendorTarget.newStatus === "accepted") {
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + 3); // 3 days from now
-      updatePayload.paymentDeadline = deadline.toISOString();
-    }
-
-    // Try multiple endpoints (same as before)
-    await updateStatusOnServer(vendorTarget.requestId, vendorTarget.newStatus, updatePayload);
-
-    // 2. Send email notification
-    const mailRes = await fetch(`${API_ORIGIN}/api/admin/send-vendor-notification`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: vendorTarget.vendorEmail,
-        requestId: vendorTarget.requestId,
-        status: vendorTarget.newStatus,
-        type: vendorTarget.type,
-        details: vendorTarget.details,
-      }),
-    });
-
-    const mailData = await mailRes.json();
-
-    if (mailRes.ok) {
-      setRequests((prev) =>
-        prev.map((r) =>
-          r._id === vendorTarget.requestId
-            ? { 
-                ...r, 
-                status: vendorTarget.newStatus,
-                paymentDeadline: vendorTarget.newStatus === "accepted" 
-                  ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) 
-                  : r.paymentDeadline 
-              }
-            : r
-        )
-      );
-      alert(`Vendor request ${vendorTarget.newStatus} and notification sent!`);
-      
-      // If accepted, show friendly reminder
-      if (vendorTarget.newStatus === "accepted") {
-        alert("Payment deadline set: 3 days from now");
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) return true;
+      } catch (e) {
+        console.log("Failed endpoint:", url);
       }
-    } else {
-      alert(`Request ${vendorTarget.newStatus}, but email failed: ${mailData.error || "Unknown"}`);
     }
-  } catch (err) {
-    console.error("Error:", err);
-    alert("Server error");
-  } finally {
-    setSending(false);
-    setShowVendorMailPopup(false);
-    setVendorTarget(null);
-    setProcessingId(null);
-  }
-};
+    throw new Error("All endpoints failed");
+  };
+
+  const handleSendVendorMail = async () => {
+    if (!vendorTarget) return;
+    setSending(true);
+    setProcessingId(vendorTarget.requestId);
+
+    try {
+      // 1. Update status + add payment deadline (only on accept)
+      const updatePayload = {
+        status: vendorTarget.newStatus,
+      };
+
+      // ONLY ADD DEADLINE IF ACCEPTED
+      if (vendorTarget.newStatus === "accepted") {
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 3); // 3 days from now
+        updatePayload.paymentDeadline = deadline.toISOString();
+      }
+
+      // Try multiple endpoints (same as before)
+      await updateStatusOnServer(
+        vendorTarget.requestId,
+        vendorTarget.newStatus,
+        updatePayload
+      );
+
+      // 2. Send email notification
+      const mailRes = await fetch(
+        `${API_ORIGIN}/api/admin/send-vendor-notification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: vendorTarget.vendorEmail,
+            requestId: vendorTarget.requestId,
+            status: vendorTarget.newStatus,
+            type: vendorTarget.type,
+            details: vendorTarget.details,
+          }),
+        }
+      );
+
+      const mailData = await mailRes.json();
+
+      if (mailRes.ok) {
+        setRequests((prev) =>
+          prev.map((r) =>
+            r._id === vendorTarget.requestId
+              ? {
+                  ...r,
+                  status: vendorTarget.newStatus,
+                  paymentDeadline:
+                    vendorTarget.newStatus === "accepted"
+                      ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+                      : r.paymentDeadline,
+                }
+              : r
+          )
+        );
+        alert(
+          `Vendor request ${vendorTarget.newStatus} and notification sent!`
+        );
+
+        // If accepted, show friendly reminder
+        if (vendorTarget.newStatus === "accepted") {
+          alert("Payment deadline set: 3 days from now");
+        }
+      } else {
+        alert(
+          `Request ${vendorTarget.newStatus}, but email failed: ${
+            mailData.error || "Unknown"
+          }`
+        );
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      alert("Server error");
+    } finally {
+      setSending(false);
+      setShowVendorMailPopup(false);
+      setVendorTarget(null);
+      setProcessingId(null);
+    }
+  };
+
   const openConfirm = (id, status) => {
     setConfirmData({
       requestId: id,
@@ -271,128 +348,232 @@ export default function VendorRequestsBooth() {
     });
     setConfirmOpen(true);
   };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      pending: { color: "bg-yellow-100 text-yellow-800", label: "Pending" },
+      accepted: { color: "bg-green-100 text-green-800", label: "Accepted" },
+      rejected: { color: "bg-red-100 text-red-800", label: "Rejected" },
+    };
+
+    const config = statusConfig[status] || statusConfig.pending;
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
   return (
-    <div
-      className="events-theme"
-      style={{ display: "flex", minHeight: "100vh" }}
-    >
-      {" "}
+    <div className="flex h-screen bg-[#f8fafc]">
       <Sidebar filter={filter} setFilter={setFilter} />
-      {/* ---------- MAIN CONTENT ---------- */}
-      <main style={{ flex: 1, padding: "20px", marginLeft: "260px" }}>
-        <h1>Booth Requests</h1>
-        {loading && <p>Loading…</p>}
-        {!loading && error && <p style={{ color: "red" }}>{error}</p>}
-        {!loading && !error && requests.length === 0 && (
-          <p>No booth requests.</p>
-        )}
-        {/* LONG VENDOR-STYLE CARDS */}
-        {!loading && !error && requests.length > 0 && (
-          <div className="space-y-6">
-            {requests.map((req) => (
-              <div
-                key={req._id}
-                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-              >
-                <div className="mb-3">
-                  <strong className="block text-gray-700">Application:</strong>
-                  <span className="text-gray-900">{req._id || "—"}</span>
-                </div>
-                <div className="mb-3">
-                  <strong className="block text-gray-700">Name:</strong>
-                  <span className="text-gray-900">{req.name || "—"}</span>
-                </div>
-                <div className="mb-3">
-                  <strong className="block text-gray-700">Email:</strong>
-                  <span className="text-gray-900">{req.email || "—"}</span>
-                </div>
-                <div className="mb-3">
-                  <strong className="block text-gray-700">Duration:</strong>
-                  <span className="text-gray-900">{req.duration || "—"}</span>
-                </div>
-                <div className="mb-3">
-                  <strong className="block text-gray-700">Location:</strong>
-                  <span className="text-gray-900">{req.location || "—"}</span>
-                </div>
-                <div className="mb-3">
-                  <strong className="block text-gray-700">Size:</strong>
-                  <span className="text-gray-900">{req.boothSize || "—"}</span>
-                </div>
-                <div className="mb-4">
-                  <strong className="block text-gray-700">Status:</strong>
-                  <span
-                    className="font-semibold"
-                    style={{
-                      color:
-                        req.status === "accepted"
-                          ? "green"
-                          : req.status === "rejected"
-                          ? "red"
-                          : "gray",
-                    }}
-                  >
-                    {req.status}
-                  </span>
-                </div>
-                {req.status === "pending" && (
-                  <div className="flex gap-3">
-                    <button
-                      className="btn"
-                      disabled={processingId === req._id}
-                      onClick={() => openConfirm(req._id, "accepted")}
-                    >
-                      {processingId === req._id ? "Processing…" : "Accept"}
-                    </button>
-                    <button
-                      className="btn btn-outline"
-                      disabled={processingId === req._id}
-                      onClick={() => openConfirm(req._id, "rejected")}
-                    >
-                      {processingId === req._id ? "Processing…" : "Reject"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+
+      {/* MAIN CONTENT */}
+      <main className="flex-1 ml-[260px] h-screen overflow-y-auto">
+        {/* HEADER */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[#2f4156]">
+                Booth Vendor Requests
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Manage and review booth applications
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </button>
           </div>
-        )}
-        <ConfirmModal
-          open={confirmOpen}
-          title={confirmData.title}
-          body={confirmData.body}
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={() => {
-            setConfirmOpen(false);
-            const req = requests.find((r) => r._id === confirmData.requestId);
-            if (!req) return;
-            const details = {
-              boothId: req._id,
-              location: req.location,
-              duration: req.duration,
-            };
-            setVendorTarget({
-              requestId: confirmData.requestId,
-              type: "booth",
-              newStatus: confirmData.newStatus,
-              vendorName: req.name,
-              vendorEmail: req.email,
-              details,
-            });
-            setShowVendorMailPopup(true);
-          }}
-        />
-        {showVendorMailPopup && vendorTarget && (
-          <VendorMailPopup
-            onClose={() => setShowVendorMailPopup(false)}
-            onSend={handleSendVendorMail}
-            sending={sending}
-            vendorTarget={vendorTarget}
+        </div>
+
+        {/* FILTER BAR */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Filter size={20} className="text-[#2f4156]" />
+            <h2 className="text-lg font-semibold text-[#2f4156]">Filters</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* SEARCH */}
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                placeholder="Search vendors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* CONTENT */}
+        <div className="p-8">
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2f4156]"></div>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && filteredRequests.length === 0 && (
+            <div className="text-center py-12">
+              <Mail size={48} className="mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-500 text-lg">No booth requests found</p>
+              <p className="text-gray-400 mt-2">
+                {searchQuery
+                  ? "Try adjusting your search"
+                  : "No vendors have applied for booths yet"}
+              </p>
+            </div>
+          )}
+
+          {/* VENDOR CARDS GRID */}
+          {!loading && !error && filteredRequests.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredRequests.map((req) => (
+                <div
+                  key={req._id}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                >
+                  {/* Header with Status */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        {req.name || "Unnamed Vendor"}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1 truncate">
+                        {req.email}
+                      </p>
+                    </div>
+                    {getStatusBadge(req.status)}
+                  </div>
+
+                  {/* Application Details */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center gap-3 text-sm">
+                      <MapPin size={16} className="text-gray-400" />
+                      <span className="text-gray-700">
+                        <strong>Location:</strong>{" "}
+                        {req.location || "Not specified"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-sm">
+                      <Clock size={16} className="text-gray-400" />
+                      <span className="text-gray-700">
+                        <strong>Duration:</strong>{" "}
+                        {req.duration || "Not specified"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-sm">
+                      <Ruler size={16} className="text-gray-400" />
+                      <span className="text-gray-700">
+                        <strong>Size:</strong>{" "}
+                        {req.boothSize || "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Application ID */}
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Application ID</p>
+                    <p className="text-sm font-mono text-gray-700 truncate">
+                      {req._id || "—"}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  {req.status === "pending" && (
+                    <div className="flex gap-2 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => openConfirm(req._id, "accepted")}
+                        disabled={processingId === req._id}
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        {processingId === req._id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <CheckCircle size={16} />
+                        )}
+                        {processingId === req._id ? "Processing..." : "Accept"}
+                      </button>
+                      <button
+                        onClick={() => openConfirm(req._id, "rejected")}
+                        disabled={processingId === req._id}
+                        className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {processingId === req._id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <XCircle size={16} />
+                        )}
+                        {processingId === req._id ? "Processing..." : "Reject"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <ConfirmModal
+            open={confirmOpen}
+            title={confirmData.title}
+            body={confirmData.body}
+            onCancel={() => setConfirmOpen(false)}
+            onConfirm={() => {
+              setConfirmOpen(false);
+              const req = requests.find((r) => r._id === confirmData.requestId);
+              if (!req) return;
+              const details = {
+                boothId: req._id,
+                location: req.location,
+                duration: req.duration,
+              };
+              setVendorTarget({
+                requestId: confirmData.requestId,
+                type: "booth",
+                newStatus: confirmData.newStatus,
+                vendorName: req.name,
+                vendorEmail: req.email,
+                details,
+              });
+              setShowVendorMailPopup(true);
+            }}
           />
-        )}
+
+          {showVendorMailPopup && vendorTarget && (
+            <VendorMailPopup
+              onClose={() => setShowVendorMailPopup(false)}
+              onSend={handleSendVendorMail}
+              sending={sending}
+              vendorTarget={vendorTarget}
+            />
+          )}
+        </div>
       </main>
     </div>
   );
 }
+
 /* ===== Styles ===== */
 const popupOverlayStyle = {
   position: "fixed",

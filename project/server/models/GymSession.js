@@ -1,4 +1,3 @@
-// server/models/GymSession.js
 const mongoose = require("mongoose");
 
 const gymSessionSchema = new mongoose.Schema(
@@ -12,11 +11,20 @@ const gymSessionSchema = new mongoose.Schema(
       required: true,
     },
     maxParticipants: { type: Number, required: true },
+    
+    // ← NEW: Role restriction
+    allowedRoles: {
+      type: [String],
+      enum: ["student", "professor", "ta", "staff"],
+      default: [],
+    },
+
     registeredUsers: [
       {
-        
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         email: { type: String, required: true },
-      }
+        registeredAt: { type: Date, default: Date.now },
+      },
     ],
   },
   { timestamps: true }

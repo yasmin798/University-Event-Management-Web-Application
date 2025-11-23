@@ -378,6 +378,24 @@ const ProfessorDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const markNotification = async (notifId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`/api/notifications/${notifId}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      // update local state: mark as read
+      setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n)));
+      setUnreadCount((c) => Math.max(0, (c || 0) - 1));
+      try { window.dispatchEvent(new Event('notifications:changed')); } catch (e) { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to mark notification read', err);
+    }
+  };
+
   // 🔹 Fetch notifications from backend
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -787,12 +805,19 @@ const ProfessorDashboard = () => {
                               notif.unread ? "bg-[#f5efeb]" : ""
                             }`}
                           >
-                            <p className="text-sm text-[#2f4156] mb-1">
-                              {notif.message}
-                            </p>
-                            <p className="text-xs text-[#567c8d]">
-                              {notif.time}
-                            </p>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-sm text-[#2f4156] mb-1">{notif.message}</p>
+                                <p className="text-xs text-[#567c8d]">{notif.time}</p>
+                              </div>
+                              <div>
+                                {notif.unread && (
+                                  <button onClick={() => markNotification(notif.id)} style={{ background: 'var(--teal, #567c8d)', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none' }}>
+                                    Mark
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         ))
                       )}
