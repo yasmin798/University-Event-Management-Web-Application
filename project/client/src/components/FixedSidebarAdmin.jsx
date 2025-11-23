@@ -38,7 +38,11 @@ export default function FixedSidebarAdmin() {
     >
       {/* Logo / title */}
       <div className="px-6 py-5 border-b border-white/10">
-        <h1 className="text-xl font-bold tracking-wide">Admin</h1>
+        <div className="flex items-center gap-3">
+          {/* Add your logo here */}
+          <img src="/path-to-your-logo.png" alt="Logo" className="w-8 h-8" />
+          <h1 className="text-xl font-bold tracking-wide">Admin</h1>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -53,23 +57,38 @@ export default function FixedSidebarAdmin() {
         </button>
 
         <button
-          onClick={() => navigate("/admin/users")}
+          onClick={() => navigate("/admin/verified-users")}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-            ${isActive("/admin/users") ? "bg-white/15" : "hover:bg-white/5"}`}
+    ${isActive("/admin/verified-users") ? "bg-white/15" : "hover:bg-white/5"}`}
         >
-          <Users size={18} />
-          <span>Users</span>
+          <BadgeCheck size={18} />
+          <span>Verified Users</span>
+        </button>
+        <button
+          onClick={() => navigate("/pending-verification")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+    ${isActive("/pending-verification") ? "bg-white/15" : "hover:bg-white/5"}`}
+        >
+          <BadgeCheck size={18} />
+          <span>Pending Verifications</span>
+        </button>
+        <button
+          onClick={() => navigate("/admin/vendor-requests")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+    ${isActive("/admin/vendor-requests") ? "bg-white/15" : "hover:bg-white/5"}`}
+        >
+          <BadgeCheck size={18} />
+          <span>Vendor Requests Bazaar</span>
         </button>
 
         <button
           onClick={() => navigate("/admin/events")}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-            ${isActive("/admin/events") ? "bg-white/15" : "hover:bg-white/5"}`}
+    ${isActive("/admin/events") ? "bg-white/15" : "hover:bg-white/5"}`}
         >
-          <CalendarDays size={18} />
-          <span>Events</span>
+          <BadgeCheck size={18} />
+          <span>All Events</span>
         </button>
-
         <button
           onClick={() => navigate("/admin/attendees-report")}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
@@ -104,23 +123,17 @@ export default function FixedSidebarAdmin() {
           <Store size={18} />
           <span>Vendor Requests</span>
         </button>
-        <button
-          onClick={() => navigate("/admin/verified-users")}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-    ${isActive("/admin/verified-users") ? "bg-white/15" : "hover:bg-white/5"}`}
-        >
-          <BadgeCheck size={18} />
-          <span>Verified Users</span>
-        </button>
       </nav>
 
       {/* Logout */}
-      <div className="px-3 pb-4 border-t border-white/10">
+      <div className="px-3 pb-8 pt-4 border-t border-white/10 mt-auto">
+        {" "}
+        {/* Added pb-8 and pt-4 for more padding */}
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-white/10 hover:bg-white/20"
         >
-          <LogOut size={18} />
+          <LogOut size={30} />
           <span>Logout</span>
         </button>
       </div>

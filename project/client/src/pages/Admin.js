@@ -3,6 +3,102 @@ import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
 
+/* -------------------------------------------------------------------------- */
+/* DONUT CHART (CSS) */
+/* -------------------------------------------------------------------------- */
+function DonutChart({ data, title }) {
+  if (!data || data.length === 0 || data.every((d) => d.value === 0)) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
+        No data available
+      </div>
+    );
+  }
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  let cumulativePercent = 0;
+  const COLORS = ["#8B5CF6", "#10B981", "#EF4444", "#3B82F6", "#F59E0B"];
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-56 h-56">
+        <svg
+          viewBox="0 0 200 200"
+          className="w-full h-full transform -rotate-90"
+        >
+          {/* Background ring */}
+          <circle
+            cx="100"
+            cy="100"
+            r="90"
+            fill="none"
+            stroke="#f3f4f6"
+            strokeWidth="18"
+          />
+          {/* Colored segments */}
+          {data.map((item, i) => {
+            const percent = (item.value / total) * 100;
+            const dashArray = (percent * 2.827).toFixed(3);
+            const dashOffset = (cumulativePercent * 2.827).toFixed(3);
+            cumulativePercent += percent;
+
+            return (
+              <circle
+                key={i}
+                cx="100"
+                cy="100"
+                r="90"
+                fill="none"
+                stroke={COLORS[i % COLORS.length]}
+                strokeWidth="18"
+                strokeDasharray={`${dashArray} 283`}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="butt" // CHANGE FROM "round" TO "butt"
+                className="transition-all duration-1000 ease-out"
+              />
+            );
+          })}
+        </svg>
+        {/* Center total */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="text-4xl font-bold text-[#2f4156]">{total}</div>
+          <div className="text-sm text-gray-600 mt-1">{title}</div>
+        </div>
+      </div>
+      {/* Legend */}
+      <div className="mt-6 space-y-2 w-full">
+        {data.map((item, i) => (
+          <div key={i} className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: COLORS[i % COLORS.length] }}
+              />
+              <span className="text-gray-700">{item.name}</span>
+            </div>
+            <span className="font-semibold text-[#2f4156]">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* CARD COMPONENT */
+/* -------------------------------------------------------------------------- */
+function DashboardCard({ title, children }) {
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 transition-transform duration-300 hover:scale-[1.03] hover:shadow-2xl hover:-translate-y-1"
+      style={{
+        animation: "fadeInUp 0.6s ease both",
+      }}
+    >
+      <h3 className="text-xl font-bold text-[#2f4156] mb-6">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 export default function Admin() {
   // Sidebar is provided by FixedSidebarAdmin (shared design with Events office)
 
@@ -69,6 +165,64 @@ export default function Admin() {
   }, [dateFilter]);
 
   const API_ORIGIN = "http://localhost:3001";
+
+  // ===== Chart Data =====
+  const userPie = [
+    { name: "Verified", value: verifiedUsers.length },
+    { name: "Pending", value: pendingUsers.length },
+  ];
+
+  const vendorPie = [
+    {
+      name: "Accepted",
+      value:
+        vendorBazaarRequests.filter((r) => r.status === "accepted").length +
+        vendorBoothRequests.filter((r) => r.status === "accepted").length,
+    },
+    {
+      name: "Pending",
+      value:
+        vendorBazaarRequests.filter((r) => r.status === "pending").length +
+        vendorBoothRequests.filter((r) => r.status === "pending").length,
+    },
+    {
+      name: "Rejected",
+      value:
+        vendorBazaarRequests.filter((r) => r.status === "rejected").length +
+        vendorBoothRequests.filter((r) => r.status === "rejected").length,
+    },
+  ];
+
+  const eventPie = [
+    {
+      name: "Workshops",
+      value: events.filter(
+        (e) => e.type === "WORKSHOP" || e.eventType === "workshop"
+      ).length,
+    },
+    {
+      name: "Trips",
+      value: events.filter((e) => e.type === "TRIP" || e.eventType === "trip")
+        .length,
+    },
+    {
+      name: "Conferences",
+      value: events.filter(
+        (e) => e.type === "CONFERENCE" || e.eventType === "conference"
+      ).length,
+    },
+    {
+      name: "Bazaars",
+      value: events.filter(
+        (e) => e.type === "BAZAAR" || e.eventType === "bazaar"
+      ).length,
+    },
+    {
+      name: "Booths",
+      value: events.filter((e) => e.type === "BOOTH" || e.eventType === "booth")
+        .length,
+    },
+  ];
 
   // ===== Helper functions =====
   const tryFetchJson = async (url) => {
@@ -622,12 +776,6 @@ export default function Admin() {
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => {}}
-                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-              >
-                <Menu size={24} className="text-[#2f4156]" />
-              </button>
               <h1 className="text-xl font-bold text-[#2f4156]">
                 Admin Dashboard
               </h1>
@@ -656,6 +804,28 @@ export default function Admin() {
         </header>
 
         <main className="p-4 md:p-8">
+          {/* Loading */}
+          {loading && (
+            <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+              <div className="text-3xl font-bold text-[#8B5CF6]">
+                Loading Dashboard...
+              </div>
+            </div>
+          )}
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16">
+            <DashboardCard title="Users Overview">
+              <DonutChart data={userPie} title="Total Users" />
+            </DashboardCard>
+            <DashboardCard title="Vendor Requests">
+              <DonutChart data={vendorPie} title="Total Requests" />
+            </DashboardCard>
+            <DashboardCard title="Events Distribution">
+              <DonutChart data={eventPie} title="Total Events" />
+            </DashboardCard>
+          </div>
+
           <div
             style={{
               padding: "30px 0",
@@ -682,89 +852,6 @@ export default function Admin() {
                 Errors fetching events: {eventFetchErrors.join("; ")}
               </p>
             )}
-
-            <SectionPending
-              pendingUsers={pendingUsers}
-              assignedRoles={assignedRoles}
-              setAssignedRoles={setAssignedRoles}
-              setMailTarget={setMailTarget}
-              generatePreviewLink={generatePreviewLink}
-              setShowMailPopup={setShowMailPopup}
-              handleDelete={handleDelete}
-              handleBlock={handleBlock}
-              handleSendMail={handleSendMail}
-            />
-
-            <SectionBazaarRequests
-              requests={vendorBazaarRequests}
-              processingId={processingId}
-              handleVendorRequestStatus={handleVendorRequestStatus}
-            />
-
-            <SectionBoothRequests
-              requests={vendorBoothRequests}
-              processingId={processingId}
-              handleVendorRequestStatus={handleVendorRequestStatus}
-            />
-
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-              <input
-                type="text"
-                placeholder="Search by title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/5"
-              />
-              <input
-                type="text"
-                placeholder="Filter by professor..."
-                value={professorFilter}
-                onChange={(e) => setProfessorFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/5"
-              />
-              <input
-                type="text"
-                placeholder="Filter by location..."
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/5"
-              />
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/6"
-              />
-              <select
-                value={eventFilter}
-                onChange={(e) => setEventFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md w-full md:w-1/6"
-              >
-                <option value="">All Types</option>
-                <option value="trip">Trip</option>
-                <option value="conference">Conference</option>
-                <option value="bazaar">Bazaar</option>
-                <option value="workshop">Workshop</option>
-                <option value="booth">Booth</option>
-              </select>
-              <button
-                onClick={() =>
-                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-                }
-                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
-              >
-                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
-              </button>
-            </div>
-
-            <SectionEvents
-              events={events}
-              searchQuery={debouncedSearchQuery}
-              eventFilter={debouncedEventFilter}
-              eventFetchErrors={eventFetchErrors}
-              processingId={processingId}
-              handleDeleteEvent={handleDeleteEvent}
-            />
 
             {showMailPopup && mailTarget && (
               <MailPopup

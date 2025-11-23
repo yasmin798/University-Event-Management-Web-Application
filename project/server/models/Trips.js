@@ -42,9 +42,9 @@ const TripSchema = new mongoose.Schema(
     // ADD THIS: Reviews from attendees
     reviews: [reviewSchema],
   },
-  { 
-    timestamps: true, 
-    collection: "trips" 
+  {
+    timestamps: true,
+    collection: "trips",
   }
 );
 

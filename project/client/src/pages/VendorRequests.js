@@ -28,10 +28,17 @@ function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
 
 function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
   const isAccepted = vendorTarget.newStatus === "accepted";
-  const typeCapitalized = vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
+  const typeCapitalized =
+    vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
   let detailsString = "";
   if (vendorTarget.type === "bazaar") {
-    detailsString = `Bazaar Title: ${vendorTarget.details.bazaarTitle || "N/A"}\nLocation: ${vendorTarget.details.location || "N/A"}\nStart: ${vendorTarget.details.start || "N/A"}\nEnd: ${vendorTarget.details.end || "N/A"}\nBooth Size: ${vendorTarget.details.boothSize || "N/A"}`;
+    detailsString = `Bazaar Title: ${
+      vendorTarget.details.bazaarTitle || "N/A"
+    }\nLocation: ${vendorTarget.details.location || "N/A"}\nStart: ${
+      vendorTarget.details.start || "N/A"
+    }\nEnd: ${vendorTarget.details.end || "N/A"}\nBooth Size: ${
+      vendorTarget.details.boothSize || "N/A"
+    }`;
   }
   return (
     <div style={popupOverlayStyle}>
@@ -49,11 +56,15 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
           <b>To:</b> {vendorTarget.vendorEmail}
         </div>
         <div style={mailRowStyle}>
-          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been {isAccepted ? "Accepted" : "Rejected"}
+          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been{" "}
+          {isAccepted ? "Accepted" : "Rejected"}
         </div>
         <div style={mailBodyStyle}>
           <p>Dear {vendorTarget.vendorName},</p>
-          <p>Your {vendorTarget.type} vendor request has been {vendorTarget.newStatus} by the admin.</p>
+          <p>
+            Your {vendorTarget.type} vendor request has been{" "}
+            {vendorTarget.newStatus} by the admin.
+          </p>
           <p>Details:</p>
           <pre style={{ whiteSpace: "pre-wrap" }}>{detailsString}</pre>
           {isAccepted ? (
@@ -181,26 +192,42 @@ export default function VendorRequests() {
     setSending(true);
     setProcessingId(vendorTarget.requestId);
     try {
-      await updateStatusOnServer(vendorTarget.requestId, vendorTarget.newStatus);
-      const mailRes = await fetch(`${API_ORIGIN}/api/admin/send-vendor-notification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: vendorTarget.vendorEmail,
-          requestId: vendorTarget.requestId,
-          status: vendorTarget.newStatus,
-          type: vendorTarget.type,
-          details: vendorTarget.details,
-        }),
-      });
+      await updateStatusOnServer(
+        vendorTarget.requestId,
+        vendorTarget.newStatus
+      );
+      const mailRes = await fetch(
+        `${API_ORIGIN}/api/admin/send-vendor-notification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: vendorTarget.vendorEmail,
+            requestId: vendorTarget.requestId,
+            status: vendorTarget.newStatus,
+            type: vendorTarget.type,
+            details: vendorTarget.details,
+          }),
+        }
+      );
       const mailData = await mailRes.json();
       if (mailRes.ok) {
         setRequests((prev) =>
-          prev.map((r) => (r._id === vendorTarget.requestId ? { ...r, status: vendorTarget.newStatus } : r))
+          prev.map((r) =>
+            r._id === vendorTarget.requestId
+              ? { ...r, status: vendorTarget.newStatus }
+              : r
+          )
         );
-        alert(`✅ Vendor request ${vendorTarget.newStatus} and notification sent successfully!`);
+        alert(
+          `✅ Vendor request ${vendorTarget.newStatus} and notification sent successfully!`
+        );
       } else {
-        alert(`✅ Vendor request ${vendorTarget.newStatus}, but email failed: ${mailData.error || "Unknown error"}`);
+        alert(
+          `✅ Vendor request ${vendorTarget.newStatus}, but email failed: ${
+            mailData.error || "Unknown error"
+          }`
+        );
       }
     } catch (err) {
       console.error("Error handling vendor request:", err);
@@ -341,8 +368,9 @@ export default function VendorRequests() {
               requestId: confirmData.requestId,
               type: "bazaar",
               newStatus: confirmData.newStatus,
-              vendorName: req.vendorName || (req.attendees?.[0]?.name || "Vendor"),
-              vendorEmail: req.vendorEmail || (req.attendees?.[0]?.email || ""),
+              vendorName:
+                req.vendorName || req.attendees?.[0]?.name || "Vendor",
+              vendorEmail: req.vendorEmail || req.attendees?.[0]?.email || "",
               details,
             });
             setShowVendorMailPopup(true);

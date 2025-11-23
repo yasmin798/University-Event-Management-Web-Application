@@ -52,6 +52,21 @@ function isPastEvent(ev) {
   if (!endDate) return false;
   return new Date(endDate).getTime() < Date.now();
 }
+// shared style for "Create Event / Gym / Poll" buttons
+// shared style for "Create Event / Gym / Poll" buttons
+const topActionBtnStyle = {
+  background: "var(--teal)",
+  color: "white",
+  borderRadius: "10px",
+  padding: "10px 18px", // a bit taller & wider (optional)
+  fontWeight: 600,
+  border: "none",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  fontSize: "16px", // ⬅⬅ make font bigger
+  minWidth: "120px",
+  textAlign: "center",
+};
 
 export default function EventsHome() {
   const navigate = useNavigate();
@@ -59,8 +74,7 @@ export default function EventsHome() {
   const [conferences, setConferences] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [professorFilter, setProfessorFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
+
   const [dateFilter, setDateFilter] = useState("");
   const [filter, setFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -68,22 +82,14 @@ export default function EventsHome() {
 
   // Debounced filters
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
-  const [debouncedLocation, setDebouncedLocation] = useState(locationFilter);
+
   const [debouncedDate, setDebouncedDate] = useState(dateFilter);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(t);
   }, [searchTerm]);
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
-    return () => clearTimeout(t);
-  }, [professorFilter]);
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedLocation(locationFilter), 300);
-    return () => clearTimeout(t);
-  }, [locationFilter]);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
     return () => clearTimeout(t);
@@ -402,28 +408,20 @@ export default function EventsHome() {
       const professors = ev.professorsParticipating?.toLowerCase() || "";
       const location = ev.location?.toLowerCase() || "";
 
+      const term = debouncedSearch.toLowerCase();
+
       const matchSearch =
-        !debouncedSearch || title.includes(debouncedSearch.toLowerCase());
-      const matchProfessor =
-        !debouncedProfessor ||
-        professors.includes(debouncedProfessor.toLowerCase());
-      const matchLocation =
-        !debouncedLocation ||
-        location.includes(debouncedLocation.toLowerCase());
+        !term ||
+        title.includes(term) ||
+        professors.includes(term) ||
+        location.includes(term);
+
       const matchType = filter === "All" || ev.type === filter;
+      const matchDate =
+        !debouncedDate ||
+        (ev.startDateTime && ev.startDateTime.slice(0, 10) === debouncedDate);
 
-      let matchDate = true;
-      if (debouncedDate) {
-        const filterDate = new Date(debouncedDate);
-        const nextDay = new Date(filterDate);
-        nextDay.setDate(filterDate.getDate() + 1);
-        const eventDate = new Date(ev.startDateTime || ev.startDate || ev.date);
-        matchDate = eventDate >= filterDate && eventDate < nextDay;
-      }
-
-      return (
-        matchSearch && matchProfessor && matchLocation && matchType && matchDate
-      );
+      return matchSearch && matchType && matchDate;
     })
     .sort((a, b) => {
       const dateA = new Date(a.startDateTime || a.startDate || a.date);
@@ -491,7 +489,7 @@ export default function EventsHome() {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ position: "relative", width: "180px" }}>
+            <div style={{ position: "relative", width: "260px" }}>
               <Search
                 size={16}
                 style={{
@@ -504,7 +502,7 @@ export default function EventsHome() {
               />
               <input
                 type="text"
-                placeholder="Search by title"
+                placeholder="Search by title, professor, location"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -516,50 +514,26 @@ export default function EventsHome() {
                 }}
               />
             </div>
-            <input
-              type="text"
-              placeholder="Professor"
-              value={professorFilter}
-              onChange={(e) => setProfessorFilter(e.target.value)}
-              style={{
-                width: "130px",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid rgba(47,65,86,0.2)",
-                fontSize: "13px",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Location"
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              style={{
-                width: "130px",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid rgba(47,65,86,0.2)",
-                fontSize: "13px",
-              }}
-            />
+
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               style={{
-                width: "150px",
-                padding: "8px 12px",
+                width: "120px",
+                padding: "6px 10px",
                 borderRadius: "10px",
                 border: "1px solid rgba(47,65,86,0.2)",
                 fontSize: "13px",
               }}
             />
+
             <button
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
               style={{
-                padding: "8px 12px",
+                padding: "6px 10px",
                 borderRadius: "10px",
                 border: "1px solid rgba(47,65,86,0.2)",
                 background: "white",
@@ -568,59 +542,41 @@ export default function EventsHome() {
                 whiteSpace: "nowrap",
               }}
             >
-              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              Sort {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
 
           {/* RIGHT: action buttons */}
-          <div style={{ display: "flex", gap: "10px", alignItems: 'center' }}>
-            {/* Notifications dropdown placed to the LEFT of Create Event */}
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {/* Notifications dropdown */}
             <div>
               <React.Suspense fallback={null}>
                 <NotificationsDropdown />
               </React.Suspense>
             </div>
+
             <button
-              className="btn"
-              style={{
-                background: "var(--teal)",
-                color: "white",
-                borderRadius: "10px",
-                fontWeight: "700",
-                padding: "8px 14px",
-              }}
+              style={topActionBtnStyle}
               onClick={() => setChooseOpen(true)}
             >
               Create Event
             </button>
+
             <button
-              className="btn"
-              style={{
-                background: "var(--teal)",
-                color: "white",
-                borderRadius: "10px",
-                fontWeight: "700",
-                padding: "8px 14px",
-              }}
+              style={topActionBtnStyle}
               onClick={() => navigate("/gym-manager")}
             >
               Create Gym
             </button>
-            {/* NEW BUTTON — CREATE POLL */}
-  <button
-    className="btn"
-    style={{
-      background: "var(--teal)",   // Purple to stand out
-      color: "white",
-      borderRadius: "10px",
-      fontWeight: "700",
-      padding: "8px 14px",
-      boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
-    }}
-    onClick={() => navigate("/create-poll")}
-  >
-    Create Poll
-  </button>
+
+            <button
+              style={topActionBtnStyle}
+              onClick={() => navigate("/create-poll")}
+            >
+              Create Poll
+            </button>
+          </div>
+          <div>
             {chooseOpen && (
               <div
                 className="confirm-overlay"
@@ -1222,27 +1178,27 @@ export default function EventsHome() {
             </button>
 
             {/* ADD THIS BUTTON — SEE ALL REVIEWS */}
-<button
-  onClick={() => {
-    const reviewsUrl = `/event-reviews/${viewEvent._id}`;
-    window.open(reviewsUrl, "_blank");
-  }}
-  style={{
-    position: "absolute",
-    top: "10px",
-    right: "50px",
-    background: "#567c8d",
-    color: "white",
-    border: "none",
-    padding: "8px 16px",
-    borderRadius: "8px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    fontSize: "14px",
-  }}
->
-  Ratings & Reviews
-</button>
+            <button
+              onClick={() => {
+                const reviewsUrl = `/event-reviews/${viewEvent._id}`;
+                window.open(reviewsUrl, "_blank");
+              }}
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "50px",
+                background: "#567c8d",
+                color: "white",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                fontSize: "14px",
+              }}
+            >
+              Ratings & Reviews
+            </button>
 
             <h2 style={{ fontWeight: 800, marginBottom: "10px" }}>
               {viewEvent.title || viewEvent.name}

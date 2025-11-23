@@ -91,9 +91,6 @@ export default function VerifiedUsersPage() {
         {/* Header */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg">
-              <Menu size={24} className="text-[#2f4156]" />
-            </button>
             <h1 className="text-xl font-bold text-[#2f4156]">Verified Users</h1>
           </div>
         </header>
@@ -110,8 +107,6 @@ export default function VerifiedUsersPage() {
               {message}
             </p>
           )}
-
-          <h2 style={{ color: "#10B981", marginTop: 10 }}>Verified Users</h2>
 
           <table style={tableStyle}>
             <thead>
@@ -180,31 +175,23 @@ export default function VerifiedUsersPage() {
             </tbody>
           </table>
         </main>
-        <div className="flex justify-center items-center gap-2 mt-4">
+        <div className="flex justify-center items-center gap-4 mt-1">
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+            className="px-4 py-2 rounded bg-gray-200 disabled:opacity-50 pg-btn-arrow"
           >
             Prev
           </button>
 
-          {[...Array(totalPages)].map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goToPage(i + 1)}
-              className={`px-3 py-1 rounded ${
-                currentPage === i + 1 ? "bg-blue-600 text-white" : "bg-gray-200"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          <div className="pg-btn-current">
+            {currentPage} / {totalPages}
+          </div>
 
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+            className="px-4 py-2 rounded bg-gray-200 disabled:opacity-50 pg-btn-arrow"
           >
             Next
           </button>
