@@ -1,4 +1,4 @@
-// client/src/pages/GymSessionsForRegister.js (updated with frontend role check and better error handling)
+// client/src/pages/GymSessionsForRegister.js (corrected with role normalization, better debugging, and ensured enforcement)
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../events.theme.css";
@@ -9,12 +9,14 @@ export default function GymManager() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [sessions, setSessions] = useState([]);
-  const [userRole, setUserRole] = useState(""); // ← NEW: User's role
+  const [userRole, setUserRole] = useState("");
+  const [debugInfo, setDebugInfo] = useState(""); // Temporary for debugging
 
   const fetchSessions = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/gym");
       setSessions(res.data);
+      console.log("Fetched sessions:", res.data.map(s => ({ id: s._id, allowedRoles: s.allowedRoles })));
     } catch (err) {
       console.error("Error fetching sessions:", err);
     }
@@ -24,40 +26,42 @@ export default function GymManager() {
     fetchSessions();
   }, []);
 
-  // ← NEW: Get user's role from token
+  // Get user's role from token (normalize to lowercase)
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role || ""); // Assume role is in token payload
+        const role = (payload.role || "").toLowerCase();
+        setUserRole(role);
+        setDebugInfo(`Role loaded: ${role}`); // Debug
+        console.log("User role:", role);
       } catch (e) {
-        console.error("Error decoding token for role");
+        console.error("Error decoding token for role:", e);
+        setDebugInfo("Role load failed");
       }
+    } else {
+      setDebugInfo("No token found");
+      console.warn("No token in localStorage");
     }
   }, []);
 
-  // ------------------------
-  // 🔵 WEEK NAVIGATION (unchanged)
-  // ------------------------
+  // Week navigation
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
     const diff = today.getDate() - day;
-    return new Date(today.setDate(diff)); // Week start (Sunday)
+    return new Date(today.setDate(diff));
   });
 
-  function formatDate(d) {
-    return d.toISOString().split("T")[0];
-  }
+  const formatDate = (d) => d.toISOString().split("T")[0];
 
-  function addDays(date, days) {
+  const addDays = (date, days) => {
     const newDate = new Date(date);
     newDate.setDate(newDate.getDate() + days);
     return newDate;
-  }
+  };
 
-  // Build 7-day week
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     return {
@@ -67,76 +71,111 @@ export default function GymManager() {
     };
   });
 
-  // Unique time slots
   const timeSlots = Array.from(
-    new Set(sessions.map((s) => s.time.slice(0, 5)))
+    new Set(sessions.map((s) => s.time?.slice(0, 5) || ""))
   ).sort();
 
-  // Create timetable grid
   const timetable = {};
   days.forEach((d) => {
     timetable[d.label] = {};
     timeSlots.forEach((t) => (timetable[d.label][t] = null));
   });
 
-  // Insert sessions
   sessions.forEach((s) => {
-    const iso = s.date.split("T")[0];
-    const time = s.time.slice(0, 5);
+    const iso = formatDate(new Date(s.date));
+    const time = s.time?.slice(0, 5) || "";
     const dayObj = days.find((d) => d.iso === iso);
     if (dayObj) timetable[dayObj.label][time] = s;
   });
 
   const registerSession = async (sessionId) => {
+    console.log("Register attempt for session:", sessionId, "User role:", userRole);
+    // Get email
+    let email = null;
     try {
-      // Get email from localStorage
-      let email = null;
-      try {
-        const raw = localStorage.getItem("user") || localStorage.getItem("currentUser");
-        if (raw) {
-          const u = JSON.parse(raw);
-          if (u && u.email) {
-            email = u.email;
-          }
-        }
-      } catch (e) {
-        console.warn("Error reading email from localStorage");
+      const raw = localStorage.getItem("user") || localStorage.getItem("currentUser");
+      if (raw) {
+        const u = JSON.parse(raw);
+        email = u?.email;
+        console.log("Email from storage:", email);
       }
+    } catch (e) {
+      console.warn("Error reading email from localStorage:", e);
+    }
 
-      if (!email) {
-        alert("Could not find your email. Please log in again.");
-        return;
-      }
+    if (!email) {
+      alert("No email found. Please log in again.");
+      return;
+    }
 
-      // ← NEW: Frontend role check (for better UX; backend still enforces)
-      const session = sessions.find(s => s._id === sessionId);
-      const isOpenToAll = !session.allowedRoles || session.allowedRoles.length === 0;
-      if (!isOpenToAll && !session.allowedRoles.includes(userRole)) {
-        const allowed = session.allowedRoles.map(r => r === "ta" ? "TAs" : r + "s").join(", ");
-        alert(`This gym session is intended for ${allowed}!`);
-        return;
-      }
+    // Frontend role check (normalize roles to lowercase)
+    const session = sessions.find((s) => s._id === sessionId);
+    if (!session) {
+      alert("Session not found");
+      return;
+    }
+    const normalizedAllowedRoles = (session.allowedRoles || []).map(r => r.toLowerCase());
+    const isOpenToAll = normalizedAllowedRoles.length === 0;
+    console.log("Session allowedRoles (normalized):", normalizedAllowedRoles, "User role:", userRole);
+    if (!isOpenToAll && !normalizedAllowedRoles.includes(userRole)) {
+      const allowedDisplay = normalizedAllowedRoles.map(r => {
+        if (r === "ta") return "TAs";
+        return r.charAt(0).toUpperCase() + r.slice(1) + "s";
+      }).join(", ");
+      alert(`This gym session is intended for ${allowedDisplay}! Your role: ${userRole}`);
+      return;
+    }
 
-      // Send request to backend
-      await axios.post("http://localhost:3000/api/gym/register", { // ← Fixed port to match backend
+    // Backend call
+    try {
+      const res = await axios.post("http://localhost:3000/api/gym/register", {
         sessionId,
         email,
       });
-
-      alert("Registered successfully!");
-      fetchSessions(); // Refresh UI
+      alert(res.data.message || "Registered successfully!");
+      fetchSessions();
     } catch (err) {
-      console.error("Registration error:", err);
-      // ← NEW: Show backend message (e.g., role restriction)
-      alert(err.response?.data?.error || "Error registering");
+      console.error("Registration error:", err.response?.data || err);
+      alert(err.response?.data?.error || "Error registering. Check console.");
     }
   };
 
-  // ← UPDATED: Render logic with role-based button visibility
   const renderSessionCell = (session) => {
-    const isOpenToAll = !session.allowedRoles || session.allowedRoles.length === 0;
-    const canRegister = isOpenToAll || session.allowedRoles.includes(userRole);
+    const normalizedAllowedRoles = (session.allowedRoles || []).map(r => r.toLowerCase());
+    const isOpenToAll = normalizedAllowedRoles.length === 0;
+    const canRegister = isOpenToAll || normalizedAllowedRoles.includes(userRole);
     const spotsLeft = session.maxParticipants - (session.registeredUsers?.length || 0);
+
+    const restrictionText = isOpenToAll ? (
+      <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>Open to everyone</div>
+    ) : (
+      <div style={{ color: "#d32f2f", fontSize: "12px", fontWeight: "bold", marginTop: "4px" }}>
+        Only for: {normalizedAllowedRoles.map(r => r === "ta" ? "TAs" : r.charAt(0).toUpperCase() + r.slice(1) + "s").join(", ")}
+      </div>
+    );
+
+    const action = canRegister && spotsLeft > 0 ? (
+      <button
+        onClick={() => registerSession(session._id)}
+        style={{
+          marginTop: "8px",
+          padding: "6px 14px",
+          fontSize: "14px",
+          borderRadius: "10px",
+          background: "#4CAF50",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+          width: "100%",
+        }}
+      >
+        Register
+      </button>
+    ) : spotsLeft <= 0 ? (
+      <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>Full</div>
+    ) : (
+      <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>Not eligible (role: {userRole})</div>
+    );
 
     return (
       <div
@@ -149,57 +188,22 @@ export default function GymManager() {
         }}
       >
         {session.type.toUpperCase()} <br />
-        {session.duration} min<br />
-        Max: {session.maxParticipants}<br />
-        Spots: {spotsLeft > 0 ? spotsLeft : 0} / {session.maxParticipants}<br />
-        {/* Restriction display (unchanged) */}
-        {session.allowedRoles?.length > 0 ? (
-          <div style={{ color: "#d32f2f", fontSize: "12px", fontWeight: "bold", marginTop: "4px" }}>
-            Only for: {session.allowedRoles
-              .map(r => r === "ta" ? "TAs" : r + "s")
-              .join(", ")}
-          </div>
-        ) : (
-          <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>
-            Open to everyone
-          </div>
-        )}
-        {/* ← UPDATED: Button only if eligible and spots available */}
-        {canRegister && spotsLeft > 0 ? (
-          <button
-            onClick={() => registerSession(session._id)}
-            style={{
-              marginTop: "8px",
-              padding: "6px 14px",
-              fontSize: "14px",
-              borderRadius: "10px",
-              background: "#4CAF50",
-              color: "white",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Register
-          </button>
-        ) : spotsLeft === 0 ? (
-          <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>Full</div>
-        ) : (
-          <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>Not eligible</div>
-        )}
+        {session.duration} min <br />
+        Spots: {spotsLeft > 0 ? spotsLeft : 0} / {session.maxParticipants} <br />
+        {restrictionText}
+        {action}
       </div>
     );
   };
 
-  // Rest of the component (timetable rendering) – replace the session cell in the table:
   return (
     <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar filter={filter} setFilter={setFilter} />
-
-      {/* MAIN CONTENT */}
       <main style={{ flex: 1, marginLeft: "260px", padding: "10px 24px" }}>
         <h1 style={{ marginTop: 0, color: "var(--navy)" }}>Weekly Gym Timetable</h1>
+        {/* Debug info - remove after testing */}
+        <p style={{ fontSize: "12px", color: "#666" }}>{debugInfo}</p>
 
-        {/* Month Header */}
         <div
           style={{
             display: "flex",
@@ -226,7 +230,6 @@ export default function GymManager() {
           </button>
         </div>
 
-        {/* Timetable Table */}
         <div style={{ overflowX: "auto" }}>
           <table
             style={{
@@ -276,9 +279,7 @@ export default function GymManager() {
                           verticalAlign: "middle",
                         }}
                       >
-                        {session ? (
-                          renderSessionCell(session) // ← Use the new render function
-                        ) : (
+                        {session ? renderSessionCell(session) : (
                           <div
                             style={{
                               background: "#b6f4ff",
