@@ -89,7 +89,11 @@ const EventDetails = () => {
     const eventType = event.type?.toUpperCase(); // TRIP, WORKSHOP, BOOTH, BAZAAR, CONFERENCE
     const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
 
-    const hasEnded = new Date(event.endDateTime || event.startDateTime || event.startDate) < new Date();
+    const endDate = event.endDateTime || event.endDate || event.startDateTime || event.startDate;
+const now = new Date();
+
+// consider event ended if the end date is in the past or right now
+const hasEnded = endDate && new Date(endDate).getTime() <= now.getTime();
 
 if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
   setCanReview(!alreadyReviewed && hasEnded);
