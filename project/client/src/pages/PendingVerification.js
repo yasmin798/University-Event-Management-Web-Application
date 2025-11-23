@@ -8,6 +8,10 @@ export default function PendingVerificationPage() {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [assignedRoles, setAssignedRoles] = useState({});
   const [message, setMessage] = useState("");
+  const [showMailPopup, setShowMailPopup] = useState(false);
+  const [mailTarget, setMailTarget] = useState(null);
+  const [previewLink, setPreviewLink] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetchPending();
@@ -67,6 +71,51 @@ export default function PendingVerificationPage() {
       setMessage("❌ Server error");
     }
   };
+  const generatePreviewLink = (userId) => {
+    const token = Math.random().toString(36).substring(2, 15);
+    setPreviewLink(`${API_ORIGIN}/api/verify/${token}-for-${userId}`);
+  };
+
+  const handleSendMail = async () => {
+    if (!mailTarget) return;
+    setSending(true);
+
+    // VALIDATION
+    if (mailTarget.role !== "student" && !assignedRoles[mailTarget._id]) {
+      setMessage("❌ Please assign a role before sending email.");
+      setSending(false);
+      return;
+    }
+
+    try {
+      let assignedRole = assignedRoles[mailTarget._id];
+      if (mailTarget.role === "student") {
+        assignedRole = "student";
+      }
+
+      const res = await fetch(`${API_ORIGIN}/api/admin/send-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: mailTarget.email,
+          userId: mailTarget._id,
+          role: assignedRole,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`📧 ${data.message}`);
+        setShowMailPopup(false);
+      } else {
+        setMessage(`❌ ${data.error}`);
+      }
+    } catch (err) {
+      setMessage("❌ Could not send mail.");
+    }
+
+    setSending(false);
+  };
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
@@ -94,12 +143,14 @@ export default function PendingVerificationPage() {
 
           <table
             style={{
-              width: "100%",
+              width: "100%", // bigger width
+              maxWidth: "1400px", // allow a wider table
+              margin: "25px auto", // centered + more spacing
               borderCollapse: "collapse",
-              marginTop: 10,
               backgroundColor: "white",
-              borderRadius: 10,
+              borderRadius: 12,
               overflow: "hidden",
+              fontSize: 20, // slightly bigger font
             }}
           >
             <thead>
@@ -168,31 +219,74 @@ export default function PendingVerificationPage() {
                     </td>
 
                     <td style={td}>
-                      <button
-                        onClick={() => handleBlock(u._id, u.status)}
+                      <div
                         style={{
-                          background:
-                            u.status === "blocked" ? "#10B981" : "#EF4444",
-                          color: "white",
-                          borderRadius: 6,
-                          padding: "6px 10px",
-                          marginRight: 5,
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          gap: 8,
+                          flexWrap: "nowrap",
                         }}
                       >
-                        {u.status === "blocked" ? "Unblock" : "Block"}
-                      </button>
+                        {/* BLOCK / UNBLOCK */}
+                        <button
+                          onClick={() => handleBlock(u._id, u.status)}
+                          style={{
+                            background:
+                              u.status === "blocked" ? "#10B981" : "#EF4444",
+                            color: "white",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {u.status === "blocked" ? "Unblock" : "Block"}
+                        </button>
 
-                      <button
-                        onClick={() => handleDelete(u._id)}
-                        style={{
-                          background: "#EF4444",
-                          color: "white",
-                          borderRadius: 6,
-                          padding: "6px 10px",
-                        }}
-                      >
-                        Delete
-                      </button>
+                        {/* SEND MAIL */}
+                        <button
+                          onClick={() => {
+                            setMailTarget(u);
+                            generatePreviewLink(u._id);
+                            setShowMailPopup(true);
+                          }}
+                          style={{
+                            background: "#3B82F6",
+                            color: "white",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span>Send Mail</span>
+                        </button>
+
+                        {/* DELETE */}
+                        <button
+                          onClick={() => handleDelete(u._id)}
+                          style={{
+                            background: "#EF4444",
+                            color: "white",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -212,16 +306,90 @@ export default function PendingVerificationPage() {
               )}
             </tbody>
           </table>
+          {showMailPopup && mailTarget && (
+            <div
+              style={{
+                position: "fixed",
+                bottom: 0,
+                right: 20,
+                width: 400,
+                backgroundColor: "white",
+                borderRadius: "10px 10px 0 0",
+                boxShadow: "0 -4px 15px rgba(0,0,0,0.2)",
+                zIndex: 999,
+                padding: 15,
+              }}
+            >
+              <h3 style={{ margin: 0, fontWeight: 600 }}>Verify Account</h3>
+              <p style={{ marginTop: 5 }}>To: {mailTarget.email}</p>
+              <p>
+                <strong>Preview Link:</strong>
+                <br />
+                <a href={previewLink} target="_blank" rel="noreferrer">
+                  {previewLink}
+                </a>
+              </p>
+
+              <div
+                style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
+              >
+                <button
+                  onClick={handleSendMail}
+                  style={{
+                    background: "#10B981",
+                    color: "white",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                  }}
+                >
+                  {sending ? "Sending..." : "Send"}
+                </button>
+
+                <button
+                  onClick={() => setShowMailPopup(false)}
+                  style={{
+                    background: "#9CA3AF",
+                    color: "white",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
 }
 
-const th = { padding: 10, fontWeight: 600, textAlign: "center" };
+const th = {
+  padding: 10,
+  fontWeight: 600,
+  textAlign: "center",
+  fontSize: 14,
+};
+
 const td = {
   padding: 10,
   textAlign: "center",
   borderBottom: "1px solid #E5E7EB",
+  fontSize: 14,
 };
+
 const row = { background: "#fff" };
+const actionBtnBase = {
+  borderRadius: 6,
+  padding: "6px 10px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 4,
+  border: "none",
+  cursor: "pointer",
+  fontSize: 12,
+  minWidth: 90, // 👈 same width for Block / Send Mail / Delete
+  whiteSpace: "nowrap",
+};
