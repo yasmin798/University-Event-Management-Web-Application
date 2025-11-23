@@ -203,17 +203,18 @@ const StaffDashboard = () => {
 
   const closeModal = () => setSelectedEvent(null);
 
-  const filteredEvents = allEvents
-   
-    .filter((e) => {
-      const name = (e.title || e.name || e.workshopName || "").toLowerCase();
-      const profs = (e.professorsParticipating || "").toLowerCase();
-      const matchesSearch = name.includes(searchTerm.toLowerCase()) || profs.includes(searchTerm.toLowerCase());
-      const matchesProfessor = !professorFilter || profs.includes(professorFilter.toLowerCase());
-      const matchesLocation = !locationFilter || (e.location || "").toLowerCase().includes(locationFilter.toLowerCase());
-      const matchesType = eventTypeFilter === "All" || e.type === eventTypeFilter;
-      return matchesSearch && matchesType && matchesProfessor && matchesLocation;
-    });
+ const filteredEvents = allEvents
+  .filter((e) => e.status !== "archived") // ← hide archived events
+  .filter((e) => {
+    const name = (e.title || e.name || e.workshopName || "").toLowerCase();
+    const profs = (e.professorsParticipating || "").toLowerCase();
+    const matchesSearch = name.includes(searchTerm.toLowerCase()) || profs.includes(searchTerm.toLowerCase());
+    const matchesProfessor = !professorFilter || profs.includes(professorFilter.toLowerCase());
+    const matchesLocation = !locationFilter || (e.location || "").toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesType = eventTypeFilter === "All" || e.type === eventTypeFilter;
+    return matchesSearch && matchesType && matchesProfessor && matchesLocation;
+  });
+
 
   const formatEventDate = (date) => (!date ? "N/A" : new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }));
 

@@ -20,6 +20,59 @@ const { protect, adminOnly } = require("../middleware/auth");
 // Helper: normalize title
 const normTitle = (b = {}) => b.title || b.name || "";
 
+/* ==================== ARCHIVE ANY EVENT ==================== */
+router.patch("/:type/:id", protect, async (req, res) => {
+  try {
+    // Only events_office can archive
+    if (!req.user || req.user.role !== "events_office") {
+      return res.status(403).json({ error: "events_office access required" });
+    }
+
+    const { type, id } = req.params;
+    const { status } = req.body;
+
+    if (status !== "archived") {
+      return res.status(400).json({ error: "Status must be 'archived'" });
+    }
+
+    const validTypes = ["bazaars", "trips", "conferences", "workshops", "booths"];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: "Invalid event type" });
+    }
+
+    const modelMap = {
+      bazaars: Bazaar,
+      trips: Trip,
+      conferences: Conference,
+      workshops: Workshop,
+      booths: BoothApplication,
+    };
+    const Model = modelMap[type];
+
+    const updated = await Model.findByIdAndUpdate(
+      id,
+      { 
+        status: "archived",
+        archivedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    return res.json({ message: "Event archived successfully", event: updated });
+
+  } catch (err) {
+    console.error("Archive error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
 /* ------------------- BAZAARS ------------------- */
 router.get("/bazaars", async (req, res) => {
   try {

@@ -400,6 +400,45 @@ export default function EventsHome() {
     });
   };
 
+  // Generic Archive Button for any event type
+async function handleArchive(id, type) {
+  // Get user role from localStorage
+  const userRole = localStorage.getItem("role");
+
+  // Only allow EVENTS_OFFICE to archive
+  if (userRole !== "EVENTS_OFFICE") {
+    return alert("You do not have permission to archive this item.");
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/${type}/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: "archived" }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      return alert("Failed to archive: " + errorText);
+    }
+
+    const data = await res.json();
+    alert(data.message);
+
+    // Update UI immediately if needed
+    // e.g., refetch events or update local state
+  } catch (err) {
+    console.error(err);
+    alert("Failed to archive: Network error");
+  }
+}
+
+
+
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
   ---------------------------------------------------- */
@@ -777,274 +816,437 @@ export default function EventsHome() {
                       flexWrap: "wrap",
                     }}
                   >
-                    {/* BAZAAR */}
-                    {isBazaar && (
-                      <>
-                        {/* VIEW + EXPORT (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+                 {/* BAZAAR */}
+{isBazaar && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
 
-                        {editable && !archived ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/bazaars/${id}`)}
-                          >
-                            Edit
-                          </button>
-                        ) : (
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                        )}
+    {/* MANUAL ARCHIVE BUTTON — only for past events */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const typeMap = {
+              TRIP: "trips",
+              BAZAAR: "bazaars",
+              CONFERENCE: "conferences",
+              WORKSHOP: "workshops",
+              BOOTH: "booths",
+            };
 
-                        <button
-                          className="btn btn-danger"
-                          disabled={archived || ev.registrations?.length > 0}
-                          onClick={() => handleDelete(id, "bazaars")}
-                          title={
-                            ev.registrations?.length > 0
-                              ? "Cannot delete: participants registered"
-                              : archived
-                              ? "Cannot delete: event archived"
-                              : "Delete this bazaar"
-                          }
-                        >
-                          Delete
-                        </button>
+            const path = typeMap[ev.type.toUpperCase()];
+            if (!path) return alert("Unknown event type: " + ev.type);
 
-                        <button
-                          className="btn"
-                          onClick={() =>
-                            navigate(`/bazaars/${id}/vendor-requests`)
-                          }
-                        >
-                          Vendor Requests
-                        </button>
+            const token = localStorage.getItem("token"); // adjust if using context
+            const res = await fetch(`/api/${path}/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
 
-                        <button
-                          className="btn"
-                          style={{ background: "#c88585", color: "white" }}
-                          onClick={() => exportAttendees(id, "bazaars")}
-                          disabled={archived}
-                          title={archived ? "Archived event" : ""}
-                        >
-                          Export Excel
-                        </button>
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
 
-                    {/* TRIP */}
-                    {isTrip && (
-                      <>
-                        {/* VIEW + EXPORT (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+            // Update local state so UI reflects immediately
+            ev.status = "archived";
+            alert("Event archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
 
-                        {editable && !archived ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/trips/${id}`)}
-                          >
-                            Edit
-                          </button>
-                        ) : (
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                        )}
+    {editable && ev.status !== "archived" ? (
+      <button className="btn" onClick={() => navigate(`/bazaars/${ev._id}`)}>
+        Edit
+      </button>
+    ) : (
+      <button className="btn btn-disabled" disabled>
+        Edit
+      </button>
+    )}
 
-                        <button
-                          className="btn btn-danger"
-                          disabled={archived}
-                          onClick={() => handleDelete(id, "trips")}
-                          title={
-                            archived
-                              ? "Cannot delete: event archived"
-                              : "Delete this trip"
-                          }
-                        >
-                          Delete
-                        </button>
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived" || ev.registrations?.length > 0}
+      onClick={() => handleDelete(ev._id, "bazaars")}
+      title={
+        ev.registrations?.length > 0
+          ? "Cannot delete: participants registered"
+          : "Cannot delete archived event"
+      }
+    >
+      Delete
+    </button>
 
-                        <button
-                          className="btn"
-                          style={{ background: "#c88585", color: "white" }}
-                          onClick={() => exportAttendees(id, "trips")}
-                          disabled={archived}
-                          title={archived ? "Archived event" : ""}
-                        >
-                          Export Excel
-                        </button>
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+    <button
+      className="btn"
+      onClick={() => navigate(`/bazaars/${ev._id}/vendor-requests`)}
+    >
+      Vendor Requests
+    </button>
 
-                    {/* CONFERENCE */}
-                    {isConference && (
-                      <>
-                        {/* VIEW ONLY (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+    <button
+      className="btn"
+      style={{ background: "#c88585", color: "white" }}
+      onClick={() => exportAttendees(ev._id, "bazaars")}
+      disabled={ev.status === "archived"}
+    >
+      Export Excel
+    </button>
 
-                        {editable && !archived ? (
-                          <button
-                            className="btn"
-                            onClick={() => navigate(`/conferences/${id}`)}
-                          >
-                            Edit
-                          </button>
-                        ) : (
-                          <button className="btn btn-disabled" disabled>
-                            Edit
-                          </button>
-                        )}
+    {ev.status === "archived" && (
+      <div
+        className="chip"
+        style={{ background: "#666", color: "white", marginTop: "8px" }}
+      >
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
 
-                        <button
-                          className="btn btn-danger"
-                          disabled={archived}
-                          onClick={() => handleDelete(id, "conferences")}
-                          title={
-                            archived
-                              ? "Cannot delete: event archived"
-                              : "Delete this conference"
-                          }
-                        >
-                          Delete
-                        </button>
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
 
-                    {/* WORKSHOP */}
-                    {isWorkshop && (
-                      <>
-                        {/* VIEW ALWAYS (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
 
-                        {!archived &&
-                          (ev.status === "pending" ||
-                            ev.status === "edits_requested") && (
-                            <>
-                              <button
-                                className="btn btn-success"
-                                onClick={() => handleAccept(id)}
-                              >
-                                Accept & Publish
-                              </button>
-                              <button
-                                className="btn btn-danger"
-                                onClick={() => handleReject(id)}
-                              >
-                                Reject
-                              </button>
-                              <button
-                                className="btn btn-warning"
-                                onClick={() => handleRequestEdits(id)}
-                              >
-                                Request Edits
-                              </button>
-                            </>
-                          )}
+                   {/* TRIP */}
+{isTrip && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
 
-                        {ev.status === "published" && (
-                          <button
-                            className="btn"
-                            style={{ background: "#c88585", color: "white" }}
-                            onClick={() => exportAttendees(id, "workshops")}
-                          >
-                            Export Excel
-                          </button>
-                        )}
-                        {/* Optional ARCHIVED badge */}
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+    {/* ARCHIVE BUTTON — only shows if trip has passed and not yet archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const typeMap = {
+              TRIP: "trips",
+              BAZAAR: "bazaars",
+              CONFERENCE: "conferences",
+              WORKSHOP: "workshops",
+              BOOTH: "booths",
+            };
 
-                    {/* BOOTH */}
-                    {isBooth && (
-                      <>
-                        {/* VIEW + EXPORT (View first) */}
-                        <button
-                          className="btn btn-outline"
-                          onClick={() => setViewEvent(ev)}
-                        >
-                          View Details
-                        </button>
+            const path = typeMap[ev.type.toUpperCase()];
+            if (!path) return alert("Unknown event type: " + ev.type);
 
-                        {!archived && (
-                          <button
-                            className="btn btn-danger"
-                            onClick={() => handleDelete(id, "booths")}
-                          >
-                            Delete
-                          </button>
-                        )}
-                        <button
-                          className="btn"
-                          style={{ background: "#c88585", color: "white" }}
-                          onClick={() => exportAttendees(id, "booths")}
-                        >
-                          Export Excel
-                        </button>
-                        {archived && (
-                          <div
-                            className="chip"
-                            style={{ background: "#aaa", marginTop: "4px" }}
-                          >
-                            ARCHIVED
-                          </div>
-                        )}
-                      </>
-                    )}
+            const token = localStorage.getItem("token"); // adjust if using context
+            const res = await fetch(`/api/${path}/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            // Update local state so UI reflects immediately
+            ev.status = "archived";
+            alert("Trip archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Edit button */}
+    {editable && ev.status !== "archived" ? (
+      <button className="btn" onClick={() => navigate(`/trips/${ev._id}`)}>
+        Edit
+      </button>
+    ) : (
+      <button className="btn btn-disabled" disabled>
+        Edit
+      </button>
+    )}
+
+    {/* Delete button */}
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived"}
+      onClick={() => handleDelete(ev._id, "trips")}
+      title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this trip"}
+    >
+      Delete
+    </button>
+
+    {/* Export Excel */}
+    <button
+      className="btn"
+      style={{ background: "#c88585", color: "white" }}
+      onClick={() => exportAttendees(ev._id, "trips")}
+      disabled={ev.status === "archived"}
+    >
+      Export Excel
+    </button>
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
+
+                   {/* CONFERENCE */}
+{isConference && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
+
+    {/* ARCHIVE BUTTON — only appears if conference has ended and is not yet archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const typeMap = {
+              TRIP: "trips",
+              BAZAAR: "bazaars",
+              CONFERENCE: "conferences",
+              WORKSHOP: "workshops",
+              BOOTH: "booths",
+            };
+
+            const path = typeMap[ev.type.toUpperCase()];
+            if (!path) return alert("Unknown event type: " + ev.type);
+
+            const token = localStorage.getItem("token"); // adjust if using context
+            const res = await fetch(`/api/${path}/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            // Update local state so UI reflects immediately
+            ev.status = "archived";
+            alert("Conference archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Edit button */}
+    {editable && ev.status !== "archived" ? (
+      <button className="btn" onClick={() => navigate(`/conferences/${ev._id}`)}>
+        Edit
+      </button>
+    ) : (
+      <button className="btn btn-disabled" disabled>
+        Edit
+      </button>
+    )}
+
+    {/* Delete button */}
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived"}
+      onClick={() => handleDelete(ev._id, "conferences")}
+      title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this conference"}
+    >
+      Delete
+    </button>
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
+
+                   {/* WORKSHOP */}
+{isWorkshop && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
+
+    {/* ARCHIVE BUTTON — only shows if workshop has ended and is NOT archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/workshops/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            // Update status locally
+            ev.status = "archived";
+            alert("Workshop archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Accept/Reject/Request Edits — only if NOT archived */}
+    {ev.status !== "archived" &&
+      (ev.status === "pending" || ev.status === "edits_requested") && (
+        <>
+          <button className="btn btn-success" onClick={() => handleAccept(id)}>
+            Accept & Publish
+          </button>
+          <button className="btn btn-danger" onClick={() => handleReject(id)}>
+            Reject
+          </button>
+          <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
+            Request Edits
+          </button>
+        </>
+      )}
+
+    {/* Export Excel — only for published workshops and NOT archived */}
+    {ev.status === "published" && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#c88585", color: "white" }}
+        onClick={() => exportAttendees(id, "workshops")}
+      >
+        Export Excel
+      </button>
+    )}
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
+
+                   {/* BOOTH */}
+{isBooth && (
+  <>
+    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+      View Details
+    </button>
+
+    {/* ARCHIVE BUTTON — only shows if booth has ended and is NOT archived */}
+    {isPastEvent(ev) && ev.status !== "archived" && (
+      <button
+        className="btn"
+        style={{ background: "#8B4513", color: "white" }}
+        onClick={async () => {
+          try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/booths/${ev._id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: "archived" }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              return alert("Failed to archive: " + errorText);
+            }
+
+            ev.status = "archived"; // update UI immediately
+            alert("Booth archived successfully!");
+          } catch (err) {
+            console.error(err);
+            alert("Failed to archive: Network error");
+          }
+        }}
+      >
+        Archive
+      </button>
+    )}
+
+    {/* Delete — disabled when archived */}
+    <button
+      className="btn btn-danger"
+      disabled={ev.status === "archived"}
+      onClick={() => handleDelete(id, "booths")}
+    >
+      Delete
+    </button>
+
+    {/* Export Excel — disabled when archived */}
+    <button
+      className="btn"
+      style={{ background: "#c88585", color: "white" }}
+      onClick={() => exportAttendees(id, "booths")}
+      disabled={ev.status === "archived"}
+    >
+      Export Excel
+    </button>
+
+    {/* ARCHIVED badge */}
+    {ev.status === "archived" && (
+      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+        ARCHIVED
+      </div>
+    )}
+  </>
+)}
+
                   </div>
                 </article>
               );

@@ -237,7 +237,12 @@ const StudentDashboard = () => {
     });
   };
 
-  const filteredEvents = allEvents;
+  const filteredEvents = allEvents.filter((e) => {
+  // Only show archived events to events office
+  if (e.status === "archived" && userRole !== "events office") return false;
+  return true;
+});
+
 
   if (loading) {
     return (

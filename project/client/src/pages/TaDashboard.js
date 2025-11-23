@@ -207,7 +207,9 @@ const TaDashboard = () => {
 
           {/* Event Grid — unchanged */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {allEvents.map((e) => (
+             {allEvents
+    .filter(e => e.status !== "archived") // hide archived events
+    .map((e) => (
               <div key={e._id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 {/* ... your existing card ... */}
                 <button
