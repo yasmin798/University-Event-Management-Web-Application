@@ -47,6 +47,8 @@ import VendorsPage from "./pages/Vendorspage";
 import LoyaltyVendors from "./pages/LoyaltyVendors";
 import Notifications from "./pages/Notifications";
 
+
+import GUCLoyaltyForm from "./pages/GUCLoyaltyForm";
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
 import CreateWorkshopPage from "./pages/CreateWorkshopPage";
@@ -127,6 +129,8 @@ function App() {
           path="/admin/attendees-report"
           element={<AdminAttendeesReport />}
         />
+        <Route path="/guc-loyalty-apply" element={<GUCLoyaltyForm />} />
+
         <Route path="/admin/sales-report" element={<AdminSalesReport />} />
         <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}

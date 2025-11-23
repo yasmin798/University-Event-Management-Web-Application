@@ -16,6 +16,30 @@ export default function MyApplicationsByStatus() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 const [loadingPayment, setLoadingPayment] = useState(null);
+const calculatePrice = (app, type) => {
+  if (type === "bazaar") {
+    const size = app.boothSize || "";
+    const prices = {
+      "Small (2x2)": 300,
+      "Medium (3x3)": 600,
+      "Large (4x4)": 1000,
+      "Extra Large (5x5)": 1500,
+    };
+    return prices[size] || 500;
+  } else if (type === "booth") {
+    const location = app.platformSlot || app.location || "default";
+    const weeks = app.durationWeeks || 1;
+    const prices = {
+      "Main Gate": 500,
+      "Food Court": 400,
+      "Central Area": 350,
+      "Side Wing": 250,
+      "default": 300
+    };
+    return (prices[location] || 300) * weeks;
+  }
+  return 0;
+};
   // Detect logged-in user or use manual input
   useEffect(() => {
     try {
@@ -136,6 +160,7 @@ const handlePayment = (applicationId, type) => {
 
     {/* PAYMENT BUTTON LOGIC – CLEAN & BEAUTIFUL VERSION */}
     <div className="mt-5">
+      
       {app.paid ? (
         <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-5 py-3 rounded-lg font-semibold">
           <CheckCircle size={22} />
@@ -151,7 +176,11 @@ const handlePayment = (applicationId, type) => {
           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transform transition hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
           disabled={loadingPayment === app._id}
         >
+          <p className="text-lg font-bold text-emerald-600 mt-3">
+  Amount Due: {calculatePrice(app, "bazaar")} EGP
+</p>
           {loadingPayment === app._id ? "Processing..." : "Pay Now"}
+          
         </button>
       ) : null}
     </div>
@@ -204,6 +233,9 @@ const handlePayment = (applicationId, type) => {
           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transform transition hover:scale-105 disabled:opacity-60"
           disabled={loadingPayment === b._id}
         >
+          <p className="text-lg font-bold text-emerald-600 mt-3">
+  Amount Due: {calculatePrice(b, "booth")} EGP
+</p>
           {loadingPayment === b._id ? "Processing..." : "Pay Now"}
         </button>
       ) : null}
