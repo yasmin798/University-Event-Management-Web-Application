@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
+const nodemailer = require("nodemailer");
 const BazaarApplication = require("../models/BazaarApplication");
 const BoothApplication = require("../models/BoothApplication");
 
@@ -136,14 +136,17 @@ router.post("/confirm", async (req, res) => {
   }
 
   try {
+    // 1) Retrieve Stripe session to verify payment
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (!session || session.payment_status !== "paid") {
       return res.status(400).json({ error: "Payment not completed" });
     }
 
+    // 2) Pick which model to update
     const Model = type === "bazaar" ? BazaarApplication : BoothApplication;
 
+    // 3) Update the application as paid
     const updated = await Model.findByIdAndUpdate(
       appId,
       {
@@ -151,12 +154,63 @@ router.post("/confirm", async (req, res) => {
         paymentDate: new Date(),
       },
       { new: true }
-    );
+    ).populate("bazaar");
 
     if (!updated) {
       return res.status(404).json({ error: "Application not found" });
     }
 
+    /* --------------------------------------------
+       SEND EMAIL RECEIPT TO VENDOR
+    ---------------------------------------------*/
+    try {
+      // Extract vendor email
+     const vendorEmail = updated.attendees?.[0]?.email;
+      const amountEGP = calculatePrice(updated, type);
+
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: `"Eventity Payments" <${process.env.EMAIL_USER}>`,
+        to: vendorEmail,
+        subject: "Payment Receipt – Eventity",
+        html: `
+        <h2>Payment Confirmation</h2>
+        <p>Dear vendor,</p>
+        <p>Your payment has been successfully received.</p>
+
+        <h3>Payment Details</h3>
+        <p><strong>Application ID:</strong> ${updated._id}</p>
+        <p><strong>Type:</strong> ${type}</p>
+        <p><strong>Amount Paid:</strong> ${amountEGP} EGP</p>
+        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+
+        ${
+          type === "bazaar"
+            ? `<p><strong>Bazaar:</strong> ${updated.bazaar?.title}</p>`
+            : `<p><strong>Booth Location:</strong> ${updated.platformSlot ||
+                updated.location}</p>`
+        }
+
+        <br/>
+        <p>Thank you for using Eventity!</p>
+      `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log("Payment email receipt sent ✔️");
+    } catch (emailErr) {
+      console.error("Email send error:", emailErr);
+      // Do NOT return error — payment must still succeed
+    }
+
+    // Final response
     return res.json({ success: true });
 
   } catch (err) {
@@ -164,5 +218,4 @@ router.post("/confirm", async (req, res) => {
     res.status(500).json({ error: "Server error confirming payment" });
   }
 });
-
 module.exports = router;
