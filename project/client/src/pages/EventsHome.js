@@ -30,6 +30,7 @@ function formatDate(iso) {
 }
 
 function formatMoney(n) {
+
   if (n == null || n === "") return "—";
   const num = Number(n);
   if (Number.isNaN(num)) return String(n);
@@ -110,6 +111,82 @@ export default function EventsHome() {
     confirmLabel: "Delete",
     cancelLabel: "Cancel",
   });
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [docsList, setDocsList] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [viewerName, setViewerName] = useState("");
+
+  const getBackendOrigin = () => {
+    try {
+      const origin = window.location.origin;
+      const u = new URL(origin);
+      if (u.port === "3001") u.port = "3000";
+      return u.origin;
+    } catch (e) {
+      return window.location.origin;
+    }
+  };
+
+  const absoluteUrl = (url) => {
+    if (!url) return url;
+    if (String(url).startsWith("http")) return url;
+    if (String(url).startsWith("/")) return `${getBackendOrigin()}${url}`;
+    return url;
+  };
+
+  const downloadFile = async (url, suggestedName) => {
+    try {
+      const abs = absoluteUrl(url);
+      const token = localStorage.getItem("token");
+      console.log("Downloading file:", abs);
+      const res = await fetch(abs, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) {
+        setToast({ open: true, text: "Failed to download file" });
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = suggestedName || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download error:", err);
+      setToast({ open: true, text: "Error downloading file" });
+    }
+  };
+
+  const openViewer = (url, name) => {
+    try {
+      const abs = absoluteUrl(url);
+      console.log("Opening viewer for:", abs);
+      setDocsModalOpen(false);
+      setViewerUrl(abs);
+      setViewerName(name || "Document");
+      setViewerOpen(true);
+    } catch (err) {
+      console.error("openViewer error:", err);
+      setToast({ open: true, text: "Could not open viewer" });
+    }
+  };
+  const getRoleFromToken = () => {
+    try {
+      const t = localStorage.getItem("token");
+      if (!t) return null;
+      const parts = t.split(".");
+      if (parts.length < 2) return null;
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.role || null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const userRole = getRoleFromToken();
   const [editRequest, setEditRequest] = useState({
     open: false,
     workshopId: null,
@@ -556,6 +633,61 @@ export default function EventsHome() {
               </React.Suspense>
             </div>
 
+            { (userRole === 'events_office' || userRole === 'admin') && (
+            <button
+              style={{ ...topActionBtnStyle, background: "#567c8d" }}
+              onClick={async () => {
+                setDocsLoading(true);
+                setDocsList([]);
+                try {
+                  const token = localStorage.getItem("token");
+                  const [bRes, boRes] = await Promise.all([
+                    fetch(`/api/bazaar-applications`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    fetch(`/api/booth-applications`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                  ]);
+
+                  const bJson = await (bRes.ok ? bRes.json() : []);
+                  const boJson = await (boRes.ok ? boRes.json() : []);
+
+                  const gather = (arr) => {
+                    if (!arr || !Array.isArray(arr)) return [];
+                    return arr.flatMap((r) => {
+                      const attendees = Array.isArray(r.attendees) ? r.attendees : [];
+                      return attendees
+                        .filter((a) => a && a.idDocument)
+                        .map((a) => ({
+                          name: a.name || a.fullName || "Unnamed",
+                          email: a.email || a.emailAddress || "",
+                          url:
+                            String(a.idDocument).startsWith("/")
+                              ? `${window.location.origin}${a.idDocument}`
+                              : String(a.idDocument),
+                          source: r.vendorName || r._id || "vendor",
+                        }));
+                    });
+                  };
+
+                  const bazList = Array.isArray(bJson) ? gather(bJson) : gather(bJson.requests || []);
+                  const boothList = Array.isArray(boJson) ? gather(boJson) : gather(boJson.requests || []);
+
+                  setDocsList([...bazList, ...boothList]);
+                  setDocsModalOpen(true);
+                } catch (err) {
+                  console.error("Error fetching docs:", err);
+                  setToast({ open: true, text: "Failed to load documents" });
+                } finally {
+                  setDocsLoading(false);
+                }
+              }}
+            >
+              View Docs
+            </button>
+            )}
+
             <button
               style={topActionBtnStyle}
               onClick={() => setChooseOpen(true)}
@@ -578,65 +710,84 @@ export default function EventsHome() {
             </button>
           </div>
           <div>
-            {chooseOpen && (
+            {viewerOpen && (
               <div
-                className="confirm-overlay"
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
+                  position: 'fixed',
+                  inset: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.45)',
+                  zIndex: 9999,
                 }}
               >
-                <div
-                  style={{
-                    background: "white",
-                    padding: "20px",
-                    borderRadius: "12px",
-                    width: "320px",
-                    boxShadow: "var(--shadow)",
-                  }}
-                >
-                  <h3 style={{ marginBottom: "15px", textAlign: "center" }}>
-                    Select Event Type
-                  </h3>
-                  <select
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      marginBottom: "15px",
-                    }}
-                    value={chosenType}
-                    onChange={(e) => setChosenType(e.target.value)}
-                  >
-                    <option value="">-- choose --</option>
-                    <option value="bazaar">Bazaar</option>
-                    <option value="conference">Conference</option>
-                    <option value="trip">Trip</option>
-                  </select>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button
-                      className="btn btn-outline"
-                      style={{ flex: 1 }}
-                      onClick={() => setChooseOpen(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="btn"
-                      style={{ flex: 1 }}
-                      onClick={() => {
-                        if (!chosenType) return alert("Pick a type");
-                        if (chosenType === "bazaar")
-                          navigate("/bazaars/create");
-                        if (chosenType === "conference")
-                          navigate("/conferences/create");
-                        if (chosenType === "trip") navigate("/trips/create");
+                <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ background: '#3B82F6', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{viewerName}</h3>
+                      <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+                    </div>
+                    <button onClick={() => setViewerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer' }}>✕</button>
+                  </div>
+                <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                    <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+                  ) : (
+                    <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+                      <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                    </div>
+                  )}
+                </div>
+                  <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={() => setViewerOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {chooseOpen && (
+              <div className="confirm-overlay" role="dialog" aria-modal="true">
+                <div className="confirm">
+                  <h2>Choose Event Type</h2>
+                  <div style={{ marginTop: 12 }}>
+                    <select
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #ccc",
+                        marginBottom: "15px",
                       }}
+                      value={chosenType}
+                      onChange={(e) => setChosenType(e.target.value)}
                     >
-                      Continue
-                    </button>
+                      <option value="">-- choose --</option>
+                      <option value="bazaar">Bazaar</option>
+                      <option value="conference">Conference</option>
+                      <option value="trip">Trip</option>
+                    </select>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button
+                        className="btn btn-outline"
+                        style={{ flex: 1 }}
+                        onClick={() => setChooseOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="btn"
+                        style={{ flex: 1 }}
+                        onClick={() => {
+                          if (!chosenType) return alert("Pick a type");
+                          if (chosenType === "bazaar") navigate("/bazaars/create");
+                          if (chosenType === "conference") navigate("/conferences/create");
+                          if (chosenType === "trip") navigate("/trips/create");
+                        }}
+                      >
+                        Continue
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1409,6 +1560,83 @@ export default function EventsHome() {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Documents Modal (Events Office) ===== */}
+      {docsModalOpen && (
+        <div
+          className="confirm-overlay"
+          role="dialog"
+          aria-modal="true"
+          style={{ display: "flex", justifyContent: "center", alignItems: "center" }}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: 0,
+              width: "580px",
+              maxHeight: "90vh",
+              overflow: "hidden",
+              borderRadius: "12px",
+              position: "relative",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div style={{ background: '#3B82F6', color: 'white', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Uploaded Attendee Documents</h3>
+                <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Uploaded IDs</p>
+              </div>
+              <button onClick={() => setDocsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
+              {docsLoading ? (
+                <div style={{ padding: 16, textAlign: "center" }}>Loading...</div>
+              ) : docsList.length === 0 ? (
+                <div style={{ padding: 16, color: "#6B7280", textAlign: "center" }}>No uploaded documents found.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid #E5E7EB" }}>
+                      <th style={{ padding: 8 }}>Name</th>
+                      <th style={{ padding: 8 }}>Email</th>
+                      <th style={{ padding: 8 }}>Source</th>
+                      <th style={{ padding: 8 }}>Document</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {docsList.map((d, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                        <td style={{ padding: 8 }}>{d.name}</td>
+                        <td style={{ padding: 8 }}>{d.email}</td>
+                        <td style={{ padding: 8 }}>{d.source}</td>
+                        <td style={{ padding: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                          <button
+                            onClick={() => openViewer(d.url, d.name)}
+                            style={{ background: 'transparent', border: '1px solid #2563EB', color: '#2563EB', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => downloadFile(d.url, `${d.name || 'document'}`)}
+                            style={{ background: '#2563EB', border: 'none', color: 'white', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            Download
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setDocsModalOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+            </div>
           </div>
         </div>
       )}
