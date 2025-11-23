@@ -24,15 +24,15 @@ const TaDashboard = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [professorFilter, setProfessorFilter] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
   const [serverLoading, setServerLoading] = useState(true);
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
+  const [debouncedSearchLocation, setDebouncedSearchLocation] =
+    useState(searchLocation);
 
   // Reviews state
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -48,9 +48,9 @@ const TaDashboard = () => {
   }, [searchTerm]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    const t = setTimeout(() => setDebouncedSearchLocation(searchLocation), 300);
     return () => clearTimeout(t);
-  }, [professorFilter]);
+  }, [searchLocation]);
 
   // Get user ID
   useEffect(() => {
@@ -89,10 +89,14 @@ const TaDashboard = () => {
       setServerLoading(true);
       try {
         const params = new URLSearchParams();
-        const searchValue = [debouncedSearch, debouncedProfessor].filter(Boolean).join(" ");
+        const searchValue = [debouncedSearch, debouncedSearchLocation]
+          .filter(Boolean)
+          .join(" ");
         if (searchValue) params.append("search", searchValue);
-        if (locationFilter) params.append("location", locationFilter);
-        if (eventTypeFilter && eventTypeFilter !== "All") params.append("type", eventTypeFilter);
+        if (debouncedSearchLocation)
+          params.append("location", debouncedSearchLocation);
+        if (eventTypeFilter && eventTypeFilter !== "All")
+          params.append("type", eventTypeFilter);
         params.append("sort", "startDateTime");
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
@@ -111,7 +115,7 @@ const TaDashboard = () => {
       }
     };
     fetchEvents();
-  }, [debouncedSearch, eventTypeFilter, locationFilter, debouncedProfessor, sortOrder]);
+  }, [debouncedSearch, eventTypeFilter, debouncedSearchLocation, sortOrder]);
 
   // Fetch reviews when event is selected
   const loadReviews = async (eventId) => {
@@ -121,7 +125,7 @@ const TaDashboard = () => {
       if (res.ok) {
         const data = await res.json();
         setReviews(data || []);
-        const myReview = data.find(r => r.userId?.toString() === userId);
+        const myReview = data.find((r) => r.userId?.toString() === userId);
         if (myReview) {
           setMyRating(myReview.rating);
           setMyComment(myReview.comment || "");
@@ -139,14 +143,20 @@ const TaDashboard = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/events/${selectedEvent._id}/reviews`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ rating: myRating, comment: myComment.trim() || null }),
-      });
+      const res = await fetch(
+        `${API_BASE}/api/events/${selectedEvent._id}/reviews`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: myRating,
+            comment: myComment.trim() || null,
+          }),
+        }
+      );
 
       if (res.ok) {
         const updated = await res.json();
@@ -178,9 +188,14 @@ const TaDashboard = () => {
     ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1)
     : 0;
 
-  const hasPassed = selectedEvent && new Date(selectedEvent.endDateTime || selectedEvent.startDateTime) < new Date();
-  const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
-  const isBazaarOrBooth = selectedEvent && (selectedEvent.type === "BAZAAR" || selectedEvent.type === "BOOTH");
+  const hasPassed =
+    selectedEvent &&
+    new Date(selectedEvent.endDateTime || selectedEvent.startDateTime) <
+      new Date();
+  const alreadyReviewed = reviews.some((r) => r.userId?.toString() === userId);
+  const isBazaarOrBooth =
+    selectedEvent &&
+    (selectedEvent.type === "BAZAAR" || selectedEvent.type === "BOOTH");
   const canReview = userId && hasPassed && !alreadyReviewed && isBazaarOrBooth;
 
   if (serverLoading) {
@@ -207,19 +222,22 @@ const TaDashboard = () => {
 
           {/* Event Grid — unchanged */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-             {allEvents
-    .filter(e => e.status !== "archived") // hide archived events
-    .map((e) => (
-              <div key={e._id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                {/* ... your existing card ... */}
-                <button
-                  onClick={() => handleDetails(e)}
-                  className="w-full bg-[#567c8d] hover:bg-[#45687a] text-white py-3 font-medium"
+            {allEvents
+              .filter((e) => e.status !== "archived") // hide archived events
+              .map((e) => (
+                <div
+                  key={e._id}
+                  className="bg-white rounded-2xl shadow-sm overflow-hidden"
                 >
-                  View Details & Review
-                </button>
-              </div>
-            ))}
+                  {/* ... your existing card ... */}
+                  <button
+                    onClick={() => handleDetails(e)}
+                    className="w-full bg-[#567c8d] hover:bg-[#45687a] text-white py-3 font-medium"
+                  >
+                    View Details & Review
+                  </button>
+                </div>
+              ))}
           </div>
         </main>
 
@@ -246,10 +264,20 @@ const TaDashboard = () => {
 
                   {reviews.length > 0 && (
                     <div className="bg-[#f5efeb] p-6 rounded-xl mb-6 text-center">
-                      <div className="text-5xl font-bold text-[#567c8d]">{avgRating}</div>
+                      <div className="text-5xl font-bold text-[#567c8d]">
+                        {avgRating}
+                      </div>
                       <div className="flex justify-center gap-1 my-2">
-                        {[1, 2, 3, 4, 5].map(n => (
-                          <Star key={n} size={32} className={n <= avgRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star
+                            key={n}
+                            size={32}
+                            className={
+                              n <= avgRating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-300"
+                            }
+                          />
                         ))}
                       </div>
                       <p>Based on {reviews.length} reviews</p>
@@ -260,9 +288,16 @@ const TaDashboard = () => {
                     <div className="bg-[#f8f9fa] p-6 rounded-xl mb-8 border">
                       <h4 className="font-semibold mb-4">Leave Your Review</h4>
                       <div className="flex gap-2 mb-4">
-                        {[1, 2, 3, 4, 5].map(n => (
+                        {[1, 2, 3, 4, 5].map((n) => (
                           <button key={n} onClick={() => setMyRating(n)}>
-                            <Star size={40} className={n <= myRating ? "fill-yellow-500 text-yellow-500" : "text-gray-400 hover:text-yellow-500"} />
+                            <Star
+                              size={40}
+                              className={
+                                n <= myRating
+                                  ? "fill-yellow-500 text-yellow-500"
+                                  : "text-gray-400 hover:text-yellow-500"
+                              }
+                            />
                           </button>
                         ))}
                       </div>
@@ -284,22 +319,37 @@ const TaDashboard = () => {
 
                   <div className="space-y-4">
                     {reviews.map((r) => (
-                      <div key={r._id || r.createdAt} className="bg-gray-50 p-4 rounded-lg">
+                      <div
+                        key={r._id || r.createdAt}
+                        className="bg-gray-50 p-4 rounded-lg"
+                      >
                         <div className="flex items-center justify-between">
                           <div className="font-semibold">{r.userName}</div>
                           <div className="flex gap-1">
-                            {[1, 2, 3, 4, 5].map(n => (
-                              <Star key={n} size={18} className={n <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <Star
+                                key={n}
+                                size={18}
+                                className={
+                                  n <= r.rating
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-300"
+                                }
+                              />
                             ))}
                           </div>
                         </div>
-                        {r.comment && <p className="mt-2 text-gray-700">{r.comment}</p>}
+                        {r.comment && (
+                          <p className="mt-2 text-gray-700">{r.comment}</p>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-600">Event has not ended yet. Reviews available after it ends.</p>
+                <p className="text-gray-600">
+                  Event has not ended yet. Reviews available after it ends.
+                </p>
               )}
             </div>
           </div>

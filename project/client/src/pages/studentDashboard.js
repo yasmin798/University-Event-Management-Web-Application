@@ -39,8 +39,7 @@ const StudentDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [professorFilter, setProfessorFilter] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
 
   const [dateFilter, setDateFilter] = useState("");
 
@@ -58,7 +57,8 @@ const StudentDashboard = () => {
 
   // Debounced inputs to avoid refetching on every keystroke
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
+  const [debouncedSearchLocation, setDebouncedSearchLocation] =
+    useState(searchLocation);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -66,9 +66,9 @@ const StudentDashboard = () => {
   }, [searchTerm]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    const t = setTimeout(() => setDebouncedSearchLocation(searchLocation), 300);
     return () => clearTimeout(t);
-  }, [professorFilter]);
+  }, [searchLocation]);
 
   // Fetch favorites
 
@@ -131,11 +131,12 @@ const StudentDashboard = () => {
       try {
         const params = new URLSearchParams();
 
-        const searchValue = [debouncedSearch, debouncedProfessor]
+        const searchValue = [debouncedSearch, debouncedSearchLocation]
           .filter(Boolean)
           .join(" ");
         if (searchValue) params.append("search", searchValue);
-        if (locationFilter) params.append("location", locationFilter);
+        if (debouncedSearchLocation)
+          params.append("location", debouncedSearchLocation);
 
         if (eventTypeFilter !== "All") params.append("type", eventTypeFilter);
 
@@ -186,8 +187,7 @@ const StudentDashboard = () => {
     dateFilter,
     sortOrder,
     fetchFavorites,
-    debouncedProfessor,
-    locationFilter,
+    debouncedSearchLocation,
   ]);
 
   const handleRegisteredEvents = () => {
@@ -216,10 +216,9 @@ const StudentDashboard = () => {
   };
 
   const handlePollsVoting = () => {
-  navigate("/poll-voting");
-  closeSidebar();
-};
-
+    navigate("/poll-voting");
+    closeSidebar();
+  };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -244,11 +243,10 @@ const StudentDashboard = () => {
   };
 
   const filteredEvents = allEvents.filter((e) => {
-  // Only show archived events to events office
-  if (e.status === "archived" && userRole !== "events office") return false;
-  return true;
-});
-
+    // Only show archived events to events office
+    if (e.status === "archived" && userRole !== "events office") return false;
+    return true;
+  });
 
   if (loading) {
     return (
@@ -328,10 +326,10 @@ const StudentDashboard = () => {
           <button
             onClick={handlePollsVoting}
             className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
-            >
-          <Heart size={18} />
+          >
+            <Heart size={18} />
             Polls Voting
-            </button>
+          </button>
 
           <button
             onClick={handleLogout}
@@ -368,25 +366,6 @@ const StudentDashboard = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
-              />
-            </div>
-            <div className="hidden md:block md:w-48">
-              <input
-                type="text"
-                placeholder="Professor name"
-                value={professorFilter}
-                onChange={(e) => setProfessorFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-[#c8d9e6] rounded-lg"
-              />
-            </div>
-
-            <div className="hidden md:block md:w-48">
-              <input
-                type="text"
-                placeholder="Location"
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-[#c8d9e6] rounded-lg"
               />
             </div>
             <EventTypeDropdown

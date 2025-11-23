@@ -130,34 +130,20 @@ const AdminDashboard = () => {
           {/* Menu toggle */}
 
           {/* Search + filter */}
-          <div className="relative flex-1 max-w-2xl flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 max-w-3xl flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[320px]">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
                 size={20}
               />
               <input
                 type="text"
-                placeholder="Search by name..."
+                placeholder="Search by name or professor or location..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
               />
             </div>
-            <input
-              type="text"
-              placeholder="Professor..."
-              value={professorFilter}
-              onChange={(e) => setProfessorFilter(e.target.value)}
-              className="px-3 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] w-32"
-            />
-            <input
-              type="text"
-              placeholder="Location..."
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              className="px-3 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] w-32"
-            />
             <input
               type="date"
               value={dateFilter}

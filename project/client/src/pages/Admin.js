@@ -134,20 +134,16 @@ export default function Admin() {
   const [viewerName, setViewerName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("");
-  const [professorFilter, setProfessorFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [viewEvent, setViewEvent] = useState(null);
 
-
   // Debounced admin filters to avoid per-keystroke filtering
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [debouncedEventFilter, setDebouncedEventFilter] = useState(eventFilter);
-  const [debouncedProfessorFilter, setDebouncedProfessorFilter] =
-    useState(professorFilter);
-  const [debouncedLocationFilter, setDebouncedLocationFilter] =
-    useState(locationFilter);
+  const [debouncedSearchLocation, setDebouncedSearchLocation] =
+    useState(searchLocation);
   const [debouncedDateFilter, setDebouncedDateFilter] = useState(dateFilter);
 
   useEffect(() => {
@@ -159,16 +155,9 @@ export default function Admin() {
     return () => clearTimeout(t);
   }, [eventFilter]);
   useEffect(() => {
-    const t = setTimeout(
-      () => setDebouncedProfessorFilter(professorFilter),
-      300
-    );
+    const t = setTimeout(() => setDebouncedSearchLocation(searchLocation), 300);
     return () => clearTimeout(t);
-  }, [professorFilter]);
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedLocationFilter(locationFilter), 300);
-    return () => clearTimeout(t);
-  }, [locationFilter]);
+  }, [searchLocation]);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedDateFilter(dateFilter), 300);
     return () => clearTimeout(t);
@@ -432,17 +421,16 @@ export default function Admin() {
       try {
         const params = new URLSearchParams();
 
-        // Combine search and professor filter into search param
+        // Combine search and professor/location filter into search param
         const searchParts = [];
         if (debouncedSearchQuery) searchParts.push(debouncedSearchQuery);
-        if (debouncedProfessorFilter)
-          searchParts.push(debouncedProfessorFilter);
+        if (debouncedSearchLocation) searchParts.push(debouncedSearchLocation);
         if (searchParts.length > 0) {
           params.append("search", searchParts.join(" "));
         }
 
-        if (debouncedLocationFilter)
-          params.append("location", debouncedLocationFilter);
+        if (debouncedSearchLocation)
+          params.append("location", debouncedSearchLocation);
         if (debouncedEventFilter && debouncedEventFilter !== "") {
           params.append("type", debouncedEventFilter.toUpperCase());
         }
@@ -483,24 +471,22 @@ export default function Admin() {
       ) {
         filteredBoothEvents = [];
       } else {
-        // Filter by search/professor (title in booth events)
-        if (debouncedSearchQuery || debouncedProfessorFilter) {
+        // Filter by search/professor/location (title in booth events)
+        if (debouncedSearchQuery || debouncedSearchLocation) {
           const searchLower = (debouncedSearchQuery || "").toLowerCase();
-          const profLower = (debouncedProfessorFilter || "").toLowerCase();
+          const searchLocationLower = (
+            debouncedSearchLocation || ""
+          ).toLowerCase();
           filteredBoothEvents = filteredBoothEvents.filter((booth) => {
             const title = (booth.title || "").toLowerCase();
+            const location = (booth.location || "").toLowerCase();
             const matchesSearch = !searchLower || title.includes(searchLower);
-            const matchesProf = !profLower || title.includes(profLower);
-            return matchesSearch && matchesProf;
+            const matchesLocation =
+              !searchLocationLower ||
+              title.includes(searchLocationLower) ||
+              location.includes(searchLocationLower);
+            return matchesSearch && matchesLocation;
           });
-        }
-
-        // Filter by location
-        if (debouncedLocationFilter) {
-          const locLower = debouncedLocationFilter.toLowerCase();
-          filteredBoothEvents = filteredBoothEvents.filter((booth) =>
-            (booth.location || "").toLowerCase().includes(locLower)
-          );
         }
 
         // Filter by date
@@ -549,8 +535,7 @@ export default function Admin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedSearchQuery,
-    debouncedProfessorFilter,
-    debouncedLocationFilter,
+    debouncedSearchLocation,
     debouncedEventFilter,
     debouncedDateFilter,
     sortOrder,
@@ -775,7 +760,9 @@ export default function Admin() {
     setDocsTitle("Vendor Documents");
 
     try {
-      const bazaars = await tryFetchJson(`${API_ORIGIN}/api/bazaar-applications`);
+      const bazaars = await tryFetchJson(
+        `${API_ORIGIN}/api/bazaar-applications`
+      );
       const booths = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
 
       const gather = (arr) => {
@@ -787,17 +774,18 @@ export default function Admin() {
             .map((a) => ({
               name: a.name || a.fullName || "Unnamed",
               email: a.email || a.emailAddress || "",
-              url:
-                String(a.idDocument).startsWith("/")
-                  ? `${API_ORIGIN}${a.idDocument}`
-                  : String(a.idDocument),
+              url: String(a.idDocument).startsWith("/")
+                ? `${API_ORIGIN}${a.idDocument}`
+                : String(a.idDocument),
               source: r.vendorName || r._id || "vendor",
             }));
         });
       };
 
-      const bazList = bazaars.ok && Array.isArray(bazaars.data) ? gather(bazaars.data) : [];
-      const boothList = booths.ok && Array.isArray(booths.data) ? gather(booths.data) : [];
+      const bazList =
+        bazaars.ok && Array.isArray(bazaars.data) ? gather(bazaars.data) : [];
+      const boothList =
+        booths.ok && Array.isArray(booths.data) ? gather(booths.data) : [];
 
       const combined = [...bazList, ...boothList];
       setDocsList(combined);
@@ -903,7 +891,10 @@ export default function Admin() {
                     return (
                       <button
                         onClick={openDocsModal}
-                        style={{ ...createBtnStyle, backgroundColor: "#3B82F6" }}
+                        style={{
+                          ...createBtnStyle,
+                          backgroundColor: "#3B82F6",
+                        }}
                         title="View uploaded attendee documents"
                       >
                         View Docs
@@ -1016,7 +1007,9 @@ export default function Admin() {
                 <div style={popupHeaderStyle}>
                   <div>
                     <h3 style={{ margin: 0 }}>{docsTitle}</h3>
-                    <p style={{ color: "#E5E7EB", fontSize: 14 }}>Uploaded IDs</p>
+                    <p style={{ color: "#E5E7EB", fontSize: 14 }}>
+                      Uploaded IDs
+                    </p>
                   </div>
                   <button
                     onClick={() => setDocsModalOpen(false)}
@@ -1027,15 +1020,30 @@ export default function Admin() {
                 </div>
                 <div style={{ padding: 12, maxHeight: 380, overflowY: "auto" }}>
                   {docsLoading ? (
-                    <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
+                    <div style={{ textAlign: "center", padding: 20 }}>
+                      Loading...
+                    </div>
                   ) : docsList.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 20, color: "#6B7280" }}>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: 20,
+                        color: "#6B7280",
+                      }}
+                    >
                       No uploaded documents found.
                     </div>
                   ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
                       <thead>
-                        <tr style={{ textAlign: "left", borderBottom: "1px solid #E5E7EB" }}>
+                        <tr
+                          style={{
+                            textAlign: "left",
+                            borderBottom: "1px solid #E5E7EB",
+                          }}
+                        >
                           <th style={{ padding: 8 }}>Name</th>
                           <th style={{ padding: 8 }}>Email</th>
                           <th style={{ padding: 8 }}>Source</th>
@@ -1044,20 +1052,46 @@ export default function Admin() {
                       </thead>
                       <tbody>
                         {docsList.map((d, i) => (
-                          <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                          <tr
+                            key={i}
+                            style={{ borderBottom: "1px solid #F3F4F6" }}
+                          >
                             <td style={{ padding: 8 }}>{d.name}</td>
                             <td style={{ padding: 8 }}>{d.email}</td>
                             <td style={{ padding: 8 }}>{d.source}</td>
-                            <td style={{ padding: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <td
+                              style={{
+                                padding: 8,
+                                display: "flex",
+                                gap: 8,
+                                justifyContent: "center",
+                              }}
+                            >
                               <button
                                 onClick={() => openViewer(d.url, d.name)}
-                                style={{ background: 'transparent', border: '1px solid #2563EB', color: '#2563EB', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                                style={{
+                                  background: "transparent",
+                                  border: "1px solid #2563EB",
+                                  color: "#2563EB",
+                                  padding: "6px 10px",
+                                  borderRadius: 6,
+                                  cursor: "pointer",
+                                }}
                               >
                                 View
                               </button>
                               <button
-                                onClick={() => downloadFile(d.url, `${d.name || 'document'}`)}
-                                style={{ background: '#2563EB', border: 'none', color: 'white', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                                onClick={() =>
+                                  downloadFile(d.url, `${d.name || "document"}`)
+                                }
+                                style={{
+                                  background: "#2563EB",
+                                  border: "none",
+                                  color: "white",
+                                  padding: "6px 10px",
+                                  borderRadius: 6,
+                                  cursor: "pointer",
+                                }}
                               >
                                 Download
                               </button>
@@ -1069,7 +1103,10 @@ export default function Admin() {
                   )}
                 </div>
                 <div style={popupFooterStyle}>
-                  <button onClick={() => setDocsModalOpen(false)} style={cancelBtnStyle}>
+                  <button
+                    onClick={() => setDocsModalOpen(false)}
+                    style={cancelBtnStyle}
+                  >
                     Close
                   </button>
                 </div>
@@ -1078,36 +1115,104 @@ export default function Admin() {
             {viewerOpen && (
               <div
                 style={{
-                  position: 'fixed',
+                  position: "fixed",
                   inset: 0,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  background: 'rgba(0,0,0,0.45)',
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  background: "rgba(0,0,0,0.45)",
                   zIndex: 9999,
                 }}
               >
-                <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <div style={{ ...popupHeaderStyle, display: 'flex', alignItems: 'center' }}>
+                <div
+                  style={{
+                    background: "white",
+                    padding: 0,
+                    width: "80%",
+                    maxWidth: 1000,
+                    height: "90vh",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      ...popupHeaderStyle,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
                     <div>
                       <h3 style={{ margin: 0 }}>{viewerName}</h3>
-                      <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+                      <p style={{ color: "#E5E7EB", fontSize: 14, margin: 0 }}>
+                        Preview
+                      </p>
                     </div>
-                    <button onClick={() => setViewerOpen(false)} style={{ marginLeft: 'auto', ...closeBtnStyle }}>
+                    <button
+                      onClick={() => setViewerOpen(false)}
+                      style={{ marginLeft: "auto", ...closeBtnStyle }}
+                    >
                       ✕
                     </button>
                   </div>
-                  <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                    {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
-                      <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: 0,
+                      background: "#f8fafc",
+                      minHeight: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
+                    {viewerUrl &&
+                    (viewerUrl.endsWith(".pdf") ||
+                      !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                      <iframe
+                        src={viewerUrl}
+                        title={viewerName}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          border: "none",
+                          display: "block",
+                        }}
+                      />
                     ) : (
-                      <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
-                        <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                      <div
+                        style={{
+                          width: "100%",
+                          flex: 1,
+                          minHeight: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 12,
+                        }}
+                      >
+                        <img
+                          src={viewerUrl}
+                          alt={viewerName}
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            width: "auto",
+                            height: "auto",
+                            objectFit: "contain",
+                            display: "block",
+                          }}
+                        />
                       </div>
                     )}
                   </div>
                   <div style={{ ...popupFooterStyle, margin: 0 }}>
-                    <button onClick={() => setViewerOpen(false)} style={cancelBtnStyle}>
+                    <button
+                      onClick={() => setViewerOpen(false)}
+                      style={cancelBtnStyle}
+                    >
                       Close
                     </button>
                   </div>
@@ -1115,76 +1220,107 @@ export default function Admin() {
               </div>
             )}
           </div>
-          
+
           {viewEvent && (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      background: "rgba(0,0,0,0.45)",
-      zIndex: 9999,
-    }}
-  >
-    <div style={{
-      background: "white",
-      width: "80%",
-      maxWidth: 800,
-      borderRadius: 10,
-      padding: 20,
-      boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
-      maxHeight: "90vh",
-      overflowY: "auto",
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-        <h2 style={{ margin: 0 }}>{viewEvent.title || viewEvent.name || "Untitled Event"}</h2>
-        <button
-          onClick={() => setViewEvent(null)}
-          style={{
-            background: "transparent",
-            border: "none",
-            fontSize: 18,
-            cursor: "pointer",
-          }}
-        >
-          ✕
-        </button>
-      </div>
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                background: "rgba(0,0,0,0.45)",
+                zIndex: 9999,
+              }}
+            >
+              <div
+                style={{
+                  background: "white",
+                  width: "80%",
+                  maxWidth: 800,
+                  borderRadius: 10,
+                  padding: 20,
+                  boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 15,
+                  }}
+                >
+                  <h2 style={{ margin: 0 }}>
+                    {viewEvent.title || viewEvent.name || "Untitled Event"}
+                  </h2>
+                  <button
+                    onClick={() => setViewEvent(null)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      fontSize: 18,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
 
-      <p><strong>Type:</strong> {viewEvent.type || viewEvent.eventType || "Event"}</p>
-      <p><strong>Location:</strong> {viewEvent.location || viewEvent.venue || "—"}</p>
-      <p><strong>Start:</strong> {viewEvent.startDateTime ? new Date(viewEvent.startDateTime).toLocaleString() : "—"}</p>
-      <p><strong>End:</strong> {viewEvent.endDateTime ? new Date(viewEvent.endDateTime).toLocaleString() : "—"}</p>
-      <p><strong>Description:</strong> {viewEvent.description || "No description provided"}</p>
+                <p>
+                  <strong>Type:</strong>{" "}
+                  {viewEvent.type || viewEvent.eventType || "Event"}
+                </p>
+                <p>
+                  <strong>Location:</strong>{" "}
+                  {viewEvent.location || viewEvent.venue || "—"}
+                </p>
+                <p>
+                  <strong>Start:</strong>{" "}
+                  {viewEvent.startDateTime
+                    ? new Date(viewEvent.startDateTime).toLocaleString()
+                    : "—"}
+                </p>
+                <p>
+                  <strong>End:</strong>{" "}
+                  {viewEvent.endDateTime
+                    ? new Date(viewEvent.endDateTime).toLocaleString()
+                    : "—"}
+                </p>
+                <p>
+                  <strong>Description:</strong>{" "}
+                  {viewEvent.description || "No description provided"}
+                </p>
 
-      {viewEvent.registrations && viewEvent.registrations.length > 0 && (
-        <div style={{ marginTop: 10 }}>
-          <strong>Registrations:</strong>
-          <ul>
-            {viewEvent.registrations.map((r, i) => (
-              <li key={i}>{r.name || r.fullName || r.email || "Anonymous"}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+                {viewEvent.registrations &&
+                  viewEvent.registrations.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <strong>Registrations:</strong>
+                      <ul>
+                        {viewEvent.registrations.map((r, i) => (
+                          <li key={i}>
+                            {r.name || r.fullName || r.email || "Anonymous"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-      <div style={{ marginTop: 20, textAlign: 'right' }}>
-        <button
-          onClick={() => setViewEvent(null)}
-          style={{
-            ...cancelBtnStyle,
-          }}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
+                <div style={{ marginTop: 20, textAlign: "right" }}>
+                  <button
+                    onClick={() => setViewEvent(null)}
+                    style={{
+                      ...cancelBtnStyle,
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
@@ -1677,7 +1813,7 @@ function SectionEvents({
   eventFetchErrors,
   processingId,
   handleDeleteEvent,
-  setViewEvent
+  setViewEvent,
 }) {
   const navigate = useNavigate();
   // Server already filtered events, so just use them directly
@@ -1737,29 +1873,29 @@ function SectionEvents({
                   </td>
                   <td style={tdStyle}>
                     {/* Details opens modal */}
-<button
-  onClick={() => setViewEvent(event)}
-  style={{
-    ...verifyBtnStyle,
-    backgroundColor: "#3B82F6",
-    marginRight: 5,
-  }}
->
-  Details
-</button>
+                    <button
+                      onClick={() => setViewEvent(event)}
+                      style={{
+                        ...verifyBtnStyle,
+                        backgroundColor: "#3B82F6",
+                        marginRight: 5,
+                      }}
+                    >
+                      Details
+                    </button>
 
-{/* Reviews still navigates */}
-<button
-  onClick={() => navigate(`/events/${event._id}/reviews`)}
-  style={{
-    ...verifyBtnStyle,
-    backgroundColor: "#0EA5E9",
-    marginRight: 5,
-  }}
-  title="View all reviews & comments for this event"
->
-  Reviews
-</button>
+                    {/* Reviews still navigates */}
+                    <button
+                      onClick={() => navigate(`/events/${event._id}/reviews`)}
+                      style={{
+                        ...verifyBtnStyle,
+                        backgroundColor: "#0EA5E9",
+                        marginRight: 5,
+                      }}
+                      title="View all reviews & comments for this event"
+                    >
+                      Reviews
+                    </button>
                     <button
                       onClick={() =>
                         handleDeleteEvent(
