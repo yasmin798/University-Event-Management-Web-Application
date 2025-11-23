@@ -1288,39 +1288,62 @@ export default function EventsHome() {
                 )}
               </>
             )}
+{/* ==================== TRIP ==================== */}
+{viewEvent.type === "TRIP" && (
+  <>
+    <div>
+      <strong>Location:</strong> {viewEvent.location || "—"}
+    </div>
+    <div>
+      <strong>Price:</strong> {formatMoney(viewEvent.price)}
+    </div>
+    <div>
+      <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+    </div>
+    <div>
+      <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+    </div>
+    <div>
+      <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+    </div>
 
-            {/* ==================== TRIP ==================== */}
-            {viewEvent.type === "TRIP" && (
-              <>
-                <div>
-                  <strong>Location:</strong> {viewEvent.location || "—"}
-                </div>
-                <div>
-                  <strong>Price:</strong> {formatMoney(viewEvent.price)}
-                </div>
-                <div>
-                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
-                </div>
-                <div>
-                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
-                </div>
-                <div>
-                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
-                </div>
-                <div>
-                  <strong>Registration Deadline:</strong>{" "}
-                  {formatDate(viewEvent.registrationDeadline)}
-                </div>
+    {/* THIS IS THE NEW CLEAR RESTRICTION DISPLAY */}
+    <div style={{ 
+      margin: "16px 0", 
+      padding: "12px", 
+      backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
+      borderRadius: "8px",
+      border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
+      fontWeight: "bold",
+      fontSize: "15px",
+      color: "#1f2937"
+    }}>
+      {viewEvent.allowedRoles?.length > 0 ? (
+        <>
+          Restricted to: {" "}
+          {viewEvent.allowedRoles
+            .map(role => role.charAt(0).toUpperCase() + role.slice(1) + "s")
+            .join(", ")}
+        </>
+      ) : (
+        <>Open to ALL users (Students, Professors, TAs, Staff)</>
+      )}
+    </div>
 
-                {viewEvent.shortDescription && (
-                  <div style={{ marginTop: "10px" }}>
-                    <strong>Description:</strong>
-                    <p>{viewEvent.shortDescription}</p>
-                  </div>
-                )}
-              </>
-            )}
+    <div>
+      <strong>Registration Deadline:</strong>{" "}
+      {formatDate(viewEvent.registrationDeadline)}
+    </div>
 
+    {viewEvent.shortDescription && (
+      <div style={{ marginTop: "10px" }}>
+        <strong>Description:</strong>
+        <p>{viewEvent.shortDescription}</p>
+      </div>
+    )}
+  </>
+)}
+            
             {/* ==================== WORKSHOP ==================== */}
             {viewEvent.type === "WORKSHOP" && (
               <>
