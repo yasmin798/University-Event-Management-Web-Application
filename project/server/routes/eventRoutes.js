@@ -299,125 +299,117 @@ router.delete("/trips/:id", async (req, res) => {
 /* ------------------- CONFERENCES ------------------- */
 router.get("/conferences", async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page || "1", 10));
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit || "50", 10))
-    );
-    const [items, total] = await Promise.all([
-      Conference.find()
-        .sort({ startDateTime: 1 })
-        .skip((page - 1) * limit)
-        .limit(limit),
-      Conference.countDocuments(),
-    ]);
-    res.json({ items, total, page, pages: Math.ceil(total / limit) });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    const items = await Conference.find().sort({ startDateTime: 1 });
+    res.json({ items, total: items.length, page: 1, pages: 1 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
 router.get("/conferences/:id", async (req, res) => {
   try {
     const doc = await Conference.findById(req.params.id);
-    if (!doc) return res.status(404).json({ error: "Conference not found" });
+    if (!doc) return res.status(404).json({ error: "Not found" });
     res.json(doc);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
 router.post("/conferences", async (req, res) => {
   try {
-    const b = req.body || {};
-    const title = normTitle(b);
-    if (!title) return res.status(400).json({ error: "title is required" });
-    if (!b.startDateTime || !b.endDateTime)
-      return res
-        .status(400)
-        .json({ error: "startDateTime and endDateTime are required" });
-    if (!b.requiredBudget)
-      return res.status(400).json({ error: "requiredBudget is required" });
-    if (!b.fundingSource)
-      return res.status(400).json({ error: "fundingSource is required" });
-    if (!b.website)
-      return res.status(400).json({ error: "website is required" });
-
-    const doc = await Conference.create({
-      type: "conference",
+    const {
       title,
-      name: b.name || title,
-      shortDescription: b.shortDescription || "",
-      startDateTime: new Date(b.startDateTime),
-      endDateTime: new Date(b.endDateTime),
-      website: b.website,
-      fullAgenda: b.fullAgenda || "",
-      requiredBudget: Number(b.requiredBudget),
-      fundingSource: b.fundingSource,
-      extraResources: b.extraResources || "",
-      status: "published",
+      name,
+      shortDescription,
+      startDateTime,
+      endDateTime,
+      fullAgenda,
+      website,
+      requiredBudget,
+      fundingSource,
+      extraResources,
+      allowedRoles = [],
+    } = req.body;
+
+    const conference = new Conference({
+      title: title || name,
+      name: name || title,
+      shortDescription,
+      startDateTime,
+      endDateTime,
+      fullAgenda,
+      website,
+      requiredBudget,
+      fundingSource,
+      extraResources,
+      allowedRoles,
+      registrations: [],
     });
-    res.status(201).json(doc);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+
+    await conference.save();
+    res.status(201).json(conference);
+  } catch (err) {
+    console.error("Create conference error:", err);
+    res.status(400).json({ error: err.message });
   }
 });
 
 router.put("/conferences/:id", async (req, res) => {
   try {
-    const b = req.body || {};
-    if (b.website === undefined)
-      return res.status(400).json({ error: "website is required" });
-    const updates = {
-      ...(b.title || b.name
-        ? { title: b.title || b.name, name: b.title || b.name }
-        : {}),
-      ...(b.shortDescription !== undefined
-        ? { shortDescription: b.shortDescription }
-        : {}),
-      ...(b.startDateTime ? { startDateTime: new Date(b.startDateTime) } : {}),
-      ...(b.endDateTime ? { endDateTime: new Date(b.endDateTime) } : {}),
-      ...(b.website !== undefined ? { website: b.website } : {}),
-      ...(b.fullAgenda !== undefined ? { fullAgenda: b.fullAgenda } : {}),
-      ...(b.requiredBudget != null
-        ? { requiredBudget: Number(b.requiredBudget) }
-        : {}),
-      ...(b.fundingSource ? { fundingSource: b.fundingSource } : {}),
-      ...(b.extraResources !== undefined
-        ? { extraResources: b.extraResources }
-        : {}),
-    };
-    const doc = await Conference.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true,
-    });
-    if (!doc) return res.status(404).json({ error: "Conference not found" });
-    res.json(doc);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+    const {
+      title,
+      name,
+      shortDescription,
+      startDateTime,
+      endDateTime,
+      fullAgenda,
+      website,
+      requiredBudget,
+      fundingSource,
+      extraResources,
+      allowedRoles = [],
+    } = req.body;
+
+    const updated = await Conference.findByIdAndUpdate(
+      req.params.id,
+      {
+        title: title || name,
+        name: name || title,
+        shortDescription,
+        startDateTime,
+        endDateTime,
+        fullAgenda,
+        website,
+        requiredBudget,
+        fundingSource,
+        extraResources,
+        allowedRoles,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) return res.status(404).json({ error: "Conference not found" });
+    res.json(updated);
+  } catch (err) {
+    console.error("Update conference error:", err);
+    res.status(400).json({ error: err.message });
   }
 });
 
 router.delete("/conferences/:id", async (req, res) => {
   try {
     const conference = await Conference.findById(req.params.id);
-    if (!conference)
-      return res.status(404).json({ error: "Conference not found" });
-    if (
-      Array.isArray(conference.registrations) &&
-      conference.registrations.length > 0
-    ) {
-      return res
-        .status(403)
-        .json({ error: "Cannot delete: participants registered" });
+    if (!conference) return res.status(404).json({ error: "Not found" });
+    if (conference.registrations?.length > 0) {
+      return res.status(403).json({ error: "Cannot delete: participants registered" });
     }
     await Conference.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Conference deleted successfully" });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
-
 /* ------------------- BOOTHS ------------------- */
 router.delete("/booths/:id", boothController.deleteBooth);
 

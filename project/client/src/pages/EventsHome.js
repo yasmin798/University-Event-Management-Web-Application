@@ -30,7 +30,6 @@ function formatDate(iso) {
 }
 
 function formatMoney(n) {
-
   if (n == null || n === "") return "—";
   const num = Number(n);
   if (Number.isNaN(num)) return String(n);
@@ -54,7 +53,7 @@ function isPastEvent(ev) {
   if (!endDate) return false;
   return new Date(endDate).getTime() < Date.now();
 }
-// shared style for "Create Event / Gym / Poll" buttons
+
 // shared style for "Create Event / Gym / Poll" buttons
 const topActionBtnStyle = {
   background: "var(--teal)",
@@ -80,18 +79,14 @@ export default function EventsHome() {
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef(null);
 
-  
   const [searchTerm, setSearchTerm] = useState("");
-
   const [dateFilter, setDateFilter] = useState("");
-  
   const [filter, setFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("asc");
   const [params] = useSearchParams();
 
   // Debounced filters
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-
   const [debouncedDate, setDebouncedDate] = useState(dateFilter);
 
   useEffect(() => {
@@ -103,6 +98,7 @@ export default function EventsHome() {
     const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
     return () => clearTimeout(t);
   }, [dateFilter]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [chooseOpen, setChooseOpen] = useState(false);
   const [chosenType, setChosenType] = useState("");
@@ -181,6 +177,7 @@ export default function EventsHome() {
       setToast({ open: true, text: "Could not open viewer" });
     }
   };
+
   const getRoleFromToken = () => {
     try {
       const t = localStorage.getItem("token");
@@ -193,7 +190,9 @@ export default function EventsHome() {
       return null;
     }
   };
+
   const userRole = getRoleFromToken();
+
   const [editRequest, setEditRequest] = useState({
     open: false,
     workshopId: null,
@@ -215,14 +214,12 @@ export default function EventsHome() {
         _id: w._id,
         title: w.workshopName || w.title,
         type: "WORKSHOP",
-
         // WORKSHOP FIELDS
         location: w.location,
         startDateTime: w.startDateTime, // ← REAL BACKEND FIELD
         endDateTime: w.endDateTime, // ← REAL BACKEND FIELD
         registrationDeadline: w.registrationDeadline,
         capacity: w.capacity,
-
         description: w.shortDescription || "",
         agenda: w.fullAgenda || w.agenda,
         facultyResponsible: w.facultyResponsible,
@@ -230,48 +227,40 @@ export default function EventsHome() {
         budget: w.requiredBudget || w.budget,
         fundingSource: w.fundingSource,
         extraResources: w.extraResources,
-
         status: w.status,
         registrations: w.registeredUsers || [],
         image: w.image || workshopPlaceholder,
+        allowedRoles: w.allowedRoles || [], // Add this if workshops have allowedRoles
       }));
       const normalizedConferences = otherEvents
         .filter((ev) => ev.type === "CONFERENCE")
         .map((c) => ({
           _id: c._id,
           type: "CONFERENCE",
-
           title: c.name || c.title,
           name: c.name || c.title,
-
           location: c.location,
           startDateTime: c.startDateTime, // ← correct backend field
           endDateTime: c.endDateTime, // ← correct backend field
-
           shortDescription: c.shortDescription,
           description: c.shortDescription, // for view modal fallback
-
           agenda: c.fullAgenda || c.agenda,
           website: c.website,
-
           budget: c.requiredBudget || c.budget,
           fundingSource: c.fundingSource,
           extraResources: c.extraResources,
-
           registrations: c.registeredUsers || [],
           status: c.status,
-
           image: conferenceImg,
+          allowedRoles: c.allowedRoles || [], // FIX: Add allowedRoles here
         }));
       setConferences(normalizedConferences);
-      
-
       setWorkshops(normalized);
     } catch (err) {
       console.error("Error fetching workshops:", err);
       setToast({ open: true, text: "Failed to load workshops" });
     }
-  }, []);
+  }, [otherEvents]); // Add otherEvents to deps
 
   const fetchBooths = useCallback(async () => {
     try {
@@ -279,18 +268,17 @@ export default function EventsHome() {
       const normalized = data.map((b) => ({
         _id: b._id,
         title: b.attendees?.[0]?.name || `Booth ${b._id}`,
-
         description: b.description || "",
         startDateTime: b.startDate,
         endDateTime: b.endDate,
         boothSize: b.boothSize,
         duration: b.durationWeeks,
-
         platformSlot: b.platformSlot,
         status: b.status,
         attendees: b.attendees,
         type: "BOOTH",
         image: b.image || boothPlaceholder,
+        allowedRoles: b.allowedRoles || [], // Add if booths have it
       }));
       setBooths(normalized);
     } catch (err) {
@@ -304,9 +292,7 @@ export default function EventsHome() {
       setLoading(false)
     );
   }, [fetchWorkshops, fetchBooths]);
-  
 
- 
   function normalizeConferenceFields(conf) {
     return {
       ...conf,
@@ -338,6 +324,7 @@ export default function EventsHome() {
       console.error("Failed to fetch notifications:", err);
     }
   }, []);
+
   const refreshAll = useCallback(() => {
     if (document.visibilityState === "visible") {
       fetchWorkshops();
@@ -365,6 +352,7 @@ export default function EventsHome() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [refreshAll]);
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (bellRef.current && !bellRef.current.contains(e.target)) {
@@ -379,7 +367,6 @@ export default function EventsHome() {
   useEffect(() => {
     fetchNotifications();
   }, []);
-  
 
   const allEvents = [
     ...otherEvents.filter((e) => !["CONFERENCE"].includes(e.type)),
@@ -401,8 +388,8 @@ export default function EventsHome() {
       }
       setToast({ open: true, text: "Event deleted successfully!" });
       fetchWorkshops();
-fetchBooths();
-refreshEvents && refreshEvents();
+      fetchBooths();
+      refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Delete error:", e);
       setToast({ open: true, text: "Network error: Could not delete" });
@@ -422,11 +409,11 @@ refreshEvents && refreshEvents();
         return;
       }
       setToast({ open: true, text: `Workshop ${newStatus} successfully!` });
-    fetchWorkshops();
-fetchBooths();
-refreshEvents && refreshEvents();
+      fetchWorkshops();
+      fetchBooths();
+      refreshEvents && refreshEvents();
     } catch (e) {
-      console.error("Update error:", e);
+      console.error("Status update error:", e);
       setToast({ open: true, text: "Network error: Could not update" });
     }
   };
@@ -452,9 +439,9 @@ refreshEvents && refreshEvents();
       }
       setToast({ open: true, text: "Edit request sent successfully!" });
       setEditRequest({ open: false, workshopId: null, message: "" });
-   fetchWorkshops();
-fetchBooths();
-refreshEvents && refreshEvents();
+      fetchWorkshops();
+      fetchBooths();
+      refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Edit request error:", e);
       setToast({ open: true, text: "Network error: Could not send request" });
@@ -551,43 +538,49 @@ refreshEvents && refreshEvents();
   };
 
   // Generic Archive Button for any event type
-async function handleArchive(id, type) {
-  // Get user role from localStorage
-  const userRole = localStorage.getItem("role");
-
-  // Only allow EVENTS_OFFICE to archive
-  if (userRole !== "EVENTS_OFFICE") {
-    return alert("You do not have permission to archive this item.");
-  }
-
-  try {
-    const token = localStorage.getItem("token");
-    const res = await fetch(`/api/${type}/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status: "archived" }),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      return alert("Failed to archive: " + errorText);
+  const handleArchive = async (id, type) => {
+    // Only allow events_office to archive
+    if (userRole !== "events_office") {
+      alert("You do not have permission to archive this item.");
+      return;
     }
 
-    const data = await res.json();
-    alert(data.message);
+    try {
+      const token = localStorage.getItem("token");
+      const typeMap = {
+        TRIP: "trips",
+        BAZAAR: "bazaars",
+        CONFERENCE: "conferences",
+        WORKSHOP: "workshops",
+        BOOTH: "booths",
+      };
+      const path = typeMap[type.toUpperCase()];
+      if (!path) return alert("Unknown event type: " + type);
 
-    // Update UI immediately if needed
-    // e.g., refetch events or update local state
-  } catch (err) {
-    console.error(err);
-    alert("Failed to archive: Network error");
-  }
-}
+      const res = await fetch(`/api/${path}/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "archived" }),
+      });
 
+      if (!res.ok) {
+        const errorText = await res.text();
+        return alert("Failed to archive: " + errorText);
+      }
 
+      const data = await res.json();
+      alert(data.message || "Archived successfully!");
+
+      // Refresh data
+      refreshAll();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to archive: Network error");
+    }
+  };
 
   /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
@@ -607,9 +600,10 @@ async function handleArchive(id, type) {
         location.includes(term);
 
       const matchType = filter === "All" || ev.type === filter;
+      const startDate = ev.startDateTime || ev.startDate || ev.date;
       const matchDate =
         !debouncedDate ||
-        (ev.startDateTime && ev.startDateTime.slice(0, 10) === debouncedDate);
+        (startDate && new Date(startDate).toISOString().slice(0, 10) === debouncedDate);
 
       return matchSearch && matchType && matchDate;
     })
@@ -640,6 +634,21 @@ async function handleArchive(id, type) {
    3) NUMBER OF PAGES
   ---------------------------------------------------- */
   const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
+
+  // Close toast after 3s
+  useEffect(() => {
+    if (!toast.open) return;
+    const t = setTimeout(() => setToast((t) => ({ ...t, open: false })), 3000);
+    return () => clearTimeout(t);
+  }, [toast.open]);
+
+  const createPathMap = {
+    trip: "/trips/create",
+    conference: "/conferences/create",
+    workshop: "/workshops/create",
+    bazaar: "/bazaars/create",
+    booth: "/booths/create",
+  };
 
   return (
     <div
@@ -745,59 +754,59 @@ async function handleArchive(id, type) {
               </React.Suspense>
             </div>
 
-            { (userRole === 'events_office' || userRole === 'admin') && (
-            <button
-              style={{ ...topActionBtnStyle, background: "#567c8d" }}
-              onClick={async () => {
-                setDocsLoading(true);
-                setDocsList([]);
-                try {
-                  const token = localStorage.getItem("token");
-                  const [bRes, boRes] = await Promise.all([
-                    fetch(`/api/bazaar-applications`, {
-                      headers: { Authorization: `Bearer ${token}` },
-                    }),
-                    fetch(`/api/booth-applications`, {
-                      headers: { Authorization: `Bearer ${token}` },
-                    }),
-                  ]);
+            {(userRole === 'events_office' || userRole === 'admin') && (
+              <button
+                style={{ ...topActionBtnStyle, background: "#567c8d" }}
+                onClick={async () => {
+                  setDocsLoading(true);
+                  setDocsList([]);
+                  try {
+                    const token = localStorage.getItem("token");
+                    const [bRes, boRes] = await Promise.all([
+                      fetch(`/api/bazaar-applications`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }),
+                      fetch(`/api/booth-applications`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }),
+                    ]);
 
-                  const bJson = await (bRes.ok ? bRes.json() : []);
-                  const boJson = await (boRes.ok ? boRes.json() : []);
+                    const bJson = await (bRes.ok ? bRes.json() : []);
+                    const boJson = await (boRes.ok ? boRes.json() : []);
 
-                  const gather = (arr) => {
-                    if (!arr || !Array.isArray(arr)) return [];
-                    return arr.flatMap((r) => {
-                      const attendees = Array.isArray(r.attendees) ? r.attendees : [];
-                      return attendees
-                        .filter((a) => a && a.idDocument)
-                        .map((a) => ({
-                          name: a.name || a.fullName || "Unnamed",
-                          email: a.email || a.emailAddress || "",
-                          url:
-                            String(a.idDocument).startsWith("/")
-                              ? `${window.location.origin}${a.idDocument}`
-                              : String(a.idDocument),
-                          source: r.vendorName || r._id || "vendor",
-                        }));
-                    });
-                  };
+                    const gather = (arr) => {
+                      if (!arr || !Array.isArray(arr)) return [];
+                      return arr.flatMap((r) => {
+                        const attendees = Array.isArray(r.attendees) ? r.attendees : [];
+                        return attendees
+                          .filter((a) => a && a.idDocument)
+                          .map((a) => ({
+                            name: a.name || a.fullName || "Unnamed",
+                            email: a.email || a.emailAddress || "",
+                            url:
+                              String(a.idDocument).startsWith("/")
+                                ? `${window.location.origin}${a.idDocument}`
+                                : String(a.idDocument),
+                            source: r.vendorName || r._id || "vendor",
+                          }));
+                      });
+                    };
 
-                  const bazList = Array.isArray(bJson) ? gather(bJson) : gather(bJson.requests || []);
-                  const boothList = Array.isArray(boJson) ? gather(boJson) : gather(boJson.requests || []);
+                    const bazList = Array.isArray(bJson) ? gather(bJson) : gather(bJson.requests || []);
+                    const boothList = Array.isArray(boJson) ? gather(boJson) : gather(boJson.requests || []);
 
-                  setDocsList([...bazList, ...boothList]);
-                  setDocsModalOpen(true);
-                } catch (err) {
-                  console.error("Error fetching docs:", err);
-                  setToast({ open: true, text: "Failed to load documents" });
-                } finally {
-                  setDocsLoading(false);
-                }
-              }}
-            >
-              View Docs
-            </button>
+                    setDocsList([...bazList, ...boothList]);
+                    setDocsModalOpen(true);
+                  } catch (err) {
+                    console.error("Error fetching docs:", err);
+                    setToast({ open: true, text: "Failed to load documents" });
+                  } finally {
+                    setDocsLoading(false);
+                  }
+                }}
+              >
+                View Docs
+              </button>
             )}
 
             <button
@@ -820,90 +829,6 @@ async function handleArchive(id, type) {
             >
               Create Poll
             </button>
-          </div>
-          <div>
-            {viewerOpen && (
-              <div
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  background: 'rgba(0,0,0,0.45)',
-                  zIndex: 9999,
-                }}
-              >
-                <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <div style={{ background: '#3B82F6', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <h3 style={{ margin: 0 }}>{viewerName}</h3>
-                      <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
-                    </div>
-                    <button onClick={() => setViewerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer' }}>✕</button>
-                  </div>
-                <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                  {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
-                    <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
-                  ) : (
-                    <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
-                      <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
-                    </div>
-                  )}
-                </div>
-                  <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button onClick={() => setViewerOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {chooseOpen && (
-              <div className="confirm-overlay" role="dialog" aria-modal="true">
-                <div className="confirm">
-                  <h2>Choose Event Type</h2>
-                  <div style={{ marginTop: 12 }}>
-                    <select
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: "8px",
-                        border: "1px solid #ccc",
-                        marginBottom: "15px",
-                      }}
-                      value={chosenType}
-                      onChange={(e) => setChosenType(e.target.value)}
-                    >
-                      <option value="">-- choose --</option>
-                      <option value="bazaar">Bazaar</option>
-                      <option value="conference">Conference</option>
-                      <option value="trip">Trip</option>
-                    </select>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button
-                        className="btn btn-outline"
-                        style={{ flex: 1 }}
-                        onClick={() => setChooseOpen(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="btn"
-                        style={{ flex: 1 }}
-                        onClick={() => {
-                          if (!chosenType) return alert("Pick a type");
-                          if (chosenType === "bazaar") navigate("/bazaars/create");
-                          if (chosenType === "conference") navigate("/conferences/create");
-                          if (chosenType === "trip") navigate("/trips/create");
-                        }}
-                      >
-                        Continue
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </header>
 
@@ -942,7 +867,7 @@ async function handleArchive(id, type) {
           {/* RIGHT: Pagination next to welcome */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
-              onClick={() => setCurrentPage((p) => p - 1)}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="pg-btn arrow"
             >
@@ -950,7 +875,7 @@ async function handleArchive(id, type) {
             </button>
             <div className="pg-btn current">{currentPage}</div>
             <button
-              onClick={() => setCurrentPage((p) => p + 1)}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="pg-btn arrow"
             >
@@ -987,12 +912,11 @@ async function handleArchive(id, type) {
               const id = ev._id;
               const typeRaw = ev.type?.toUpperCase() || "EVENT";
               const title = ev.title || ev.name || "Untitled";
-              const editable = isEditable(ev.startDateTime);
-              const archived = isPastEvent(ev); // true if the event has already ended
+              const editable = isEditable(ev.startDateTime || ev.startDate);
+              const isPast = isPastEvent(ev);
               const isWorkshop = typeRaw === "WORKSHOP";
               const isBooth = typeRaw === "BOOTH";
               const isBazaar = ev.type?.toLowerCase() === "bazaar";
-
               const isTrip = typeRaw === "TRIP";
               const isConference = typeRaw === "CONFERENCE";
 
@@ -1040,437 +964,279 @@ async function handleArchive(id, type) {
                       flexWrap: "wrap",
                     }}
                   >
-                 {/* BAZAAR */}
-{isBazaar && (
-  <>
-    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
-      View Details
-    </button>
+                    {/* BAZAAR */}
+                    {isBazaar && (
+                      <>
+                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                          View Details
+                        </button>
 
-    {/* MANUAL ARCHIVE BUTTON — only for past events */}
-    {isPastEvent(ev) && ev.status !== "archived" && (
-      <button
-        className="btn"
-        style={{ background: "#8B4513", color: "white" }}
-        onClick={async () => {
-          try {
-            const typeMap = {
-              TRIP: "trips",
-              BAZAAR: "bazaars",
-              CONFERENCE: "conferences",
-              WORKSHOP: "workshops",
-              BOOTH: "booths",
-            };
+                        {/* ARCHIVE BUTTON — only for past events */}
+                        {isPast && ev.status !== "archived" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#8B4513", color: "white" }}
+                            onClick={() => handleArchive(ev._id, ev.type)}
+                          >
+                            Archive
+                          </button>
+                        )}
 
-            const path = typeMap[ev.type.toUpperCase()];
-            if (!path) return alert("Unknown event type: " + ev.type);
+                        {editable && ev.status !== "archived" ? (
+                          <button className="btn" onClick={() => navigate(`/bazaars/${ev._id}`)}>
+                            Edit
+                          </button>
+                        ) : (
+                          <button className="btn btn-disabled" disabled>
+                            Edit
+                          </button>
+                        )}
 
-            const token = localStorage.getItem("token"); // adjust if using context
-            const res = await fetch(`/api/${path}/${ev._id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ status: "archived" }),
-            });
+                        <button
+                          className="btn btn-danger"
+                          disabled={ev.status === "archived" || ev.registrations?.length > 0}
+                          onClick={() => handleDelete(ev._id, "bazaars")}
+                          title={
+                            ev.registrations?.length > 0
+                              ? "Cannot delete: participants registered"
+                              : "Cannot delete archived event"
+                          }
+                        >
+                          Delete
+                        </button>
 
-            if (!res.ok) {
-              const errorText = await res.text();
-              return alert("Failed to archive: " + errorText);
-            }
+                        <button
+                          className="btn"
+                          onClick={() => navigate(`/bazaars/${ev._id}/vendor-requests`)}
+                        >
+                          Vendor Requests
+                        </button>
 
-            // Update local state so UI reflects immediately
-            ev.status = "archived";
-            alert("Event archived successfully!");
-          } catch (err) {
-            console.error(err);
-            alert("Failed to archive: Network error");
-          }
-        }}
-      >
-        Archive
-      </button>
-    )}
+                        <button
+                          className="btn"
+                          style={{ background: "#c88585", color: "white" }}
+                          onClick={() => exportAttendees(ev._id, "bazaars")}
+                          disabled={ev.status === "archived"}
+                        >
+                          Export Excel
+                        </button>
 
-    {editable && ev.status !== "archived" ? (
-      <button className="btn" onClick={() => navigate(`/bazaars/${ev._id}`)}>
-        Edit
-      </button>
-    ) : (
-      <button className="btn btn-disabled" disabled>
-        Edit
-      </button>
-    )}
+                        {ev.status === "archived" && (
+                          <div
+                            className="chip"
+                            style={{ background: "#666", color: "white", marginTop: "8px" }}
+                          >
+                            ARCHIVED
+                          </div>
+                        )}
+                      </>
+                    )}
 
-    <button
-      className="btn btn-danger"
-      disabled={ev.status === "archived" || ev.registrations?.length > 0}
-      onClick={() => handleDelete(ev._id, "bazaars")}
-      title={
-        ev.registrations?.length > 0
-          ? "Cannot delete: participants registered"
-          : "Cannot delete archived event"
-      }
-    >
-      Delete
-    </button>
+                    {/* TRIP */}
+                    {isTrip && (
+                      <>
+                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                          View Details
+                        </button>
 
-    <button
-      className="btn"
-      onClick={() => navigate(`/bazaars/${ev._id}/vendor-requests`)}
-    >
-      Vendor Requests
-    </button>
+                        {/* ARCHIVE BUTTON — only shows if trip has passed and not yet archived */}
+                        {isPast && ev.status !== "archived" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#8B4513", color: "white" }}
+                            onClick={() => handleArchive(ev._id, ev.type)}
+                          >
+                            Archive
+                          </button>
+                        )}
 
-    <button
-      className="btn"
-      style={{ background: "#c88585", color: "white" }}
-      onClick={() => exportAttendees(ev._id, "bazaars")}
-      disabled={ev.status === "archived"}
-    >
-      Export Excel
-    </button>
+                        {/* Edit button */}
+                        {editable && ev.status !== "archived" ? (
+                          <button className="btn" onClick={() => navigate(`/trips/${ev._id}`)}>
+                            Edit
+                          </button>
+                        ) : (
+                          <button className="btn btn-disabled" disabled>
+                            Edit
+                          </button>
+                        )}
 
-    {ev.status === "archived" && (
-      <div
-        className="chip"
-        style={{ background: "#666", color: "white", marginTop: "8px" }}
-      >
-        ARCHIVED
-      </div>
-    )}
-  </>
-)}
+                        {/* Delete button */}
+                        <button
+                          className="btn btn-danger"
+                          disabled={ev.status === "archived"}
+                          onClick={() => handleDelete(ev._id, "trips")}
+                          title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this trip"}
+                        >
+                          Delete
+                        </button>
 
+                        {/* Export Excel */}
+                        <button
+                          className="btn"
+                          style={{ background: "#c88585", color: "white" }}
+                          onClick={() => exportAttendees(ev._id, "trips")}
+                          disabled={ev.status === "archived"}
+                        >
+                          Export Excel
+                        </button>
 
+                        {/* ARCHIVED badge */}
+                        {ev.status === "archived" && (
+                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                            ARCHIVED
+                          </div>
+                        )}
+                      </>
+                    )}
 
-                   {/* TRIP */}
-{isTrip && (
-  <>
-    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
-      View Details
-    </button>
+                    {/* CONFERENCE */}
+                    {isConference && (
+                      <>
+                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                          View Details
+                        </button>
 
-    {/* ARCHIVE BUTTON — only shows if trip has passed and not yet archived */}
-    {isPastEvent(ev) && ev.status !== "archived" && (
-      <button
-        className="btn"
-        style={{ background: "#8B4513", color: "white" }}
-        onClick={async () => {
-          try {
-            const typeMap = {
-              TRIP: "trips",
-              BAZAAR: "bazaars",
-              CONFERENCE: "conferences",
-              WORKSHOP: "workshops",
-              BOOTH: "booths",
-            };
+                        {/* ARCHIVE BUTTON — only appears if conference has ended and is not yet archived */}
+                        {isPast && ev.status !== "archived" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#8B4513", color: "white" }}
+                            onClick={() => handleArchive(ev._id, ev.type)}
+                          >
+                            Archive
+                          </button>
+                        )}
 
-            const path = typeMap[ev.type.toUpperCase()];
-            if (!path) return alert("Unknown event type: " + ev.type);
+                        {/* Edit button */}
+                        {editable && ev.status !== "archived" ? (
+                          <button className="btn" onClick={() => navigate(`/conferences/${ev._id}`)}>
+                            Edit
+                          </button>
+                        ) : (
+                          <button className="btn btn-disabled" disabled>
+                            Edit
+                          </button>
+                        )}
 
-            const token = localStorage.getItem("token"); // adjust if using context
-            const res = await fetch(`/api/${path}/${ev._id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ status: "archived" }),
-            });
+                        {/* Delete button */}
+                        <button
+                          className="btn btn-danger"
+                          disabled={ev.status === "archived"}
+                          onClick={() => handleDelete(ev._id, "conferences")}
+                          title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this conference"}
+                        >
+                          Delete
+                        </button>
 
-            if (!res.ok) {
-              const errorText = await res.text();
-              return alert("Failed to archive: " + errorText);
-            }
+                        {/* ARCHIVED badge */}
+                        {ev.status === "archived" && (
+                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                            ARCHIVED
+                          </div>
+                        )}
+                      </>
+                    )}
 
-            // Update local state so UI reflects immediately
-            ev.status = "archived";
-            alert("Trip archived successfully!");
-          } catch (err) {
-            console.error(err);
-            alert("Failed to archive: Network error");
-          }
-        }}
-      >
-        Archive
-      </button>
-    )}
+                    {/* WORKSHOP */}
+                    {isWorkshop && (
+                      <>
+                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                          View Details
+                        </button>
 
-    {/* Edit button */}
-    {editable && ev.status !== "archived" ? (
-      <button className="btn" onClick={() => navigate(`/trips/${ev._id}`)}>
-        Edit
-      </button>
-    ) : (
-      <button className="btn btn-disabled" disabled>
-        Edit
-      </button>
-    )}
+                        {/* ARCHIVE BUTTON — only shows if workshop has ended and is NOT archived */}
+                        {isPast && ev.status !== "archived" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#8B4513", color: "white" }}
+                            onClick={() => handleArchive(ev._id, ev.type)}
+                          >
+                            Archive
+                          </button>
+                        )}
 
-    {/* Delete button */}
-    <button
-      className="btn btn-danger"
-      disabled={ev.status === "archived"}
-      onClick={() => handleDelete(ev._id, "trips")}
-      title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this trip"}
-    >
-      Delete
-    </button>
+                        {/* Accept/Reject/Request Edits — only if NOT archived */}
+                        {ev.status !== "archived" &&
+                          (ev.status === "pending" || ev.status === "edits_requested") && (
+                            <>
+                              <button className="btn btn-success" onClick={() => handleAccept(id)}>
+                                Accept & Publish
+                              </button>
+                              <button className="btn btn-danger" onClick={() => handleReject(id)}>
+                                Reject
+                              </button>
+                              <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
+                                Request Edits
+                              </button>
+                            </>
+                          )}
 
-    {/* Export Excel */}
-    <button
-      className="btn"
-      style={{ background: "#c88585", color: "white" }}
-      onClick={() => exportAttendees(ev._id, "trips")}
-      disabled={ev.status === "archived"}
-    >
-      Export Excel
-    </button>
+                        {/* Export Excel — only for published workshops and NOT archived */}
+                        {ev.status === "published" && ev.status !== "archived" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#c88585", color: "white" }}
+                            onClick={() => exportAttendees(id, "workshops")}
+                          >
+                            Export Excel
+                          </button>
+                        )}
 
-    {/* ARCHIVED badge */}
-    {ev.status === "archived" && (
-      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
-        ARCHIVED
-      </div>
-    )}
-  </>
-)}
+                        {/* ARCHIVED badge */}
+                        {ev.status === "archived" && (
+                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                            ARCHIVED
+                          </div>
+                        )}
+                      </>
+                    )}
 
+                    {/* BOOTH */}
+                    {isBooth && (
+                      <>
+                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                          View Details
+                        </button>
 
-                   {/* CONFERENCE */}
-{isConference && (
-  <>
-    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
-      View Details
-    </button>
+                        {/* ARCHIVE BUTTON — only shows if booth has ended and is NOT archived */}
+                        {isPast && ev.status !== "archived" && (
+                          <button
+                            className="btn"
+                            style={{ background: "#8B4513", color: "white" }}
+                            onClick={() => handleArchive(ev._id, ev.type)}
+                          >
+                            Archive
+                          </button>
+                        )}
 
-    {/* ARCHIVE BUTTON — only appears if conference has ended and is not yet archived */}
-    {isPastEvent(ev) && ev.status !== "archived" && (
-      <button
-        className="btn"
-        style={{ background: "#8B4513", color: "white" }}
-        onClick={async () => {
-          try {
-            const typeMap = {
-              TRIP: "trips",
-              BAZAAR: "bazaars",
-              CONFERENCE: "conferences",
-              WORKSHOP: "workshops",
-              BOOTH: "booths",
-            };
+                        {/* Delete — disabled when archived */}
+                        <button
+                          className="btn btn-danger"
+                          disabled={ev.status === "archived"}
+                          onClick={() => handleDelete(id, "booths")}
+                        >
+                          Delete
+                        </button>
 
-            const path = typeMap[ev.type.toUpperCase()];
-            if (!path) return alert("Unknown event type: " + ev.type);
+                        {/* Export Excel — disabled when archived */}
+                        <button
+                          className="btn"
+                          style={{ background: "#c88585", color: "white" }}
+                          onClick={() => exportAttendees(id, "booths")}
+                          disabled={ev.status === "archived"}
+                        >
+                          Export Excel
+                        </button>
 
-            const token = localStorage.getItem("token"); // adjust if using context
-            const res = await fetch(`/api/${path}/${ev._id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ status: "archived" }),
-            });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              return alert("Failed to archive: " + errorText);
-            }
-
-            // Update local state so UI reflects immediately
-            ev.status = "archived";
-            alert("Conference archived successfully!");
-          } catch (err) {
-            console.error(err);
-            alert("Failed to archive: Network error");
-          }
-        }}
-      >
-        Archive
-      </button>
-    )}
-
-    {/* Edit button */}
-    {editable && ev.status !== "archived" ? (
-      <button className="btn" onClick={() => navigate(`/conferences/${ev._id}`)}>
-        Edit
-      </button>
-    ) : (
-      <button className="btn btn-disabled" disabled>
-        Edit
-      </button>
-    )}
-
-    {/* Delete button */}
-    <button
-      className="btn btn-danger"
-      disabled={ev.status === "archived"}
-      onClick={() => handleDelete(ev._id, "conferences")}
-      title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this conference"}
-    >
-      Delete
-    </button>
-
-    {/* ARCHIVED badge */}
-    {ev.status === "archived" && (
-      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
-        ARCHIVED
-      </div>
-    )}
-  </>
-)}
-
-
-                   {/* WORKSHOP */}
-{isWorkshop && (
-  <>
-    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
-      View Details
-    </button>
-
-    {/* ARCHIVE BUTTON — only shows if workshop has ended and is NOT archived */}
-    {isPastEvent(ev) && ev.status !== "archived" && (
-      <button
-        className="btn"
-        style={{ background: "#8B4513", color: "white" }}
-        onClick={async () => {
-          try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`/api/workshops/${ev._id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ status: "archived" }),
-            });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              return alert("Failed to archive: " + errorText);
-            }
-
-            // Update status locally
-            ev.status = "archived";
-            alert("Workshop archived successfully!");
-          } catch (err) {
-            console.error(err);
-            alert("Failed to archive: Network error");
-          }
-        }}
-      >
-        Archive
-      </button>
-    )}
-
-    {/* Accept/Reject/Request Edits — only if NOT archived */}
-    {ev.status !== "archived" &&
-      (ev.status === "pending" || ev.status === "edits_requested") && (
-        <>
-          <button className="btn btn-success" onClick={() => handleAccept(id)}>
-            Accept & Publish
-          </button>
-          <button className="btn btn-danger" onClick={() => handleReject(id)}>
-            Reject
-          </button>
-          <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
-            Request Edits
-          </button>
-        </>
-      )}
-
-    {/* Export Excel — only for published workshops and NOT archived */}
-    {ev.status === "published" && ev.status !== "archived" && (
-      <button
-        className="btn"
-        style={{ background: "#c88585", color: "white" }}
-        onClick={() => exportAttendees(id, "workshops")}
-      >
-        Export Excel
-      </button>
-    )}
-
-    {/* ARCHIVED badge */}
-    {ev.status === "archived" && (
-      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
-        ARCHIVED
-      </div>
-    )}
-  </>
-)}
-
-
-                   {/* BOOTH */}
-{isBooth && (
-  <>
-    <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
-      View Details
-    </button>
-
-    {/* ARCHIVE BUTTON — only shows if booth has ended and is NOT archived */}
-    {isPastEvent(ev) && ev.status !== "archived" && (
-      <button
-        className="btn"
-        style={{ background: "#8B4513", color: "white" }}
-        onClick={async () => {
-          try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`/api/booths/${ev._id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ status: "archived" }),
-            });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              return alert("Failed to archive: " + errorText);
-            }
-
-            ev.status = "archived"; // update UI immediately
-            alert("Booth archived successfully!");
-          } catch (err) {
-            console.error(err);
-            alert("Failed to archive: Network error");
-          }
-        }}
-      >
-        Archive
-      </button>
-    )}
-
-    {/* Delete — disabled when archived */}
-    <button
-      className="btn btn-danger"
-      disabled={ev.status === "archived"}
-      onClick={() => handleDelete(id, "booths")}
-    >
-      Delete
-    </button>
-
-    {/* Export Excel — disabled when archived */}
-    <button
-      className="btn"
-      style={{ background: "#c88585", color: "white" }}
-      onClick={() => exportAttendees(id, "booths")}
-      disabled={ev.status === "archived"}
-    >
-      Export Excel
-    </button>
-
-    {/* ARCHIVED badge */}
-    {ev.status === "archived" && (
-      <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
-        ARCHIVED
-      </div>
-    )}
-  </>
-)}
-
+                        {/* ARCHIVED badge */}
+                        {ev.status === "archived" && (
+                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                            ARCHIVED
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </article>
               );
@@ -1543,6 +1309,43 @@ async function handleArchive(id, type) {
                 Send
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Choose event type modal */}
+      {chooseOpen && (
+        <div className="confirm-overlay">
+          <div className="confirm" style={{ maxWidth: "400px" }}>
+            <h2 style={{ marginTop: 0 }}>Create New Event</h2>
+            <p>Choose event type:</p>
+            <div className="form-grid form-grid-3">
+              {[
+                { type: "trip", label: "Trip" },
+                { type: "conference", label: "Conference" },
+                { type: "workshop", label: "Workshop" },
+                { type: "bazaar", label: "Bazaar" },
+                { type: "booth", label: "Booth" },
+              ].map(({ type, label }) => (
+                <button
+                  key={type}
+                  className="btn"
+                  onClick={() => {
+                    setChooseOpen(false);
+                    navigate(createPathMap[type]);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              className="btn btn-outline"
+              style={{ marginTop: "20px" }}
+              onClick={() => setChooseOpen(false)}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -1706,6 +1509,29 @@ async function handleArchive(id, type) {
                   {viewEvent.extraResources || "—"}
                 </div>
 
+                {/* Display restricted roles */}
+                <div style={{
+                  margin: "16px 0",
+                  padding: "12px",
+                  backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
+                  borderRadius: "8px",
+                  border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
+                  fontWeight: "bold",
+                  fontSize: "15px",
+                  color: "#1f2937"
+                }}>
+                  {viewEvent.allowedRoles?.length > 0 ? (
+                    <>
+                      Restricted to: {" "}
+                      {viewEvent.allowedRoles
+                        .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                        .join(", ")}
+                    </>
+                  ) : (
+                    <>Open to ALL users (Students, Professors, TAs, Staff)</>
+                  )}
+                </div>
+
                 {viewEvent.shortDescription && (
                   <div style={{ marginTop: "10px" }}>
                     <strong>Short Description:</strong>
@@ -1714,62 +1540,63 @@ async function handleArchive(id, type) {
                 )}
               </>
             )}
-{/* ==================== TRIP ==================== */}
-{viewEvent.type === "TRIP" && (
-  <>
-    <div>
-      <strong>Location:</strong> {viewEvent.location || "—"}
-    </div>
-    <div>
-      <strong>Price:</strong> {formatMoney(viewEvent.price)}
-    </div>
-    <div>
-      <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
-    </div>
-    <div>
-      <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
-    </div>
-    <div>
-      <strong>Capacity:</strong> {viewEvent.capacity || "—"}
-    </div>
 
-    {/* THIS IS THE NEW CLEAR RESTRICTION DISPLAY */}
-    <div style={{ 
-      margin: "16px 0", 
-      padding: "12px", 
-      backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
-      borderRadius: "8px",
-      border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
-      fontWeight: "bold",
-      fontSize: "15px",
-      color: "#1f2937"
-    }}>
-      {viewEvent.allowedRoles?.length > 0 ? (
-        <>
-          Restricted to: {" "}
-          {viewEvent.allowedRoles
-            .map(role => role.charAt(0).toUpperCase() + role.slice(1) + "s")
-            .join(", ")}
-        </>
-      ) : (
-        <>Open to ALL users (Students, Professors, TAs, Staff)</>
-      )}
-    </div>
+            {/* ==================== TRIP ==================== */}
+            {viewEvent.type === "TRIP" && (
+              <>
+                <div>
+                  <strong>Location:</strong> {viewEvent.location || "—"}
+                </div>
+                <div>
+                  <strong>Price:</strong> {formatMoney(viewEvent.price)}
+                </div>
+                <div>
+                  <strong>Starts:</strong> {formatDate(viewEvent.startDateTime)}
+                </div>
+                <div>
+                  <strong>Ends:</strong> {formatDate(viewEvent.endDateTime)}
+                </div>
+                <div>
+                  <strong>Capacity:</strong> {viewEvent.capacity || "—"}
+                </div>
 
-    <div>
-      <strong>Registration Deadline:</strong>{" "}
-      {formatDate(viewEvent.registrationDeadline)}
-    </div>
+                {/* Display restricted roles */}
+                <div style={{
+                  margin: "16px 0",
+                  padding: "12px",
+                  backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
+                  borderRadius: "8px",
+                  border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
+                  fontWeight: "bold",
+                  fontSize: "15px",
+                  color: "#1f2937"
+                }}>
+                  {viewEvent.allowedRoles?.length > 0 ? (
+                    <>
+                      Restricted to: {" "}
+                      {viewEvent.allowedRoles
+                        .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                        .join(", ")}
+                    </>
+                  ) : (
+                    <>Open to ALL users (Students, Professors, TAs, Staff)</>
+                  )}
+                </div>
 
-    {viewEvent.shortDescription && (
-      <div style={{ marginTop: "10px" }}>
-        <strong>Description:</strong>
-        <p>{viewEvent.shortDescription}</p>
-      </div>
-    )}
-  </>
-)}
-            
+                <div>
+                  <strong>Registration Deadline:</strong>{" "}
+                  {formatDate(viewEvent.registrationDeadline)}
+                </div>
+
+                {viewEvent.shortDescription && (
+                  <div style={{ marginTop: "10px" }}>
+                    <strong>Description:</strong>
+                    <p>{viewEvent.shortDescription}</p>
+                  </div>
+                )}
+              </>
+            )}
+
             {/* ==================== WORKSHOP ==================== */}
             {viewEvent.type === "WORKSHOP" && (
               <>
@@ -1934,6 +1761,43 @@ async function handleArchive(id, type) {
             </div>
             <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end' }}>
               <button onClick={() => setDocsModalOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Document Viewer Modal ===== */}
+      {viewerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 9999,
+          }}
+        >
+          <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ background: '#3B82F6', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>{viewerName}</h3>
+                <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+              </div>
+              <button onClick={() => setViewerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+              ) : (
+                <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+                  <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setViewerOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
             </div>
           </div>
         </div>

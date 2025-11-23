@@ -1,3 +1,4 @@
+// client/src/pages/EventDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Menu, Bell, User, LogOut, Star, MessageCircle } from "lucide-react";
@@ -36,15 +37,26 @@ const EventDetails = () => {
   const [userId, setUserId] = useState(null);
   const [canReview, setCanReview] = useState(false);
 
+  // Registration State
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [canRegister, setCanRegister] = useState(false);
+  const [hasPassed, setHasPassed] = useState(false);
+
+  // Get current user's role from token
+  const [userRole, setUserRole] = useState(null);
+  const [isEventsOffice, setIsEventsOffice] = useState(false);
+
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
 
-  // Get user ID from token
+  // Get user ID and role from token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserId(payload.id || payload.userId || payload._id);
+        setUserRole(payload.role?.toLowerCase());
+        setIsEventsOffice(payload.role?.toLowerCase() === "events_office");
         console.log("User ID from token:", payload.id || payload.userId || payload._id);
       } catch (e) {
         console.error("Invalid token");
@@ -90,33 +102,87 @@ const EventDetails = () => {
     const alreadyReviewed = reviews.some(r => r.userId?.toString() === userId);
 
     const endDate = event.endDateTime || event.endDate || event.startDateTime || event.startDate;
-const now = new Date();
+    const now = new Date();
 
-// consider event ended if the end date is in the past or right now
-const hasEnded = endDate && new Date(endDate).getTime() <= now.getTime();
+    // consider event ended if the end date is in the past or right now
+    const hasEnded = endDate && new Date(endDate).getTime() <= now.getTime();
 
-if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
-  setCanReview(!alreadyReviewed && hasEnded);
-  return;
-}
-
+    if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
+      setCanReview(!alreadyReviewed && hasEnded);
+      return;
+    }
 
     // CASE B: TRIPS / WORKSHOPS → must be registered AND event ended
-    const hasPassed = new Date(event.endDateTime || event.startDateTime || event.startDate) < new Date();
+    const hasPassedReview = new Date(event.endDateTime || event.startDateTime || event.startDate) < new Date();
 
-    if (!hasPassed || alreadyReviewed) {
+    if (!hasPassedReview || alreadyReviewed) {
       setCanReview(false);
       return;
     }
 
-    let isRegistered = false;
+    let isRegisteredReview = false;
     if (event.registeredUsers)
-      isRegistered = event.registeredUsers.some(u => u.toString() === userId);
+      isRegisteredReview = event.registeredUsers.some(u => u.toString() === userId);
     if (event.registrations)
-      isRegistered = isRegistered || event.registrations.some(r => r.userId?.toString() === userId);
+      isRegisteredReview = isRegisteredReview || event.registrations.some(r => r.userId?.toString() === userId);
 
-    setCanReview(isRegistered);
+    setCanReview(isRegisteredReview);
   }, [event, reviews, userId]);
+
+  // Registration logic
+  useEffect(() => {
+    if (!event || !userId) return;
+
+    const now = new Date();
+    const deadline = event.registrationDeadline ? new Date(event.registrationDeadline) : new Date(event.startDateTime || event.startDate);
+    const hasPassedReg = deadline.getTime() < now.getTime();
+
+    let isReg = false;
+    if (event.registeredUsers)
+      isReg = event.registeredUsers.some(u => u.toString() === userId);
+    if (event.registrations)
+      isReg = isReg || event.registrations.some(r => r.userId?.toString() === userId);
+
+    setIsRegistered(isReg);
+    setHasPassed(hasPassedReg);
+    setCanRegister(!isReg && !hasPassedReg);
+  }, [event, userId]);
+
+  // Check if user is allowed to register
+  const userIsAllowed = !event?.allowedRoles?.length ||
+    event.allowedRoles.includes(userRole) ||
+    isEventsOffice;
+
+  // Handle registration with role check
+  const handleRegister = async () => {
+    if (!userIsAllowed) {
+      alert(
+        `This event is restricted to: ${event.allowedRoles
+          .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+          .join(", ")}\nOnly allowed roles can register.`
+      );
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/events/${id}/register`, { // Adjust endpoint if needed
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        alert("Successfully registered!");
+        window.location.reload();
+      } else {
+        const error = await res.json();
+        alert(error.error || "Registration failed");
+      }
+    } catch (err) {
+      alert("Network error. Try again.");
+    }
+  };
 
   // Submit Review
   const submitReview = async () => {
@@ -302,7 +368,6 @@ if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
   const isBazaar = type === "BAZAAR";
   const isConference = type === "CONFERENCE";
   const isBooth = type === "BOOTH";
-  const hasPassed = new Date(event.startDateTime || event.startDate) < new Date();
 
   let eventImage = event.image;
   if (!eventImage || eventImage === "") {
@@ -363,6 +428,323 @@ if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
             <div className="h-64 w-full bg-gray-200 rounded-lg mb-6 overflow-hidden">
               <img src={eventImage} alt={title} className="h-full w-full object-cover" />
             </div>
+
+            {/* EVENT DETAILS SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* ==================== BAZAAR ==================== */}
+              {isBazaar && (
+                <>
+                  <div>
+                    <strong>Location:</strong> {event.location || "—"}
+                  </div>
+                  <div>
+                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
+                  </div>
+                  <div>
+                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
+                  </div>
+                  <div>
+                    <strong>Registration Deadline:</strong>{" "}
+                    {formatDate(event.registrationDeadline)}
+                  </div>
+                  <div>
+                    <strong>Registered:</strong>{" "}
+                    {event.registrations?.length || 0}
+                  </div>
+                  {event.description && (
+                    <div className="md:col-span-2">
+                      <strong>Description:</strong>
+                      <p>{event.description}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              {/* ==================== CONFERENCE ==================== */}
+              {isConference && (
+                <>
+                  <div>
+                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
+                  </div>
+                  <div>
+                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
+                  </div>
+                  <div>
+                    <strong>Full Agenda:</strong> {event.agenda || "—"}
+                  </div>
+                  <div>
+                    <strong>Conference Website:</strong>{" "}
+                    {event.website ? (
+                      <a
+                        href={event.website}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {event.website}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                  <div>
+                    <strong>Required Budget:</strong>{" "}
+                    {formatMoney(event.budget)}
+                  </div>
+                  <div>
+                    <strong>Funding Source:</strong>{" "}
+                    {event.fundingSource || "—"}
+                  </div>
+                  <div>
+                    <strong>Extra Resources:</strong>{" "}
+                    {event.extraResources || "—"}
+                  </div>
+                  {/* Display restricted roles */}
+                  <div className="md:col-span-2" style={{
+                    margin: "16px 0",
+                    padding: "12px",
+                    backgroundColor: event.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
+                    borderRadius: "8px",
+                    border: event.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
+                    fontWeight: "bold",
+                    fontSize: "15px",
+                    color: "#1f2937"
+                  }}>
+                    {event.allowedRoles?.length > 0 ? (
+                      <>
+                        Restricted to: {" "}
+                        {event.allowedRoles
+                          .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                          .join(", ")}
+                      </>
+                    ) : (
+                      <>Open to ALL users (Students, Professors, TAs, Staff)</>
+                    )}
+                  </div>
+                  {event.shortDescription && (
+                    <div className="md:col-span-2">
+                      <strong>Short Description:</strong>
+                      <p>{event.shortDescription}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              {/* ==================== TRIP ==================== */}
+              {isTrip && (
+                <>
+                  <div>
+                    <strong>Location:</strong> {event.location || "—"}
+                  </div>
+                  <div>
+                    <strong>Price:</strong> {formatMoney(event.price)}
+                  </div>
+                  <div>
+                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
+                  </div>
+                  <div>
+                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
+                  </div>
+                  <div>
+                    <strong>Capacity:</strong> {event.capacity || "—"}
+                  </div>
+                  {/* Display restricted roles */}
+                  <div className="md:col-span-2" style={{
+                    margin: "16px 0",
+                    padding: "12px",
+                    backgroundColor: event.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
+                    borderRadius: "8px",
+                    border: event.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
+                    fontWeight: "bold",
+                    fontSize: "15px",
+                    color: "#1f2937"
+                  }}>
+                    {event.allowedRoles?.length > 0 ? (
+                      <>
+                        Restricted to: {" "}
+                        {event.allowedRoles
+                          .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                          .join(", ")}
+                      </>
+                    ) : (
+                      <>Open to ALL users (Students, Professors, TAs, Staff)</>
+                    )}
+                  </div>
+                  <div>
+                    <strong>Registration Deadline:</strong>{" "}
+                    {formatDate(event.registrationDeadline)}
+                  </div>
+                  {event.shortDescription && (
+                    <div className="md:col-span-2">
+                      <strong>Description:</strong>
+                      <p>{event.shortDescription}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              {/* ==================== WORKSHOP ==================== */}
+              {isWorkshop && (
+                <>
+                  <div>
+                    <strong>Location:</strong> {event.location || "—"}
+                  </div>
+                  <div>
+                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
+                  </div>
+                  <div>
+                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
+                  </div>
+                  <div>
+                    <strong>Full Agenda:</strong> {event.agenda || "—"}
+                  </div>
+                  <div>
+                    <strong>Faculty Responsible:</strong>{" "}
+                    {event.facultyResponsible || "—"}
+                  </div>
+                  <div>
+                    <strong>Professors Participating:</strong>{" "}
+                    {event.professorsParticipating || "—"}
+                  </div>
+                  <div>
+                    <strong>Required Budget:</strong>{" "}
+                    {formatMoney(event.budget)}
+                  </div>
+                  <div>
+                    <strong>Funding Source:</strong>{" "}
+                    {event.fundingSource || "—"}
+                  </div>
+                  <div>
+                    <strong>Extra Resources:</strong>{" "}
+                    {event.extraResources || "—"}
+                  </div>
+                  <div>
+                    <strong>Capacity:</strong> {event.capacity || "—"}
+                  </div>
+                  <div>
+                    <strong>Registration Deadline:</strong>{" "}
+                    {formatDate(event.registrationDeadline)}
+                  </div>
+                  {event.shortDescription && (
+                    <div className="md:col-span-2">
+                      <strong>Description:</strong>
+                      <p>{event.shortDescription}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              {/* ==================== BOOTH ==================== */}
+              {isBooth && (
+                <>
+                  <div>
+                    <strong>Booth Size:</strong> {event.boothSize || "—"}
+                  </div>
+                  <div>
+                    <strong>Platform Slot:</strong>{" "}
+                    {event.platformSlot || "—"}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {event.status || "—"}
+                  </div>
+                  <div>
+                    <strong>Attendee Names:</strong>{" "}
+                    {event.attendees?.length
+                      ? event.attendees.map((a) => a.name || "—").join(", ")
+                      : "None"}
+                  </div>
+                  <div>
+                    <strong>Attendee Emails:</strong>{" "}
+                    {event.attendees?.length
+                      ? event.attendees.map((a) => a.email).join(", ")
+                      : "None"}
+                  </div>
+                  {event.description && (
+                    <div className="md:col-span-2">
+                      <strong>Description:</strong>
+                      <p>{event.description}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* REGISTRATION SECTION */}
+            {!isRegistered && !hasPassed && (
+              <div style={{ marginTop: "20px" }}>
+                {canRegister ? (
+                  <button
+                    onClick={handleRegister}
+                    style={{
+                      background: "#10b981",
+                      color: "white",
+                      padding: "12px 24px",
+                      borderRadius: "8px",
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    disabled={!userIsAllowed}
+                  >
+                    Register Now
+                  </button>
+                ) : (
+                  <div>
+                    <button
+                      disabled
+                      style={{
+                        background: "#9ca3af",
+                        color: "white",
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        border: "none",
+                        cursor: "not-allowed",
+                      }}
+                    >
+                      Registration Closed
+                    </button>
+                  </div>
+                )}
+                {/* ROLE RESTRICTION MESSAGE */}
+                {event?.allowedRoles?.length > 0 && !userIsAllowed && !isEventsOffice && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      padding: "14px",
+                      backgroundColor: "#fef3c7",
+                      border: "2px solid #f59e0b",
+                      borderRadius: "8px",
+                      color: "#92400e",
+                      fontWeight: "bold",
+                      fontSize: "15px",
+                    }}
+                  >
+                    This event is restricted to:{" "}
+                    {event.allowedRoles
+                      .map((role) => role.charAt(0).toUpperCase() + role.slice(1) + "s")
+                      .join(", ")}
+                    <br />
+                    <small style={{ fontWeight: "normal", color: "#78350f" }}>
+                      Only selected roles can register.
+                    </small>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isBazaar && event.booths && event.booths.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-xl font-bold text-[#2f4156] mb-4">Accepted Booths</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {event.booths.map((booth) => (
+                    <div key={booth._id} className="bg-[#f8f9fa] p-4 rounded-lg">
+                      <h4 className="font-semibold">{booth.title}</h4>
+                      <p><strong>Size:</strong> {booth.boothSize}</p>
+                      <p><strong>Slot:</strong> {booth.platformSlot}</p>
+                      <p><strong>Attendees:</strong> {booth.attendees.join(", ")}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* RATINGS & REVIEWS SECTION */}
             <div className="mt-12 border-t pt-8">
