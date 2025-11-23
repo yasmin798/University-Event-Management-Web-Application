@@ -138,6 +138,8 @@ export default function Admin() {
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [viewEvent, setViewEvent] = useState(null);
+
 
   // Debounced admin filters to avoid per-keystroke filtering
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -1113,6 +1115,76 @@ export default function Admin() {
               </div>
             )}
           </div>
+          
+          {viewEvent && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      background: "rgba(0,0,0,0.45)",
+      zIndex: 9999,
+    }}
+  >
+    <div style={{
+      background: "white",
+      width: "80%",
+      maxWidth: 800,
+      borderRadius: 10,
+      padding: 20,
+      boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
+      maxHeight: "90vh",
+      overflowY: "auto",
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+        <h2 style={{ margin: 0 }}>{viewEvent.title || viewEvent.name || "Untitled Event"}</h2>
+        <button
+          onClick={() => setViewEvent(null)}
+          style={{
+            background: "transparent",
+            border: "none",
+            fontSize: 18,
+            cursor: "pointer",
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <p><strong>Type:</strong> {viewEvent.type || viewEvent.eventType || "Event"}</p>
+      <p><strong>Location:</strong> {viewEvent.location || viewEvent.venue || "—"}</p>
+      <p><strong>Start:</strong> {viewEvent.startDateTime ? new Date(viewEvent.startDateTime).toLocaleString() : "—"}</p>
+      <p><strong>End:</strong> {viewEvent.endDateTime ? new Date(viewEvent.endDateTime).toLocaleString() : "—"}</p>
+      <p><strong>Description:</strong> {viewEvent.description || "No description provided"}</p>
+
+      {viewEvent.registrations && viewEvent.registrations.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <strong>Registrations:</strong>
+          <ul>
+            {viewEvent.registrations.map((r, i) => (
+              <li key={i}>{r.name || r.fullName || r.email || "Anonymous"}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div style={{ marginTop: 20, textAlign: 'right' }}>
+        <button
+          onClick={() => setViewEvent(null)}
+          style={{
+            ...cancelBtnStyle,
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
         </main>
       </div>
     </div>
@@ -1605,6 +1677,7 @@ function SectionEvents({
   eventFetchErrors,
   processingId,
   handleDeleteEvent,
+  setViewEvent
 }) {
   const navigate = useNavigate();
   // Server already filtered events, so just use them directly
@@ -1663,20 +1736,30 @@ function SectionEvents({
                       : "—"}
                   </td>
                   <td style={tdStyle}>
-                    <button
-                      onClick={() =>
-                        navigate(`/events/${event._id}`, {
-                          state: { fromAdmin: true },
-                        })
-                      }
-                      style={{
-                        ...verifyBtnStyle,
-                        backgroundColor: "#3B82F6",
-                        marginRight: 5,
-                      }}
-                    >
-                      Details
-                    </button>
+                    {/* Details opens modal */}
+<button
+  onClick={() => setViewEvent(event)}
+  style={{
+    ...verifyBtnStyle,
+    backgroundColor: "#3B82F6",
+    marginRight: 5,
+  }}
+>
+  Details
+</button>
+
+{/* Reviews still navigates */}
+<button
+  onClick={() => navigate(`/events/${event._id}/reviews`)}
+  style={{
+    ...verifyBtnStyle,
+    backgroundColor: "#0EA5E9",
+    marginRight: 5,
+  }}
+  title="View all reviews & comments for this event"
+>
+  Reviews
+</button>
                     <button
                       onClick={() =>
                         handleDeleteEvent(
