@@ -1,3 +1,4 @@
+// client/src/pages/TripForm.js
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar"; // ✅ ADD SIDEBAR
@@ -23,6 +24,7 @@ export default function TripForm() {
     registrationDeadline: "",
     price: "",
     capacity: "",
+   allowedRoles: [], // ADD THIS: Default to empty (open to all)
   });
 
   const [errors, setErrors] = useState({});
@@ -55,6 +57,7 @@ export default function TripForm() {
           : "",
         price: doc.price ?? "",
         capacity: doc.capacity ?? "",
+       allowedRoles: doc.allowedRoles || [], // ADD THIS: Load from backend
       });
     })();
 
@@ -63,8 +66,17 @@ export default function TripForm() {
 
   // handle change
   function handleChange(e) {
-    const { name, value } = e.target;
-    setData((d) => ({ ...d, [name]: value }));
+    const { name, value, type, checked } = e.target;
+   if (type === "checkbox") { // ADD THIS: Handle checkbox for roles
+     setData((d) => ({
+       ...d,
+       allowedRoles: checked
+         ? [...d.allowedRoles, value]
+         : d.allowedRoles.filter((r) => r !== value),
+     }));
+   } else {
+      setData((d) => ({ ...d, [name]: value }));
+   }
   }
 
   // save trip
@@ -87,6 +99,7 @@ export default function TripForm() {
       registrationDeadline: data.registrationDeadline,
       price: Number(data.price || 0),
       capacity: Number(data.capacity || 0),
+   allowedRoles: data.allowedRoles, // ADD THIS: Include in payload
     };
 
     const method = editing ? "PUT" : "POST";
@@ -259,6 +272,27 @@ export default function TripForm() {
               </FormField>
             </div>
           </fieldset>
+
+        {/* ADD THIS: Role Restrictions */}
+       <fieldset className="form-sec">
+          <legend>Role Restrictions</legend>
+          <p className="help">Select roles allowed to register. Leave unchecked for open to all.</p>
+          <div className="form-grid form-grid-2" style={{ display: "flex", flexWrap: "wrap" }}>
+           {["student", "professor", "ta", "staff"].map((role) => (
+               <label key={role} style={{ display: "flex", alignItems: "center", marginRight: "20px" }}>
+                <input
+               type="checkbox"
+                  name="allowedRoles"
+                   value={role}
+                   checked={data.allowedRoles.includes(role)}
+                   onChange={handleChange}
+                   disabled={!canEdit && editing}
+                 />
+                 {role.charAt(0).toUpperCase() + role.slice(1)}s
+               </label>
+             ))}
+           </div>
+         </fieldset>
 
           {/* Submit */}
           <div className="form-actions">
