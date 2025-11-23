@@ -1,22 +1,26 @@
 // client/src/pages/VendorsPage.js
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, User as UserIcon, Search } from "lucide-react";
+import { Search, LogOut, User as UserIcon, Menu, X } from "lucide-react";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg"; // Reuse from EventsHome imports
 
 const VendorsPage = () => {
   const navigate = useNavigate();
 
   // ------- state -------
   const [bazaars, setBazaars] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // ------- fetch bazaars -------
-  const fetchBazaars = async () => {
+  const fetchBazaars = useCallback(async () => {
     setLoading(true);
     setError("");
+    setCurrentPage(1); // Reset pagination on refresh
     try {
       const res = await fetch("http://localhost:3001/api/bazaars");
       if (!res.ok) throw new Error("Failed to fetch bazaars");
@@ -24,7 +28,7 @@ const VendorsPage = () => {
       const data = await res.json();
       const list = data.items || data || [];
 
-      // 🔥 Filter out past bazaars
+      // Filter out past bazaars
       const now = new Date();
       const upcoming = list.filter((b) => new Date(b.endDateTime) >= now);
 
@@ -37,182 +41,328 @@ const VendorsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchBazaars();
+  }, [fetchBazaars]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  const filteredBazaars = bazaars.filter((bazaar) => {
+    const term = debouncedSearch.toLowerCase();
+    return (
+      !term ||
+      bazaar.title?.toLowerCase().includes(term) ||
+      bazaar.location?.toLowerCase().includes(term) ||
+      bazaar.shortDescription?.toLowerCase().includes(term)
+    );
+  });
+
+  // Pagination
+  const ITEMS_PER_PAGE = 6;
+  const totalPages = Math.ceil(filteredBazaars.length / ITEMS_PER_PAGE);
+  const indexOfLast = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - ITEMS_PER_PAGE;
+  const currentBazaars = filteredBazaars.slice(indexOfFirst, indexOfLast);
 
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
+    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
+      {/* ==================== MOBILE SIDEBAR OVERLAY ==================== */}
+      {isMobileSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col
-        transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      {/* ==================== SIDEBAR (Permanent on desktop, toggle on mobile) ==================== */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Top bar */}
+        {/* Logo / Title */}
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">EventHub</span>
+            <span className="text-xl font-bold">Vendor Hub</span>
           </div>
-
           <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="p-2 hover:bg-[#567c8d] rounded-lg md:hidden"
           >
             <X size={20} />
           </button>
         </div>
 
+        {/* Navigation Links (Vendor Options) */}
+        <nav className="flex-1 px-4">
+          <ul className="space-y-2">
+            <li>
+              <button
+                onClick={fetchBazaars}
+                className="w-full text-left py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
+              >
+                Refresh Upcoming Bazaars
+              </button>
+            </li>
+            <li>
+              <Link
+                to="/apply-booth"
+                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
+              >
+                Apply for Booth in Platform
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/my-applications/accepted"
+                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
+              >
+                View Applications
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/guc-loyalty-apply"
+                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
+              >
+                Apply for GUC Loyalty Program
+              </Link>
+            </li>
+          </ul>
+        </nav>
+
         {/* Logout */}
         <div className="px-4 pb-4">
           <button
             onClick={() => navigate("/")}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585]
-            hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
           >
             <LogOut size={18} />
             <span>Logout</span>
           </button>
         </div>
+      </aside>
 
-        <nav className="flex-1 px-4"></nav>
-      </div>
-
-      {/* Main Section */}
-      <div className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-              >
-                <Menu size={24} className="text-[#2f4156]" />
-              </button>
-
-              {/* Search */}
-              <div className="relative flex-1 max-w-md">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  placeholder="Search bazaars…"
-                  className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg
-                  focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
-                />
-              </div>
+      {/* ==================== MAIN AREA ==================== */}
+      <main style={{ flex: 1, marginLeft: "260px", padding: "0 24px 24px" }}>
+        {/* ---- Top Search & Info Bar (Mobile menu button) ---- */}
+        <header
+          style={{
+            marginLeft: "-24px",
+            marginRight: "-24px",
+            width: "calc(100% + 48px)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "var(--card)",
+            borderRadius: "0 0 16px 16px",
+            boxShadow: "var(--shadow)",
+            padding: "10px 20px",
+            marginBottom: "20px",
+            position: "sticky",
+            top: 0,
+            zIndex: 5,
+          }}
+        >
+          {/* LEFT: Mobile menu + search */}
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              flexWrap: "wrap",
+              flex: 1,
+            }}
+          >
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors md:hidden"
+            >
+              <Menu size={24} className="text-[#2f4156]" />
+            </button>
+            <div style={{ position: "relative", width: "260px", flex: 1, maxWidth: "100%" }}>
+              <Search
+                size={16}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "10px",
+                  transform: "translateY(-50%)",
+                  color: "var(--teal)",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Search bazaars by title, location, description..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px 8px 34px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(47,65,86,0.2)",
+                  fontSize: "13px",
+                }}
+              />
             </div>
-
-            <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
-              <UserIcon size={20} className="text-[#2f4156]" />
-            </div>
+          </div>
+          {/* RIGHT: user icon */}
+          <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
+            <UserIcon size={20} className="text-[#2f4156]" />
           </div>
         </header>
 
-        {/* Content */}
-        <main className="p-4 md:p-8">
-          <h1 className="text-3xl font-bold text-[#2f4156] mb-6 text-center">
-            Vendors Portal
-          </h1>
-
-          {/* Top Buttons */}
-          <div className="flex flex-col md:flex-row gap-4 justify-center mb-8">
-            <button
-              onClick={fetchBazaars}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
+        {/* ---- Welcome + Pagination Row ---- */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+            width: "100%",
+          }}
+        >
+          <div>
+            <h1
+              style={{
+                color: "var(--navy)",
+                fontWeight: 800,
+                marginBottom: "4px",
+              }}
             >
-              Show Upcoming Bazaars
-            </button>
-               
-            {/* Static booth application form */}
-            <Link
-              to="/apply-booth"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
+              Welcome back, Vendor
+            </h1>
+            <p
+              className="eo-sub"
+              style={{
+                marginTop: 0,
+                marginBottom: 0,
+              }}
             >
-              Apply for Booth in Platform
-            </Link>
-
-            <Link
-              to="/my-applications/accepted"
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
-            >
-              View Applications
-            </Link>
-            <Link
-    to="/guc-loyalty-apply"
-    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-all"
-  >
-    Apply for GUC Loyalty Program
-  </Link>
+              Browse upcoming bazaars and manage your applications.
+            </p>
           </div>
-
-          {/* Loading / Error */}
-          {loading && <p className="text-center text-gray-500">Loading...</p>}
-          {error && <p className="text-center text-red-500">{error}</p>}
-
-          {/* Bazaar List */}
-          {!loading && !error && bazaars.length > 0 && (
-            <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
-              {bazaars.map((bazaar) => (
-                <div
-                  key={bazaar._id}
-                  className="bg-white rounded-2xl shadow-md p-6 hover:shadow-lg
-                  transition-all border border-gray-100"
-                >
-                  <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                    {bazaar.title}
-                  </h2>
-
-                  <p className="text-gray-600">
-                    <strong>Location:</strong> {bazaar.location}
-                  </p>
-
-                  <p className="text-gray-600">
-                    <strong>Start:</strong>{" "}
-                    {new Date(bazaar.startDateTime).toLocaleString()}
-                  </p>
-
-                  <p className="text-gray-600">
-                    <strong>End:</strong>{" "}
-                    {new Date(bazaar.endDateTime).toLocaleString()}
-                  </p>
-
-                  <p className="text-gray-600 mb-3">
-                    <strong>Description:</strong>{" "}
-                    {bazaar.shortDescription || "N/A"}
-                  </p>
-
-                  <p className="text-sm text-gray-500 mb-4">
-                    <strong>Status:</strong>{" "}
-                    <span className="capitalize">{bazaar.status}</span>
-                  </p>
-
-                  {/* Buttons inside each card — CORRECT */}
-                  <div className="flex gap-3 justify-center">
-                    <Link
-                      to={`/apply/${bazaar._id}`}
-                      className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium shadow-md"
-                    >
-                      Apply (General)
-                    </Link>
-                  </div>
-                </div>
-              ))}
+          {/* Pagination */}
+          {filteredBazaars.length > ITEMS_PER_PAGE && (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="pg-btn arrow"
+              >
+                ‹
+              </button>
+              <div className="pg-btn current">{currentPage}</div>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="pg-btn arrow"
+              >
+                ›
+              </button>
             </div>
           )}
-        </main>
-      </div>
+        </div>
+
+        {/* ---- Main Bazaars Grid ---- */}
+        {loading ? (
+          <p style={{ color: "var(--text-muted)", marginTop: "40px" }}>
+            Loading bazaars...
+          </p>
+        ) : error ? (
+          <p style={{ color: "var(--text-muted)", marginTop: "40px" }}>
+            {error}
+          </p>
+        ) : filteredBazaars.length === 0 ? (
+          <p style={{ color: "var(--text-muted)", marginTop: "40px" }}>
+            No bazaars match your search.
+          </p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "24px",
+              alignItems: "stretch",
+            }}
+          >
+            {currentBazaars.map((bazaar) => (
+              <article
+                key={bazaar._id}
+                className="card"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  height: "430px", // Consistent height like EventsHome
+                }}
+              >
+                {/* TOP CONTENT */}
+                <div style={{ flexGrow: 1 }}>
+                  <img
+                    src={bazaarImg}
+                    alt={bazaar.title}
+                    style={{
+                      width: "100%",
+                      height: "150px",
+                      objectFit: "cover",
+                      borderRadius: "12px",
+                      marginBottom: "12px",
+                    }}
+                  />
+                  <div className="chip">BAZAAR</div>
+                  <div className="kv">
+                    <span className="k">Title:</span>
+                    <span className="v">{bazaar.title}</span>
+                  </div>
+                  <div className="kv">
+                    <span className="k">Location:</span>
+                    <span className="v">{bazaar.location || "—"}</span>
+                  </div>
+                  <div className="kv">
+                    <span className="k">Start:</span>
+                    <span className="v">{new Date(bazaar.startDateTime).toLocaleString()}</span>
+                  </div>
+                  <div className="kv">
+                    <span className="k">End:</span>
+                    <span className="v">{new Date(bazaar.endDateTime).toLocaleString()}</span>
+                  </div>
+                  {bazaar.shortDescription && (
+                    <div className="kv">
+                      <span className="k">Description:</span>
+                      <span className="v">{bazaar.shortDescription}</span>
+                    </div>
+                  )}
+                </div>
+                {/* ACTIONS */}
+                <div
+                  className="actions"
+                  style={{
+                    marginTop: "12px",
+                    display: "flex",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Link
+                    to={`/apply/${bazaar._id}`}
+                    className="btn"
+                    style={{ background: "#10b981", color: "white" }} // Green for apply
+                  >
+                    Apply Now
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 };

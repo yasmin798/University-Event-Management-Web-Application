@@ -80,7 +80,12 @@ import PollVoting from "./pages/PollVoting";
 import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
 import PendingVerificationPage from "./pages/PendingVerification";
 import AdminVendor from "./pages/AdminVendor";
+
+//workshops
 import WorkshopParticipants from "./pages/WorkshopParticipants";
+import WorkshopEditsPage from './pages/WorkshopEditsPage';
+
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -200,7 +205,9 @@ function App() {
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
         />
-        <Route path="/create-poll" element={<CreatePoll />} />
+
+        //workshops
+<Route path="/professor/workshops/edits/:id" element={<WorkshopEditsPage />} />        <Route path="/create-poll" element={<CreatePoll />} />
         <Route path="/poll-voting" element={<PollVoting />} />        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
