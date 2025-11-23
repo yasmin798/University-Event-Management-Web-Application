@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, Bell, User, LogOut } from "lucide-react";
+import { Search, Menu, User, LogOut } from "lucide-react";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 
@@ -179,9 +180,9 @@ const AdminDashboard = () => {
 
           {/* Notification bell & user */}
           <div className="flex items-center gap-2 md:gap-4 ml-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
-              <Bell size={20} className="text-[#567c8d]" />
-            </button>
+            <div>
+              <NotificationsDropdown />
+            </div>
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
             </div>

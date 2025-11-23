@@ -136,8 +136,9 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
 
     // Notify Events Office users about new pending vendor application
     try {
-      const eventsOfficeUsers = await User.find({ role: "events_office", status: "active" }).select("_id email");
-      const notifPromises = eventsOfficeUsers.map(u => {
+      // notify both events office and admin users
+      const recipients = await User.find({ role: { $in: ["events_office", "admin"] }, status: "active" }).select("_id email role");
+      const notifPromises = recipients.map(u => {
         const n = new Notification({
           userId: u._id,
           message: `New vendor application pending for bazaar '${baz.title || updatedBazaar.title || bazaar}'. Application ID: ${savedApp._id}`,
@@ -147,7 +148,7 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
       });
       await Promise.all(notifPromises);
     } catch (nerr) {
-      console.error("Failed to create notifications for events office:", nerr);
+      console.error("Failed to create notifications for recipients:", nerr);
     }
     return res.status(201).json({
       success: true,
