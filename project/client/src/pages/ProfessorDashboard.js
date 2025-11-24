@@ -244,10 +244,10 @@ const ProfessorDashboard = () => {
   const filteredEvents = allEvents
     .filter((e) => {
       if (e.type === "BOOTH") return true; // always show booths
-       // ❗ NEW: only hide archived events, show past & future events
-    if (e.status === "archived") return false;
+      // ❗ NEW: only hide archived events, show past & future events
+      if (e.status === "archived") return false;
 
-    return true; // keep all other events
+      return true; // keep all other events
     })
     .filter((e) => {
       const name = e.title || e.name || e.workshopName || e.bazaarName;
@@ -389,19 +389,25 @@ const ProfessorDashboard = () => {
 
   const markNotification = async (notifId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) return;
       const res = await fetch(`/api/notifications/${notifId}/read`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
       // update local state: mark as read
-      setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n)));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n))
+      );
       setUnreadCount((c) => Math.max(0, (c || 0) - 1));
-      try { window.dispatchEvent(new Event('notifications:changed')); } catch (e) { /* ignore */ }
+      try {
+        window.dispatchEvent(new Event("notifications:changed"));
+      } catch (e) {
+        /* ignore */
+      }
     } catch (err) {
-      console.error('Failed to mark notification read', err);
+      console.error("Failed to mark notification read", err);
     }
   };
 
@@ -706,11 +712,12 @@ const ProfessorDashboard = () => {
           </button>
 
           <button
-              onClick={handlePollsVoting}
+            onClick={handlePollsVoting}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
-              ><CheckCircle size={20} />
-                <span>Polls Voting</span>
-                </button>
+          >
+            <CheckCircle size={20} />
+            <span>Polls Voting</span>
+          </button>
 
           <button
             onClick={() => {
@@ -823,12 +830,25 @@ const ProfessorDashboard = () => {
                           >
                             <div className="flex justify-between items-start">
                               <div>
-                                <p className="text-sm text-[#2f4156] mb-1">{notif.message}</p>
-                                <p className="text-xs text-[#567c8d]">{notif.time}</p>
+                                <p className="text-sm text-[#2f4156] mb-1">
+                                  {notif.message}
+                                </p>
+                                <p className="text-xs text-[#567c8d]">
+                                  {notif.time}
+                                </p>
                               </div>
                               <div>
                                 {notif.unread && (
-                                  <button onClick={() => markNotification(notif.id)} style={{ background: 'var(--teal, #567c8d)', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none' }}>
+                                  <button
+                                    onClick={() => markNotification(notif.id)}
+                                    style={{
+                                      background: "var(--teal, #567c8d)",
+                                      color: "white",
+                                      padding: "6px 10px",
+                                      borderRadius: 6,
+                                      border: "none",
+                                    }}
+                                  >
                                     Mark
                                   </button>
                                 )}

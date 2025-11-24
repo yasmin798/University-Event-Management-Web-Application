@@ -38,7 +38,7 @@ router.post("/me/favorites", protect, async (req, res) => {
 router.delete("/me/favorites/:eventId", protect, async (req, res) => {
   try {
     await User.findByIdAndUpdate(req.user._id, {
-      $pull: { favorites: req.params.eventId }
+      $pull: { favorites: req.params.eventId },
     });
     res.json({ success: true });
   } catch (err) {
@@ -58,7 +58,11 @@ router.get("/me/favorites", protect, async (req, res) => {
         for (const Model of models) {
           const doc = await Model.findById(id).lean();
           if (doc) {
-            return { ...doc, _id: doc._id.toString(), type: Model.modelName.toUpperCase() };
+            return {
+              ...doc,
+              _id: doc._id.toString(),
+              type: Model.modelName.toUpperCase(),
+            };
           }
         }
         return null;
@@ -114,11 +118,21 @@ router.get("/me/registered-events", protect, async (req, res) => {
     const mapEvent = (doc, type) => {
       // Choose sensible fallbacks for start/end dates so events without
       // explicit scheduling (e.g., booth applications) still appear in lists.
-      const fallbackStart = doc.startDateTime || doc.startDate || doc.date || doc.createdAt || new Date().toISOString();
+      const fallbackStart =
+        doc.startDateTime ||
+        doc.startDate ||
+        doc.date ||
+        doc.createdAt ||
+        new Date().toISOString();
       const fallbackEnd = doc.endDateTime || doc.endDate || fallbackStart;
 
       // Prefer attendee names for booths when available
-      let title = doc.title || doc.name || doc.workshopName || doc.boothTitle || "Untitled";
+      let title =
+        doc.title ||
+        doc.name ||
+        doc.workshopName ||
+        doc.boothTitle ||
+        "Untitled";
       if ((type || "").toString().toLowerCase() === "booth") {
         try {
           const atts = doc.attendees || doc.registrations || [];
@@ -185,10 +199,30 @@ router.get("/me/registered-raw", protect, async (req, res) => {
       : null;
 
     const [trips, bazaars, workshops, conferences, booths] = await Promise.all([
-      Trip.find({ $or: [{ registeredUsers: userId }, ...(userIdObj ? [{ registeredUsers: userIdObj }] : [])] }).lean(),
-      Bazaar.find({ $or: [{ "registrations.userId": userId }, ...(userIdObj ? [{ "registrations.userId": userIdObj }] : [])] }).lean(),
-      Workshop.find({ $or: [{ registeredUsers: userId }, ...(userIdObj ? [{ registeredUsers: userIdObj }] : [])] }).lean(),
-      Conference.find({ $or: [{ "registrations.userId": userId }, ...(userIdObj ? [{ "registrations.userId": userIdObj }] : [])] }).lean(),
+      Trip.find({
+        $or: [
+          { registeredUsers: userId },
+          ...(userIdObj ? [{ registeredUsers: userIdObj }] : []),
+        ],
+      }).lean(),
+      Bazaar.find({
+        $or: [
+          { "registrations.userId": userId },
+          ...(userIdObj ? [{ "registrations.userId": userIdObj }] : []),
+        ],
+      }).lean(),
+      Workshop.find({
+        $or: [
+          { registeredUsers: userId },
+          ...(userIdObj ? [{ registeredUsers: userIdObj }] : []),
+        ],
+      }).lean(),
+      Conference.find({
+        $or: [
+          { "registrations.userId": userId },
+          ...(userIdObj ? [{ "registrations.userId": userIdObj }] : []),
+        ],
+      }).lean(),
       BoothApplication.find({
         $or: [
           { registeredUsers: userId },

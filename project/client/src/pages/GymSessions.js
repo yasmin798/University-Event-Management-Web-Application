@@ -38,7 +38,6 @@ export default function GymManager() {
     fetchSessions();
   }, []);
 
-
   // ------------------------
   // 🔵 WEEK NAVIGATION
   // ------------------------

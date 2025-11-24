@@ -19,7 +19,10 @@ export default function GymManager({ SidebarComponent = null }) {
     try {
       const res = await axios.get("http://localhost:3000/api/gym");
       setSessions(res.data);
-      console.log("Fetched sessions:", res.data.map(s => ({ id: s._id, allowedRoles: s.allowedRoles })));
+      console.log(
+        "Fetched sessions:",
+        res.data.map((s) => ({ id: s._id, allowedRoles: s.allowedRoles }))
+      );
     } catch (err) {
       console.error("Error fetching sessions:", err);
     }
@@ -92,11 +95,17 @@ export default function GymManager({ SidebarComponent = null }) {
   });
 
   const registerSession = async (sessionId) => {
-    console.log("Register attempt for session:", sessionId, "User role:", userRole);
+    console.log(
+      "Register attempt for session:",
+      sessionId,
+      "User role:",
+      userRole
+    );
     // Get email
     let email = null;
     try {
-      const raw = localStorage.getItem("user") || localStorage.getItem("currentUser");
+      const raw =
+        localStorage.getItem("user") || localStorage.getItem("currentUser");
       if (raw) {
         const u = JSON.parse(raw);
         email = u?.email;
@@ -117,15 +126,26 @@ export default function GymManager({ SidebarComponent = null }) {
       alert("Session not found");
       return;
     }
-    const normalizedAllowedRoles = (session.allowedRoles || []).map(r => r.toLowerCase());
+    const normalizedAllowedRoles = (session.allowedRoles || []).map((r) =>
+      r.toLowerCase()
+    );
     const isOpenToAll = normalizedAllowedRoles.length === 0;
-    console.log("Session allowedRoles (normalized):", normalizedAllowedRoles, "User role:", userRole);
+    console.log(
+      "Session allowedRoles (normalized):",
+      normalizedAllowedRoles,
+      "User role:",
+      userRole
+    );
     if (!isOpenToAll && !normalizedAllowedRoles.includes(userRole)) {
-      const allowedDisplay = normalizedAllowedRoles.map(r => {
-        if (r === "ta") return "TAs";
-        return r.charAt(0).toUpperCase() + r.slice(1) + "s";
-      }).join(", ");
-      alert(`This gym session is intended for ${allowedDisplay}! Your role: ${userRole}`);
+      const allowedDisplay = normalizedAllowedRoles
+        .map((r) => {
+          if (r === "ta") return "TAs";
+          return r.charAt(0).toUpperCase() + r.slice(1) + "s";
+        })
+        .join(", ");
+      alert(
+        `This gym session is intended for ${allowedDisplay}! Your role: ${userRole}`
+      );
       return;
     }
 
@@ -144,41 +164,64 @@ export default function GymManager({ SidebarComponent = null }) {
   };
 
   const renderSessionCell = (session) => {
-    const normalizedAllowedRoles = (session.allowedRoles || []).map(r => r.toLowerCase());
+    const normalizedAllowedRoles = (session.allowedRoles || []).map((r) =>
+      r.toLowerCase()
+    );
     const isOpenToAll = normalizedAllowedRoles.length === 0;
-    const canRegister = isOpenToAll || normalizedAllowedRoles.includes(userRole);
-    const spotsLeft = session.maxParticipants - (session.registeredUsers?.length || 0);
+    const canRegister =
+      isOpenToAll || normalizedAllowedRoles.includes(userRole);
+    const spotsLeft =
+      session.maxParticipants - (session.registeredUsers?.length || 0);
 
     const restrictionText = isOpenToAll ? (
-      <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>Open to everyone</div>
+      <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>
+        Open to everyone
+      </div>
     ) : (
-      <div style={{ color: "#d32f2f", fontSize: "12px", fontWeight: "bold", marginTop: "4px" }}>
-        Only for: {normalizedAllowedRoles.map(r => r === "ta" ? "TAs" : r.charAt(0).toUpperCase() + r.slice(1) + "s").join(", ")}
+      <div
+        style={{
+          color: "#d32f2f",
+          fontSize: "12px",
+          fontWeight: "bold",
+          marginTop: "4px",
+        }}
+      >
+        Only for:{" "}
+        {normalizedAllowedRoles
+          .map((r) =>
+            r === "ta" ? "TAs" : r.charAt(0).toUpperCase() + r.slice(1) + "s"
+          )
+          .join(", ")}
       </div>
     );
 
-    const action = canRegister && spotsLeft > 0 ? (
-      <button
-        onClick={() => registerSession(session._id)}
-        style={{
-          marginTop: "8px",
-          padding: "6px 14px",
-          fontSize: "14px",
-          borderRadius: "10px",
-          background: "#4CAF50",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-          width: "100%",
-        }}
-      >
-        Register
-      </button>
-    ) : spotsLeft <= 0 ? (
-      <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>Full</div>
-    ) : (
-      <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>Not eligible (role: {userRole})</div>
-    );
+    const action =
+      canRegister && spotsLeft > 0 ? (
+        <button
+          onClick={() => registerSession(session._id)}
+          style={{
+            marginTop: "8px",
+            padding: "6px 14px",
+            fontSize: "14px",
+            borderRadius: "10px",
+            background: "#4CAF50",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          Register
+        </button>
+      ) : spotsLeft <= 0 ? (
+        <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>
+          Full
+        </div>
+      ) : (
+        <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>
+          Not eligible (role: {userRole})
+        </div>
+      );
 
     return (
       <div
@@ -192,7 +235,8 @@ export default function GymManager({ SidebarComponent = null }) {
       >
         {session.type.toUpperCase()} <br />
         {session.duration} min <br />
-        Spots: {spotsLeft > 0 ? spotsLeft : 0} / {session.maxParticipants} <br />
+        Spots: {spotsLeft > 0 ? spotsLeft : 0} / {session.maxParticipants}{" "}
+        <br />
         {restrictionText}
         {action}
       </div>
@@ -208,10 +252,15 @@ export default function GymManager({ SidebarComponent = null }) {
     : Sidebar;
 
   return (
-    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
       <SidebarToRender filter={filter} setFilter={setFilter} />
       <main style={{ flex: 1, marginLeft: "260px", padding: "10px 24px" }}>
-        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>Weekly Gym Timetable</h1>
+        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>
+          Weekly Gym Timetable
+        </h1>
         {/* Debug info - remove after testing */}
         <p style={{ fontSize: "12px", color: "#666" }}>{debugInfo}</p>
 
@@ -226,16 +275,31 @@ export default function GymManager({ SidebarComponent = null }) {
         >
           <button
             onClick={() => setWeekStart(addDays(weekStart, -7))}
-            style={{ padding: "8px 16px", background: "#6C63FF", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}
+            style={{
+              padding: "8px 16px",
+              background: "#6C63FF",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
           >
             ← Previous Week
           </button>
           <span style={{ fontSize: "18px", fontWeight: "600" }}>
-            Week of {days[0].dateNum}–{days[6].dateNum}, {days[0].label.toUpperCase()}
+            Week of {days[0].dateNum}–{days[6].dateNum},{" "}
+            {days[0].label.toUpperCase()}
           </span>
           <button
             onClick={() => setWeekStart(addDays(weekStart, 7))}
-            style={{ padding: "8px 16px", background: "#6C63FF", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}
+            style={{
+              padding: "8px 16px",
+              background: "#6C63FF",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
           >
             Next Week →
           </button>
@@ -256,7 +320,10 @@ export default function GymManager({ SidebarComponent = null }) {
               <tr style={{ background: "#6C63FF", color: "white" }}>
                 <th style={{ padding: "12px", textAlign: "left" }}>Time</th>
                 {days.map((day) => (
-                  <th key={day.iso} style={{ padding: "12px", textAlign: "center" }}>
+                  <th
+                    key={day.iso}
+                    style={{ padding: "12px", textAlign: "center" }}
+                  >
                     {day.label}
                     <br />
                     <span style={{ fontSize: "14px" }}>{day.dateNum}</span>
@@ -290,7 +357,9 @@ export default function GymManager({ SidebarComponent = null }) {
                           verticalAlign: "middle",
                         }}
                       >
-                        {session ? renderSessionCell(session) : (
+                        {session ? (
+                          renderSessionCell(session)
+                        ) : (
                           <div
                             style={{
                               background: "#b6f4ff",

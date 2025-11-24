@@ -171,7 +171,9 @@ const EventDetails = () => {
   const allowedLower = (event?.allowedRoles || []).map((r) =>
     String(r).toLowerCase().trim()
   );
-  const userRoleLower = String(userRole || "").toLowerCase().trim();
+  const userRoleLower = String(userRole || "")
+    .toLowerCase()
+    .trim();
   const userIsAllowed =
     allowedLower.length === 0 ||
     allowedLower.includes(userRoleLower) ||
@@ -311,8 +313,8 @@ const EventDetails = () => {
       ...booths,
     ];
 
-    const foundEvent = allEvents.find((e) =>
-      e._id?.toString() === id?.toString()
+    const foundEvent = allEvents.find(
+      (e) => e._id?.toString() === id?.toString()
     );
 
     if (foundEvent) {

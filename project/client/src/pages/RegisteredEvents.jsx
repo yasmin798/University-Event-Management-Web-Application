@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { /* useNavigate */ } from "react-router-dom";
+import /* useNavigate */ "react-router-dom";
 import { Menu, Bell, User, LogOut, Calendar, Home } from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
@@ -140,7 +140,8 @@ const RegisteredEvents = () => {
     try {
       const type = (event.type || "").toString().toUpperCase();
       if (type === "BOOTH") {
-        const atts = event.attendees || event.attendeesNames || event.attendeesList || [];
+        const atts =
+          event.attendees || event.attendeesNames || event.attendeesList || [];
         if (Array.isArray(atts) && atts.length > 0) {
           const names = atts
             .map((a) => {
