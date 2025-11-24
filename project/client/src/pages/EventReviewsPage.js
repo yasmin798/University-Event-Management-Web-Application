@@ -1,16 +1,19 @@
 // client/src/pages/EventReviewsPage.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Star, ArrowLeft } from "lucide-react";
+import { Star, ArrowLeft, Trash2 } from "lucide-react"; // Add Trash2 import
 
 export default function EventReviewsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAdmin = location.state?.from === "admin"; // Detect admin mode
   const [event, setEvent] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState(""); // For success/error toasts
 
+  // Fetch data (event + reviews)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -22,13 +25,10 @@ export default function EventReviewsPage() {
         }
 
         // Get all reviews
-        const reviewsRes = await fetch(`/api/events/${id}/reviews`);
-        if (reviewsRes.ok) {
-          const data = await reviewsRes.json();
-          setReviews(data || []);
-        }
+        await fetchReviews();
       } catch (err) {
         console.error("Error loading reviews:", err);
+        setMessage("Failed to load data.");
       } finally {
         setLoading(false);
       }
@@ -36,6 +36,54 @@ export default function EventReviewsPage() {
 
     fetchData();
   }, [id]);
+
+  // Separate function to refetch reviews (for post-delete refresh)
+  const fetchReviews = async () => {
+    try {
+      const reviewsRes = await fetch(`/api/events/${id}/reviews`);
+      if (reviewsRes.ok) {
+        const data = await reviewsRes.json();
+        setReviews(data || []);
+        setMessage(""); // Clear any old messages
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+      setMessage("Failed to fetch reviews.");
+    }
+  };
+
+  // Delete review (admin only)
+  const deleteReview = async (userId) => {
+    if (!window.confirm("Delete this review? An email warning will be sent to the user.")) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/events/${id}/reviews/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data.reviews || []); // Update with backend response
+        setMessage("Review deleted and warning email sent.");
+      } else {
+        const err = await res.json();
+        setMessage(`Error: ${err.error || "Failed to delete"}`);
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      setMessage("Failed to delete review.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculate average rating
   const avgRating =
@@ -45,7 +93,7 @@ export default function EventReviewsPage() {
         ).toFixed(1)
       : "0.0";
 
-  // Go back to the appropriate events page based on where we came from
+  // Go back to the appropriate events page
   const goToEventsHome = () => {
     const fromAdmin = location.state?.from === "admin";
     if (fromAdmin) {
@@ -79,6 +127,26 @@ export default function EventReviewsPage() {
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
+      {/* MESSAGE TOAST (for delete feedback) */}
+      {message && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            background: message.includes("Error") ? "#ef4444" : "#10b981",
+            color: "white",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            zIndex: 1000,
+            maxWidth: "300px",
+          }}
+        >
+          {message}
+        </div>
+      )}
+
       {/* HEADER + BACK TO EVENTS HOME */}
       <div
         style={{
@@ -124,6 +192,7 @@ export default function EventReviewsPage() {
           </h1>
           <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: "18px" }}>
             {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+            {isAdmin && <span style={{ color: "#ef4444", fontSize: "16px" }}> • Admin Mode</span>}
           </p>
         </div>
       </div>
@@ -188,7 +257,7 @@ export default function EventReviewsPage() {
             No reviews yet.
             <br />
             <span style={{ fontSize: "18px", color: "#94a3b8" }}>
-              Be the first to share your experience!
+              {isAdmin ? "Manage reviews as they come in." : "Be the first to share your experience!"}
             </span>
           </div>
         ) : (
@@ -202,6 +271,7 @@ export default function EventReviewsPage() {
                 boxShadow: "0 8px 25px rgba(0,0,0,0.08)",
                 border: "1px solid #e2e8f0",
                 transition: "transform 0.2s, box-shadow 0.2s",
+                position: "relative", // For admin delete button positioning
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-6px)";
@@ -213,6 +283,42 @@ export default function EventReviewsPage() {
                 e.currentTarget.style.boxShadow = "0 8px 25px rgba(0,0,0,0.08)";
               }}
             >
+              {/* ADMIN DELETE BUTTON */}
+              {isAdmin && (
+                <button
+                  onClick={() => deleteReview(review.userId)}
+                  style={{
+                    position: "absolute",
+                    top: "12px",
+                    right: "12px",
+                    background: "#ef4444",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "36px",
+                    height: "36px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    boxShadow: "0 2px 8px rgba(239,68,68,0.3)",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#dc2626";
+                    e.currentTarget.style.transform = "scale(1.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#ef4444";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                  title="Delete Review (Email Warning Sent)"
+                  disabled={loading}
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+
               <div
                 style={{
                   display: "flex",
