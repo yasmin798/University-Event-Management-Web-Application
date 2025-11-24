@@ -45,6 +45,10 @@ const StaffDashboard = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [userId, setUserId] = useState(null);
 
+  const [notifications, setNotifications] = useState([]);
+const [showNotifications, setShowNotifications] = useState(false);
+
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(t);
@@ -209,6 +213,42 @@ const StaffDashboard = () => {
     setSelectedEvent(event);
     loadReviews(event._id);
   };
+
+  useEffect(() => {
+  if (!userId) return;
+
+  const fetchNotifications = async () => {
+    try {
+      // No token needed anymore
+      const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
+
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      } else {
+        console.error("Failed to fetch notifications");
+      }
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    }
+  };
+
+  fetchNotifications();
+}, [userId]);
+
+const unreadCount = notifications.filter(n => !n.read).length;
+
+const markAsRead = async () => {
+  try {
+    await fetch(`${API_BASE}/api/notifications/mark-read/${userId}`, {
+      method: "PUT"
+    });
+  } catch (err) {
+    console.error("Failed to mark notifications as read", err);
+  }
+};
+
+
 
   const closeModal = () => setSelectedEvent(null);
 
@@ -386,9 +426,47 @@ const StaffDashboard = () => {
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg">
-              <Bell size={20} className="text-[#567c8d]" />
-            </button>
+            <div className="relative">
+  <button
+    onClick={() => setShowNotifications((prev) => !prev)}
+    className="p-2 hover:bg-[#f5efeb] rounded-lg relative"
+  >
+    <Bell size={20} className="text-[#567c8d]" />
+
+    {unreadCount > 0 && (
+      <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+    )}
+  </button>
+
+  {/* Dropdown */}
+  {showNotifications && (
+    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-xl z-50 max-h-96 overflow-y-auto">
+      <div className="p-4 font-bold text-[#2f4156] border-b bg-gray-50">
+        Notifications
+      </div>
+
+      {notifications.length === 0 ? (
+        <p className="p-4 text-gray-500 text-sm">No notifications yet.</p>
+      ) : (
+        notifications.map((n) => (
+          <div
+            key={n._id}
+            className={`p-4 border-b ${
+              !n.read ? "bg-[#eef6ff]" : "bg-white"
+            }`}
+          >
+            <p className="font-semibold text-[#2f4156]">{n.title}</p>
+            <p className="text-sm text-[#567c8d]">{n.message}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {new Date(n.createdAt).toLocaleString()}
+            </p>
+          </div>
+        ))
+      )}
+    </div>
+  )}
+</div>
+
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
             </div>
