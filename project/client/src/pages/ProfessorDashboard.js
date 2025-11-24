@@ -15,6 +15,8 @@ import {
   MapPin,
   Bell,
   Heart,
+  VoteIcon,
+  CheckCircle,
 } from "lucide-react";
 import workshopPlaceholder from "../images/workshop.png";
 import tripPlaceholder from "../images/trip.jpeg";
@@ -275,6 +277,11 @@ const ProfessorDashboard = () => {
   const handleGymSessions = () => {
     navigate("/gym-sessions");
     closeSidebar(); // Close sidebar after navigation
+  };
+
+  const handlePollsVoting = () => {
+    navigate("/poll-voting");
+    closeSidebar();
   };
 
   const handleDetails = (event) => {
@@ -695,6 +702,13 @@ const ProfessorDashboard = () => {
             <Calendar size={20} />
             <span>Gym Sessions</span>
           </button>
+
+          <button
+              onClick={handlePollsVoting}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
+              ><CheckCircle size={20} />
+                <span>Polls Voting</span>
+                </button>
 
           <button
             onClick={() => {
