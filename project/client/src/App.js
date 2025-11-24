@@ -48,7 +48,6 @@ import VendorsPage from "./pages/Vendorspage";
 import LoyaltyVendors from "./pages/LoyaltyVendors";
 import Notifications from "./pages/Notifications";
 
-
 import GUCLoyaltyForm from "./pages/GUCLoyaltyForm";
 // Professor & Workshop pages
 import ProfessorDashboard from "./pages/ProfessorDashboard";
@@ -84,9 +83,8 @@ import AdminVendor from "./pages/AdminVendor";
 
 //workshops
 import WorkshopParticipants from "./pages/WorkshopParticipants";
-import WorkshopEditsPage from './pages/WorkshopEditsPage';
+import WorkshopEditsPage from "./pages/WorkshopEditsPage";
 import WalletPage from "./pages/WalletPage";
-
 
 // Simple 404
 function NotFound() {
@@ -130,6 +128,10 @@ function App() {
           element={<CreateWorkshopPage />}
         />
         <Route
+          path="/events/:eventId/register"
+          element={<EventRegistrationForm />}
+        />
+        <Route
           path="/professor/workshops/edit/:id"
           element={<EditWorkshopPage />}
         />
@@ -139,7 +141,6 @@ function App() {
           element={<AdminAttendeesReport />}
         />
         <Route path="/guc-loyalty-apply" element={<GUCLoyaltyForm />} />
-
         <Route path="/admin/sales-report" element={<AdminSalesReport />} />
         <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
@@ -148,9 +149,9 @@ function App() {
         <Route path="/events/choose-type" element={<ChooseEventType />} />
         <Route path="/favorites" element={<FavoritesList />} />
         <Route
-  path="/professor/workshops/participants/:workshopId"
-  element={<WorkshopParticipants />}
-/>
+          path="/professor/workshops/participants/:workshopId"
+          element={<WorkshopParticipants />}
+        />
         {/* Events - Registration */}
         <Route
           path="/events/register/:eventId"
@@ -194,7 +195,7 @@ function App() {
           element={<CourtsAvailabilityWrapper />}
         />
         <Route path="/wallet" element={<WalletPage />} />
-        <Route path="/wallet/success" element={<WalletSuccess />} />  ← ADD THIS
+        <Route path="/wallet/success" element={<WalletSuccess />} /> ← ADD THIS
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/wallet/cancel" element={<WalletCancel />} />
         <Route path="/reserve/:courtId" element={<ReserveCourt />} />
@@ -212,10 +213,14 @@ function App() {
           path="/my-applications/:status"
           element={<MyApplicationsByStatus />}
         />
-
         //workshops
-<Route path="/professor/workshops/edits/:id" element={<WorkshopEditsPage />} />        <Route path="/create-poll" element={<CreatePoll />} />
-        <Route path="/poll-voting" element={<PollVoting />} />        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
+        <Route
+          path="/professor/workshops/edits/:id"
+          element={<WorkshopEditsPage />}
+        />{" "}
+        <Route path="/create-poll" element={<CreatePoll />} />
+        <Route path="/poll-voting" element={<PollVoting />} />{" "}
+        <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

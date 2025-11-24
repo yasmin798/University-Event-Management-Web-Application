@@ -1412,7 +1412,6 @@ export default function EventsHome() {
                 { type: "conference", label: "Conference" },
                 { type: "workshop", label: "Workshop" },
                 { type: "bazaar", label: "Bazaar" },
-                { type: "booth", label: "Booth" },
               ].map(({ type, label }) => (
                 <button
                   key={type}

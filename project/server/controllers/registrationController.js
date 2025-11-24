@@ -81,8 +81,12 @@ exports.register = async (req, res) => {
 
     // Check 5: Role restriction (if defined)
     if (event.allowedRoles && event.allowedRoles.length > 0) {
-      if (!event.allowedRoles.includes(req.user.role) && req.user.role !== "events_office") {
-        const allowed = event.allowedRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1) + "s").join(", ");
+      const allowedLower = event.allowedRoles.map((r) => String(r).toLowerCase().trim());
+      const userRoleLower = String(req.user.role || "").toLowerCase().trim();
+      if (!allowedLower.includes(userRoleLower) && userRoleLower !== "events_office") {
+        const allowed = event.allowedRoles
+          .map((r) => String(r).charAt(0).toUpperCase() + String(r).slice(1) + "s")
+          .join(", ");
         return res.status(403).json({ error: `This event is intended for ${allowed}!` });
       }
     }

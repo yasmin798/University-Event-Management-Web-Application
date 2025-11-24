@@ -2,7 +2,7 @@
 import useSWR, { mutate } from "swr";  // Add 'mutate' import
 
 const API =
-  process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3000";
+  process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
 
 const fetcher = async (path) => {
   const res = await fetch(`${API}${path}`, {

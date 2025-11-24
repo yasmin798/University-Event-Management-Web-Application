@@ -41,6 +41,19 @@ const BoothApplicationSchema = new mongoose.Schema(
 
     // Optional: Add this to make booth title visible in reviews
     boothTitle: { type: String, trim: true }, // e.g. "Handmade Jewelry by Sara"
+
+    // Registrations for visitors who simply register (distinct from `attendees` who are booth team members)
+    registrations: {
+      type: [
+        {
+          userId: { type: String },
+          name: { type: String, default: "Guest" },
+          email: { type: String, required: true },
+          registeredAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   { 
     timestamps: true,

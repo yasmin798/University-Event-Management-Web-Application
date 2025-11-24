@@ -277,7 +277,7 @@ const ProfessorDashboard = () => {
     });
 
   const handleGymSessions = () => {
-    navigate("/gym-sessions");
+    navigate("/gym-sessions-register");
     closeSidebar(); // Close sidebar after navigation
   };
 

@@ -1,12 +1,15 @@
 // client/src/pages/GymSessionsForRegister.js (corrected with role normalization, better debugging, and ensured enforcement)
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+
 import "../events.theme.css";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
+import StudentSidebar from "../components/StudentSidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 
-export default function GymManager() {
-  const navigate = useNavigate();
+// Accept an optional SidebarComponent prop so other pages (professor)
+// can reuse the registration UI but render a different sidebar.
+export default function GymManager({ SidebarComponent = null }) {
   const [filter, setFilter] = useState("All");
   const [sessions, setSessions] = useState([]);
   const [userRole, setUserRole] = useState("");
@@ -196,9 +199,17 @@ export default function GymManager() {
     );
   };
 
+  const SidebarToRender = SidebarComponent
+    ? SidebarComponent
+    : userRole === "professor"
+    ? ProfessorSidebar
+    : userRole === "student"
+    ? StudentSidebar
+    : Sidebar;
+
   return (
     <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar filter={filter} setFilter={setFilter} />
+      <SidebarToRender filter={filter} setFilter={setFilter} />
       <main style={{ flex: 1, marginLeft: "260px", padding: "10px 24px" }}>
         <h1 style={{ marginTop: 0, color: "var(--navy)" }}>Weekly Gym Timetable</h1>
         {/* Debug info - remove after testing */}

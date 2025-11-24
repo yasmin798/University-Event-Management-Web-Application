@@ -3,11 +3,27 @@ import { useNavigate } from "react-router-dom";
 import "../events.theme.css";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
+import StudentSidebar from "../components/StudentSidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
+import GymSessionsForRegister from "./GymSessionsForRegister";
 
 export default function GymManager() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [sessions, setSessions] = useState([]);
+  const [userRole, setUserRole] = useState("student");
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUserRole((payload.role || "student").toLowerCase());
+      }
+    } catch (e) {
+      setUserRole("student");
+    }
+  }, []);
 
   const fetchSessions = async () => {
     try {
@@ -21,6 +37,7 @@ export default function GymManager() {
   useEffect(() => {
     fetchSessions();
   }, []);
+
 
   // ------------------------
   // 🔵 WEEK NAVIGATION
@@ -107,13 +124,29 @@ export default function GymManager() {
     fetchSessions();
   };
 
+  // If professor, show the registration view (same as student) but with ProfessorSidebar
+  if (userRole === "professor") {
+    return <GymSessionsForRegister SidebarComponent={ProfessorSidebar} />;
+  }
+
   return (
-    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar filter={filter} setFilter={setFilter} />
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {userRole === "student" ? (
+        <StudentSidebar />
+      ) : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : (
+        <Sidebar filter={filter} setFilter={setFilter} />
+      )}
 
       {/* MAIN CONTENT */}
       <main style={{ flex: 1, marginLeft: "260px", padding: "10px 24px" }}>
-        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>Weekly Gym Timetable</h1>
+        <h1 style={{ marginTop: 0, color: "var(--navy)" }}>
+          Weekly Gym Timetable
+        </h1>
 
         {/* Month Header */}
         <div
@@ -127,18 +160,31 @@ export default function GymManager() {
         >
           <button
             onClick={() => setWeekStart(addDays(weekStart, -7))}
-            style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer" }}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "22px",
+              cursor: "pointer",
+            }}
           >
             ❮
           </button>
 
           <h2 style={{ margin: 0 }}>
-            {weekStart.toLocaleString("en-US", { month: "long", year: "numeric" })}
+            {weekStart.toLocaleString("en-US", {
+              month: "long",
+              year: "numeric",
+            })}
           </h2>
 
           <button
             onClick={() => setWeekStart(addDays(weekStart, 7))}
-            style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer" }}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "22px",
+              cursor: "pointer",
+            }}
           >
             ❯
           </button>
@@ -157,11 +203,17 @@ export default function GymManager() {
           >
             <thead>
               <tr style={{ background: "#e9f5ff" }}>
-                <th style={{ padding: "6px", border: "1px solid #ddd" }}>Day</th>
+                <th style={{ padding: "6px", border: "1px solid #ddd" }}>
+                  Day
+                </th>
                 {timeSlots.map((t) => (
                   <th
                     key={t}
-                    style={{ padding: "6px", border: "1px solid #ddd", fontWeight: "700" }}
+                    style={{
+                      padding: "6px",
+                      border: "1px solid #ddd",
+                      fontWeight: "700",
+                    }}
                   >
                     {t}
                   </th>
@@ -183,7 +235,9 @@ export default function GymManager() {
                   >
                     {day.label}
                     <br />
-                    <span style={{ fontSize: "14px", color: "#666" }}>{day.dateNum}</span>
+                    <span style={{ fontSize: "14px", color: "#666" }}>
+                      {day.dateNum}
+                    </span>
                   </td>
 
                   {/* Sessions */}
@@ -215,10 +269,9 @@ export default function GymManager() {
                             <br />
                             Max: {session.maxParticipants}
                             <br />
-
                             {/* EDIT + DELETE */}
                             <div
-                                style={{
+                              style={{
                                 display: "flex",
                                 flexDirection: "row",
                                 justifyContent: "center",
@@ -227,31 +280,30 @@ export default function GymManager() {
                                 flexWrap: "wrap",
                               }}
                             >
-                          <button
-                              className="btn"
-                              style={{
-                              padding: "6px 14px",
-                              fontSize: "14px",
-                              borderRadius: "10px",
-                            }}
-                           onClick={() => startEdit(session)}
-                            >
-                          Edit
-                       </button>
+                              <button
+                                className="btn"
+                                style={{
+                                  padding: "6px 14px",
+                                  fontSize: "14px",
+                                  borderRadius: "10px",
+                                }}
+                                onClick={() => startEdit(session)}
+                              >
+                                Edit
+                              </button>
 
-                       <button
-                          className="btn-danger"
-                           style={{
-                           padding: "6px 14px",
-                          fontSize: "14px",
-                           borderRadius: "10px",
-                            }}
-                           onClick={() => handleDelete(session._id)}
-                                >
-                            Delete
-                           </button>
-                          </div>
-
+                              <button
+                                className="btn-danger"
+                                style={{
+                                  padding: "6px 14px",
+                                  fontSize: "14px",
+                                  borderRadius: "10px",
+                                }}
+                                onClick={() => handleDelete(session._id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div
@@ -279,118 +331,137 @@ export default function GymManager() {
         {/* EDIT POPUP MODAL */}
         {/* ---------------------------- */}
         {editing && (
-  <div
-    style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100vw",
-      height: "100vh",
-      background: "rgba(0,0,0,0.5)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 999,
-    }}
-  >
-    <div
-      style={{
-        background: "white",
-        padding: "24px",
-        borderRadius: "12px",
-        width: "340px",
-        boxShadow: "0 4px 15px rgba(0,0,0,0.25)",
-        animation: "fadeIn 0.2s ease",
-      }}
-    >
-      <h3 style={{ marginTop: 0, marginBottom: "15px" }}>Edit Session</h3>
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 999,
+            }}
+          >
+            <div
+              style={{
+                background: "white",
+                padding: "24px",
+                borderRadius: "12px",
+                width: "340px",
+                boxShadow: "0 4px 15px rgba(0,0,0,0.25)",
+                animation: "fadeIn 0.2s ease",
+              }}
+            >
+              <h3 style={{ marginTop: 0, marginBottom: "15px" }}>
+                Edit Session
+              </h3>
 
-      <label style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>
-        Date
-      </label>
-      <input
-        type="date"
-        value={editDate}
-        onChange={(e) => setEditDate(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "6px",
-          border: "1px solid #aaa",
-          marginBottom: "12px",
-          fontSize: "14px",
-        }}
-      />
+              <label
+                style={{
+                  fontWeight: "600",
+                  display: "block",
+                  marginBottom: "4px",
+                }}
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #aaa",
+                  marginBottom: "12px",
+                  fontSize: "14px",
+                }}
+              />
 
-      <label style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>
-        Time
-      </label>
-      <input
-        type="time"
-        value={editTime}
-        onChange={(e) => setEditTime(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "6px",
-          border: "1px solid #aaa",
-          marginBottom: "12px",
-          fontSize: "14px",
-        }}
-      />
+              <label
+                style={{
+                  fontWeight: "600",
+                  display: "block",
+                  marginBottom: "4px",
+                }}
+              >
+                Time
+              </label>
+              <input
+                type="time"
+                value={editTime}
+                onChange={(e) => setEditTime(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #aaa",
+                  marginBottom: "12px",
+                  fontSize: "14px",
+                }}
+              />
 
-      <label style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>
-        Duration (minutes)
-      </label>
-      <input
-        type="number"
-        value={editDuration}
-        onChange={(e) => setEditDuration(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "6px",
-          border: "1px solid #aaa",
-          marginBottom: "16px",
-          fontSize: "14px",
-        }}
-      />
+              <label
+                style={{
+                  fontWeight: "600",
+                  display: "block",
+                  marginBottom: "4px",
+                }}
+              >
+                Duration (minutes)
+              </label>
+              <input
+                type="number"
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #aaa",
+                  marginBottom: "16px",
+                  fontSize: "14px",
+                }}
+              />
 
-      <button
-        style={{
-          background: "#6C63FF",
-          padding: "10px",
-          border: "none",
-          color: "white",
-          borderRadius: "6px",
-          cursor: "pointer",
-          width: "100%",
-          marginBottom: "10px",
-          fontWeight: "600",
-        }}
-        onClick={saveEdit}
-      >
-        Save
-      </button>
+              <button
+                style={{
+                  background: "#6C63FF",
+                  padding: "10px",
+                  border: "none",
+                  color: "white",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  width: "100%",
+                  marginBottom: "10px",
+                  fontWeight: "600",
+                }}
+                onClick={saveEdit}
+              >
+                Save
+              </button>
 
-      <button
-        style={{
-          background: "#ddd",
-          padding: "10px",
-          border: "none",
-          borderRadius: "6px",
-          cursor: "pointer",
-          width: "100%",
-          fontWeight: "600",
-        }}
-        onClick={() => setEditing(null)}
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-)}
-
+              <button
+                style={{
+                  background: "#ddd",
+                  padding: "10px",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  width: "100%",
+                  fontWeight: "600",
+                }}
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

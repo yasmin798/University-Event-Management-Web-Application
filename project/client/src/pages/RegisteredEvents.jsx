@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { /* useNavigate */ } from "react-router-dom";
 import { Menu, Bell, User, LogOut, Calendar, Home } from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
 import StudentSidebar from "../components/StudentSidebar";
+import Sidebar from "../components/Sidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 
 import "./RegisteredEvents.css";
 import workshopImage from "../images/workshop.png";
@@ -34,8 +36,7 @@ const RegisteredEvents = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [activeEventType, setActiveEventType] = useState("all");
-  const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // no navigate required in this view
   const [viewEvent, setViewEvent] = useState(null);
 
   const [userRole, setUserRole] = useState("");
@@ -79,49 +80,24 @@ const RegisteredEvents = () => {
       setActiveEventType("all");
     }
   }, [selectedCategory]);
-  // Sidebar functions
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  // Sidebar helper (no local sidebar state needed here)
   useEffect(() => {
     const getUserRole = () => {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          // Decode the token to get user role (if stored in token)
           const payload = JSON.parse(atob(token.split(".")[1]));
-          return payload.role || "student"; // Default to student if no role found
+          return (payload.role || "student").toLowerCase();
         }
       } catch (error) {
         console.error("Error decoding token:", error);
       }
-      return "student"; // Default fallback
+      return "student";
     };
 
     setUserRole(getUserRole());
   }, []);
-  const handleDashboard = () => {
-    switch (userRole.toLowerCase()) {
-      case "staff":
-        navigate("/staff/dashboard");
-        break;
-      case "ta":
-        navigate("/ta/dashboard");
-        break;
-      case "professor":
-        navigate("/professor/dashboard");
-        break;
-      default:
-        navigate("/student/dashboard");
-        break;
-    }
-    closeSidebar();
-  };
-
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/");
-    }
-  };
+  // navigation helpers unused in this view are omitted
 
   useEffect(() => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
@@ -157,6 +133,34 @@ const RegisteredEvents = () => {
     if (!type) return workshopImage;
 
     return map[type.toUpperCase()] || workshopImage;
+  };
+
+  const getEventTitle = (event) => {
+    // For booths prefer attendee names when available
+    try {
+      const type = (event.type || "").toString().toUpperCase();
+      if (type === "BOOTH") {
+        const atts = event.attendees || event.attendeesNames || event.attendeesList || [];
+        if (Array.isArray(atts) && atts.length > 0) {
+          const names = atts
+            .map((a) => {
+              if (!a) return null;
+              if (typeof a === "string") return a;
+              // object with name or email
+              return a.name || a.fullName || a.email || null;
+            })
+            .filter(Boolean);
+          if (names.length > 0) return names.join(", ");
+        }
+
+        // fallback to any attached title fields
+        return event.title || event.bazaarName || `Booth ${event._id}`;
+      }
+    } catch (e) {
+      // ignore and fallback
+    }
+
+    return event.title || event.workshopName || "Untitled Event";
   };
 
   const handleViewDetails = (event) => {
@@ -206,9 +210,7 @@ const RegisteredEvents = () => {
         </div>
 
         <div className="event-content">
-          <h3 className="event-title">
-            {event.title || event.workshopName || "Untitled Event"}
-          </h3>
+          <h3 className="event-title">{getEventTitle(event)}</h3>
           <p className="event-organizer">Organized By: GUC Events</p>
 
           <div className="event-details">
@@ -247,7 +249,13 @@ const RegisteredEvents = () => {
   };
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      <StudentSidebar />
+      {userRole === "student" ? (
+        <StudentSidebar />
+      ) : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : (
+        <Sidebar />
+      )}
 
       {/* Main content */}
       <div className="flex-1 overflow-auto ml-64">
