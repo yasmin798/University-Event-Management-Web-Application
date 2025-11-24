@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Menu, Bell, User, LogOut, Calendar, Home } from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
+import StudentSidebar from "../components/StudentSidebar";
+
 import "./RegisteredEvents.css";
 import workshopImage from "../images/workshop.png";
 import tripImage from "../images/trip.jpeg";
@@ -34,6 +36,8 @@ const RegisteredEvents = () => {
   const [activeEventType, setActiveEventType] = useState("all");
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [viewEvent, setViewEvent] = useState(null);
+
   const [userRole, setUserRole] = useState("");
   useEffect(() => {
     const fetchEvents = async () => {
@@ -141,29 +145,24 @@ const RegisteredEvents = () => {
   const getEventDate = (event) => {
     return event.startDateTime || event.startDate || event.date || new Date();
   };
-  const eventTypeImages = {
-    all: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    workshop: workshopImage,
-    trip: tripImage,
-    conference: conferenceImage,
-    bazaar: bazaarImage,
-    booth:
-      "https://i.pinimg.com/736x/ba/f9/75/baf9759b508018b68aa1802858610c27.jpg",
-    default:
-      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+  const getEventImage = (type) => {
+    const map = {
+      TRIP: tripImage,
+      BAZAAR: bazaarImage,
+      CONFERENCE: conferenceImage,
+      WORKSHOP: workshopImage,
+      BOOTH: workshopImage,
+    };
+
+    if (!type) return workshopImage;
+
+    return map[type.toUpperCase()] || workshopImage;
   };
-  const getEventImage = (eventType) => {
-    if (!eventType) return eventTypeImages.default;
-    const type = (eventType || "").toLowerCase();
-    return eventTypeImages[type] || eventTypeImages.default;
-  };
+
   const handleViewDetails = (event) => {
-    alert(
-      `Event Details:\n\nTitle: ${
-        event.title || event.workshopName
-      }\nLocation: ${event.location || "TBD"}\nType: ${event.type || "Event"}`
-    );
+    setViewEvent(event);
   };
+
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
       const matchesSearch = (event.title || event.workshopName || "")
@@ -248,80 +247,13 @@ const RegisteredEvents = () => {
   };
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeSidebar}
-        ></div>
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 hover:bg-[#567c8d] rounded-lg transition-colors"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
+      <StudentSidebar />
 
-        {/* Navigation Links */}
-        <div className="flex-1 px-4 mt-4 space-y-2">
-          {/* Dashboard Button - shows role-specific dashboard */}
-          <button
-            onClick={handleDashboard}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
-          >
-            <Home size={18} />
-            {userRole
-              ? `${
-                  userRole.charAt(0).toUpperCase() + userRole.slice(1)
-                } Dashboard`
-              : "Dashboard"}
-          </button>
-
-          {/* Registered Events Button (current page) */}
-          <button className="w-full flex items-center gap-3 bg-[#45687a] hover:bg-[#3a5a6d] text-white py-3 px-4 rounded-lg transition-colors text-left cursor-default">
-            <Calendar size={18} />
-            Registered Events
-          </button>
-
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} /> Logout
-          </button>
-        </div>
-      </div>
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto ml-64">
         {/* Header with sidebar toggle */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-          >
-            <Menu size={24} className="text-[#2f4156]" />
-          </button>
-           {/* 🔙 Back Button */}
-    <button
-      onClick={() => navigate(-1)} // 👈 go back to previous page
-      className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors flex items-center gap-1 text-[#2f4156]"
-    >
-      <span className="text-sm font-medium">← Back</span>
-    </button>
-  </div>
+          <div className="flex items-center gap-2"></div>
           <div className="flex items-center gap-2 md:gap-4 ml-4">
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
               <Bell size={20} className="text-[#567c8d]" />
@@ -450,6 +382,75 @@ const RegisteredEvents = () => {
                 )}
               </div>
             </section>
+            {viewEvent && (
+              <div
+                className="confirm-overlay"
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                role="dialog"
+                aria-modal="true"
+              >
+                <div
+                  style={{
+                    background: "white",
+                    padding: "24px",
+                    width: "500px",
+                    maxHeight: "80vh",
+                    overflowY: "auto",
+                    borderRadius: "12px",
+                    position: "relative",
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  {/* CLOSE BUTTON */}
+                  <button
+                    onClick={() => setViewEvent(null)}
+                    style={{
+                      position: "absolute",
+                      top: "10px",
+                      right: "10px",
+                      fontSize: "20px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  <h2 style={{ fontWeight: 800, marginBottom: "10px" }}>
+                    {viewEvent.title || viewEvent.workshopName}
+                  </h2>
+
+                  <div style={{ marginBottom: "10px" }}>
+                    <strong>Type:</strong> {viewEvent.type}
+                  </div>
+
+                  <div>
+                    <strong>Date:</strong>{" "}
+                    {new Date(
+                      viewEvent.startDateTime ||
+                        viewEvent.startDate ||
+                        viewEvent.date
+                    ).toLocaleString("en-US")}
+                  </div>
+
+                  <div>
+                    <strong>Location:</strong> {viewEvent.location || "TBD"}
+                  </div>
+
+                  {viewEvent.description && (
+                    <div style={{ marginTop: "10px" }}>
+                      <strong>Description:</strong>
+                      <p>{viewEvent.description}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
