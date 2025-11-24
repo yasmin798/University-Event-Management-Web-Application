@@ -489,9 +489,23 @@ export default function EventsHome() {
       );
 
       if (!res.ok) {
-        const err = await res.text();
-        setToast({ open: true, text: err || "Export failed" });
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.error || errorData.message || "Export failed";
+        setToast({ open: true, text: errorMsg });
         return;
+      }
+
+      // Check if response is JSON (no attendees case)
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.attendees && data.attendees.length === 0) {
+          setToast({ 
+            open: true, 
+            text: "📋 No registrations found for this event yet" 
+          });
+          return;
+        }
       }
 
       const blob = await res.blob();
@@ -1122,7 +1136,6 @@ export default function EventsHome() {
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(ev._id, "bazaars")}
-                          disabled={ev.status === "archived"}
                         >
                           Export Excel
                         </button>
@@ -1196,7 +1209,6 @@ export default function EventsHome() {
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(ev._id, "trips")}
-                          disabled={ev.status === "archived"}
                         >
                           Export Excel
                         </button>
@@ -1346,8 +1358,7 @@ export default function EventsHome() {
                           )}
 
                         {/* Export Excel — only for published workshops and NOT archived */}
-                        {ev.status === "published" &&
-                          ev.status !== "archived" && (
+                        {ev.status === "published" && (
                             <button
                               className="btn"
                               style={{ background: "#c88585", color: "white" }}
@@ -1403,12 +1414,11 @@ export default function EventsHome() {
                           Delete
                         </button>
 
-                        {/* Export Excel — disabled when archived */}
+                        {/* Export Excel */}
                         <button
                           className="btn"
                           style={{ background: "#c88585", color: "white" }}
                           onClick={() => exportAttendees(id, "booths")}
-                          disabled={ev.status === "archived"}
                         >
                           Export Excel
                         </button>
