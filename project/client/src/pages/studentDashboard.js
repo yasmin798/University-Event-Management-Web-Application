@@ -13,6 +13,7 @@ import {
   Calendar,
   Map,
   Heart,
+  CheckCircle,
 } from "lucide-react";
 
 import { useServerEvents } from "../hooks/useServerEvents";
@@ -327,7 +328,7 @@ const StudentDashboard = () => {
             onClick={handlePollsVoting}
             className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
           >
-            <Heart size={18} />
+            <CheckCircle size={18} />
             Polls Voting
           </button>
           <button
