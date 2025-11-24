@@ -331,6 +331,17 @@ const StudentDashboard = () => {
             <CheckCircle size={18} />
             Polls Voting
           </button>
+          <button
+  onClick={() => {
+    navigate("/wallet");
+    closeSidebar();
+  }}
+  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+>
+  <User size={18} />
+  Wallet
+</button>
+
 
           <button
             onClick={handleLogout}

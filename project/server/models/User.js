@@ -34,6 +34,10 @@ const userSchema = new mongoose.Schema(
     validFrom: { type: Date },
     validTo: { type: Date },
   },
+   // Wallet balance in EGP (integer or decimal depending on your needs)
+ walletBalance: { type: Number, default: 0 },
+ // optional wallet transaction refs for quick lookup
+ walletTransactions: [{ type: mongoose.Schema.Types.ObjectId, ref: "WalletTransaction" }],
   },
   { timestamps: true }
 );

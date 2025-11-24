@@ -1,24 +1,57 @@
 // client/src/pages/PaymentPage.jsx
 import React, { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { loadStripe } from "@stripe/stripe-js";
-
-const stripePromise = loadStripe("pk_test_51NnZTJHCjCkulRTD1Tt3IphjwGjl7GxuJ0WwHHCjb1Y6UAwEnsQpDHLkIaoV4beeuWXVHIChGIHiTp9Qb2hBNsv500L9Pij7PJ");
 
 export default function PaymentPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // Existing parameters for normal payments
   const appId = searchParams.get("appId");
   const type = searchParams.get("type");
 
-  useEffect(() => {
-    if (!appId || !type) {
-      navigate("/my-applications/accepted");
-      return;
-    }
+  // New parameters for wallet top-up
+  const isTopup = searchParams.get("topup") === "true";
+  const amount = searchParams.get("amount");
 
+  useEffect(() => {
     const initiatePayment = async () => {
       try {
+        // -----------------------------------------
+        // 1️⃣ WALLET TOP-UP FLOW
+        // -----------------------------------------
+        if (isTopup) {
+          if (!amount) {
+            alert("Missing top-up amount.");
+            return navigate("/wallet");
+          }
+
+          const res = await fetch("http://localhost:3001/api/wallet/topup/create-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ amount }),
+          });
+
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            alert("Failed to start wallet top-up.");
+            return navigate(-1);
+          }
+          return;
+        }
+
+        // -----------------------------------------
+        // 2️⃣ NORMAL BOOTH/BAZAAR PAYMENT FLOW
+        // -----------------------------------------
+        if (!appId || !type) {
+          return navigate("/my-applications/accepted");
+        }
+
         const res = await fetch("http://localhost:3001/api/payments/create-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -39,7 +72,7 @@ export default function PaymentPage() {
     };
 
     initiatePayment();
-  }, [appId, type, navigate]);
+  }, [appId, type, isTopup, amount, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
