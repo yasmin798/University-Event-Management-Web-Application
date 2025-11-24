@@ -1,5 +1,6 @@
 // client/src/pages/GymSessionsForRegister.js (corrected with role normalization, better debugging, and ensured enforcement)
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import "../events.theme.css";
 import axios from "axios";
@@ -10,6 +11,7 @@ import ProfessorSidebar from "../components/ProfessorSidebar";
 // Accept an optional SidebarComponent prop so other pages (professor)
 // can reuse the registration UI but render a different sidebar.
 export default function GymManager({ SidebarComponent = null }) {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [sessions, setSessions] = useState([]);
   const [userRole, setUserRole] = useState("");
@@ -30,7 +32,7 @@ export default function GymManager({ SidebarComponent = null }) {
 
   useEffect(() => {
     fetchSessions();
-  }, []);
+  }, [navigate]);
 
   // Get user's role from token (normalize to lowercase)
   useEffect(() => {
@@ -42,6 +44,15 @@ export default function GymManager({ SidebarComponent = null }) {
         setUserRole(role);
         setDebugInfo(`Role loaded: ${role}`); // Debug
         console.log("User role:", role);
+        if (
+          role === "events_office" ||
+          role === "events-office" ||
+          role === "eventsoffice"
+        ) {
+          // events office users should use the manager UI
+          navigate("/gym-manager");
+          return;
+        }
       } catch (e) {
         console.error("Error decoding token for role:", e);
         setDebugInfo("Role load failed");
