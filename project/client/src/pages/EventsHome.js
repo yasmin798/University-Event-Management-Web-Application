@@ -144,7 +144,9 @@ export default function EventsHome() {
       const abs = absoluteUrl(url);
       const token = localStorage.getItem("token");
       console.log("Downloading file:", abs);
-      const res = await fetch(abs, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(abs, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
         setToast({ open: true, text: "Failed to download file" });
         return;
@@ -318,7 +320,7 @@ export default function EventsHome() {
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
-        setUnreadCount(data.filter(n => n.unread).length);
+        setUnreadCount(data.filter((n) => n.unread).length);
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -603,7 +605,8 @@ export default function EventsHome() {
       const startDate = ev.startDateTime || ev.startDate || ev.date;
       const matchDate =
         !debouncedDate ||
-        (startDate && new Date(startDate).toISOString().slice(0, 10) === debouncedDate);
+        (startDate &&
+          new Date(startDate).toISOString().slice(0, 10) === debouncedDate);
 
       return matchSearch && matchType && matchDate;
     })
@@ -688,7 +691,7 @@ export default function EventsHome() {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ position: "relative", width: "260px" }}>
+            <div style={{ position: "relative", flex: 1, maxWidth: "242px" }}>
               <Search
                 size={16}
                 style={{
@@ -701,7 +704,7 @@ export default function EventsHome() {
               />
               <input
                 type="text"
-                placeholder="Search by title, professor, location"
+                placeholder="Title, professor, location"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -713,13 +716,12 @@ export default function EventsHome() {
                 }}
               />
             </div>
-
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               style={{
-                width: "120px",
+                width: "100px",
                 padding: "6px 10px",
                 borderRadius: "10px",
                 border: "1px solid rgba(47,65,86,0.2)",
@@ -754,7 +756,7 @@ export default function EventsHome() {
               </React.Suspense>
             </div>
 
-            {(userRole === 'events_office' || userRole === 'admin') && (
+            {(userRole === "events_office" || userRole === "admin") && (
               <button
                 style={{ ...topActionBtnStyle, background: "#567c8d" }}
                 onClick={async () => {
@@ -777,23 +779,28 @@ export default function EventsHome() {
                     const gather = (arr) => {
                       if (!arr || !Array.isArray(arr)) return [];
                       return arr.flatMap((r) => {
-                        const attendees = Array.isArray(r.attendees) ? r.attendees : [];
+                        const attendees = Array.isArray(r.attendees)
+                          ? r.attendees
+                          : [];
                         return attendees
                           .filter((a) => a && a.idDocument)
                           .map((a) => ({
                             name: a.name || a.fullName || "Unnamed",
                             email: a.email || a.emailAddress || "",
-                            url:
-                              String(a.idDocument).startsWith("/")
-                                ? `${window.location.origin}${a.idDocument}`
-                                : String(a.idDocument),
+                            url: String(a.idDocument).startsWith("/")
+                              ? `${window.location.origin}${a.idDocument}`
+                              : String(a.idDocument),
                             source: r.vendorName || r._id || "vendor",
                           }));
                       });
                     };
 
-                    const bazList = Array.isArray(bJson) ? gather(bJson) : gather(bJson.requests || []);
-                    const boothList = Array.isArray(boJson) ? gather(boJson) : gather(boJson.requests || []);
+                    const bazList = Array.isArray(bJson)
+                      ? gather(bJson)
+                      : gather(bJson.requests || []);
+                    const boothList = Array.isArray(boJson)
+                      ? gather(boJson)
+                      : gather(boJson.requests || []);
 
                     setDocsList([...bazList, ...boothList]);
                     setDocsModalOpen(true);
@@ -967,7 +974,10 @@ export default function EventsHome() {
                     {/* BAZAAR */}
                     {isBazaar && (
                       <>
-                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
                           View Details
                         </button>
 
@@ -983,7 +993,10 @@ export default function EventsHome() {
                         )}
 
                         {editable && ev.status !== "archived" ? (
-                          <button className="btn" onClick={() => navigate(`/bazaars/${ev._id}`)}>
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/bazaars/${ev._id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -994,7 +1007,10 @@ export default function EventsHome() {
 
                         <button
                           className="btn btn-danger"
-                          disabled={ev.status === "archived" || ev.registrations?.length > 0}
+                          disabled={
+                            ev.status === "archived" ||
+                            ev.registrations?.length > 0
+                          }
                           onClick={() => handleDelete(ev._id, "bazaars")}
                           title={
                             ev.registrations?.length > 0
@@ -1007,7 +1023,9 @@ export default function EventsHome() {
 
                         <button
                           className="btn"
-                          onClick={() => navigate(`/bazaars/${ev._id}/vendor-requests`)}
+                          onClick={() =>
+                            navigate(`/bazaars/${ev._id}/vendor-requests`)
+                          }
                         >
                           Vendor Requests
                         </button>
@@ -1024,7 +1042,11 @@ export default function EventsHome() {
                         {ev.status === "archived" && (
                           <div
                             className="chip"
-                            style={{ background: "#666", color: "white", marginTop: "8px" }}
+                            style={{
+                              background: "#666",
+                              color: "white",
+                              marginTop: "8px",
+                            }}
                           >
                             ARCHIVED
                           </div>
@@ -1035,7 +1057,10 @@ export default function EventsHome() {
                     {/* TRIP */}
                     {isTrip && (
                       <>
-                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
                           View Details
                         </button>
 
@@ -1052,7 +1077,10 @@ export default function EventsHome() {
 
                         {/* Edit button */}
                         {editable && ev.status !== "archived" ? (
-                          <button className="btn" onClick={() => navigate(`/trips/${ev._id}`)}>
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/trips/${ev._id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -1066,7 +1094,11 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           disabled={ev.status === "archived"}
                           onClick={() => handleDelete(ev._id, "trips")}
-                          title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this trip"}
+                          title={
+                            ev.status === "archived"
+                              ? "Cannot delete archived event"
+                              : "Delete this trip"
+                          }
                         >
                           Delete
                         </button>
@@ -1083,7 +1115,14 @@ export default function EventsHome() {
 
                         {/* ARCHIVED badge */}
                         {ev.status === "archived" && (
-                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                          <div
+                            className="chip"
+                            style={{
+                              background: "#666",
+                              color: "white",
+                              marginTop: "8px",
+                            }}
+                          >
                             ARCHIVED
                           </div>
                         )}
@@ -1093,7 +1132,10 @@ export default function EventsHome() {
                     {/* CONFERENCE */}
                     {isConference && (
                       <>
-                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
                           View Details
                         </button>
 
@@ -1110,7 +1152,10 @@ export default function EventsHome() {
 
                         {/* Edit button */}
                         {editable && ev.status !== "archived" ? (
-                          <button className="btn" onClick={() => navigate(`/conferences/${ev._id}`)}>
+                          <button
+                            className="btn"
+                            onClick={() => navigate(`/conferences/${ev._id}`)}
+                          >
                             Edit
                           </button>
                         ) : (
@@ -1124,14 +1169,25 @@ export default function EventsHome() {
                           className="btn btn-danger"
                           disabled={ev.status === "archived"}
                           onClick={() => handleDelete(ev._id, "conferences")}
-                          title={ev.status === "archived" ? "Cannot delete archived event" : "Delete this conference"}
+                          title={
+                            ev.status === "archived"
+                              ? "Cannot delete archived event"
+                              : "Delete this conference"
+                          }
                         >
                           Delete
                         </button>
 
                         {/* ARCHIVED badge */}
                         {ev.status === "archived" && (
-                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                          <div
+                            className="chip"
+                            style={{
+                              background: "#666",
+                              color: "white",
+                              marginTop: "8px",
+                            }}
+                          >
                             ARCHIVED
                           </div>
                         )}
@@ -1141,7 +1197,10 @@ export default function EventsHome() {
                     {/* WORKSHOP */}
                     {isWorkshop && (
                       <>
-                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
                           View Details
                         </button>
 
@@ -1158,34 +1217,52 @@ export default function EventsHome() {
 
                         {/* Accept/Reject/Request Edits — only if NOT archived */}
                         {ev.status !== "archived" &&
-                          (ev.status === "pending" || ev.status === "edits_requested") && (
+                          (ev.status === "pending" ||
+                            ev.status === "edits_requested") && (
                             <>
-                              <button className="btn btn-success" onClick={() => handleAccept(id)}>
+                              <button
+                                className="btn btn-success"
+                                onClick={() => handleAccept(id)}
+                              >
                                 Accept & Publish
                               </button>
-                              <button className="btn btn-danger" onClick={() => handleReject(id)}>
+                              <button
+                                className="btn btn-danger"
+                                onClick={() => handleReject(id)}
+                              >
                                 Reject
                               </button>
-                              <button className="btn btn-warning" onClick={() => handleRequestEdits(id)}>
+                              <button
+                                className="btn btn-warning"
+                                onClick={() => handleRequestEdits(id)}
+                              >
                                 Request Edits
                               </button>
                             </>
                           )}
 
                         {/* Export Excel — only for published workshops and NOT archived */}
-                        {ev.status === "published" && ev.status !== "archived" && (
-                          <button
-                            className="btn"
-                            style={{ background: "#c88585", color: "white" }}
-                            onClick={() => exportAttendees(id, "workshops")}
-                          >
-                            Export Excel
-                          </button>
-                        )}
+                        {ev.status === "published" &&
+                          ev.status !== "archived" && (
+                            <button
+                              className="btn"
+                              style={{ background: "#c88585", color: "white" }}
+                              onClick={() => exportAttendees(id, "workshops")}
+                            >
+                              Export Excel
+                            </button>
+                          )}
 
                         {/* ARCHIVED badge */}
                         {ev.status === "archived" && (
-                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                          <div
+                            className="chip"
+                            style={{
+                              background: "#666",
+                              color: "white",
+                              marginTop: "8px",
+                            }}
+                          >
                             ARCHIVED
                           </div>
                         )}
@@ -1195,7 +1272,10 @@ export default function EventsHome() {
                     {/* BOOTH */}
                     {isBooth && (
                       <>
-                        <button className="btn btn-outline" onClick={() => setViewEvent(ev)}>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => setViewEvent(ev)}
+                        >
                           View Details
                         </button>
 
@@ -1231,7 +1311,14 @@ export default function EventsHome() {
 
                         {/* ARCHIVED badge */}
                         {ev.status === "archived" && (
-                          <div className="chip" style={{ background: "#666", color: "white", marginTop: "8px" }}>
+                          <div
+                            className="chip"
+                            style={{
+                              background: "#666",
+                              color: "white",
+                              marginTop: "8px",
+                            }}
+                          >
                             ARCHIVED
                           </div>
                         )}
@@ -1510,21 +1597,29 @@ export default function EventsHome() {
                 </div>
 
                 {/* Display restricted roles */}
-                <div style={{
-                  margin: "16px 0",
-                  padding: "12px",
-                  backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
-                  borderRadius: "8px",
-                  border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
-                  fontWeight: "bold",
-                  fontSize: "15px",
-                  color: "#1f2937"
-                }}>
+                <div
+                  style={{
+                    margin: "16px 0",
+                    padding: "12px",
+                    backgroundColor: viewEvent.allowedRoles?.length
+                      ? "#fef3c7"
+                      : "#d1fae5",
+                    borderRadius: "8px",
+                    border: viewEvent.allowedRoles?.length
+                      ? "2px solid #f59e0b"
+                      : "2px solid #10b981",
+                    fontWeight: "bold",
+                    fontSize: "15px",
+                    color: "#1f2937",
+                  }}
+                >
                   {viewEvent.allowedRoles?.length > 0 ? (
                     <>
-                      Restricted to: {" "}
+                      Restricted to:{" "}
                       {viewEvent.allowedRoles
-                        .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                        .map(
+                          (r) => r.charAt(0).toUpperCase() + r.slice(1) + "s"
+                        )
                         .join(", ")}
                     </>
                   ) : (
@@ -1561,21 +1656,29 @@ export default function EventsHome() {
                 </div>
 
                 {/* Display restricted roles */}
-                <div style={{
-                  margin: "16px 0",
-                  padding: "12px",
-                  backgroundColor: viewEvent.allowedRoles?.length ? "#fef3c7" : "#d1fae5",
-                  borderRadius: "8px",
-                  border: viewEvent.allowedRoles?.length ? "2px solid #f59e0b" : "2px solid #10b981",
-                  fontWeight: "bold",
-                  fontSize: "15px",
-                  color: "#1f2937"
-                }}>
+                <div
+                  style={{
+                    margin: "16px 0",
+                    padding: "12px",
+                    backgroundColor: viewEvent.allowedRoles?.length
+                      ? "#fef3c7"
+                      : "#d1fae5",
+                    borderRadius: "8px",
+                    border: viewEvent.allowedRoles?.length
+                      ? "2px solid #f59e0b"
+                      : "2px solid #10b981",
+                    fontWeight: "bold",
+                    fontSize: "15px",
+                    color: "#1f2937",
+                  }}
+                >
                   {viewEvent.allowedRoles?.length > 0 ? (
                     <>
-                      Restricted to: {" "}
+                      Restricted to:{" "}
                       {viewEvent.allowedRoles
-                        .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                        .map(
+                          (r) => r.charAt(0).toUpperCase() + r.slice(1) + "s"
+                        )
                         .join(", ")}
                     </>
                   ) : (
@@ -1695,7 +1798,11 @@ export default function EventsHome() {
           className="confirm-overlay"
           role="dialog"
           aria-modal="true"
-          style={{ display: "flex", justifyContent: "center", alignItems: "center" }}
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
         >
           <div
             style={{
@@ -1707,26 +1814,59 @@ export default function EventsHome() {
               borderRadius: "12px",
               position: "relative",
               boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
-              display: 'flex',
-              flexDirection: 'column'
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <div style={{ background: '#3B82F6', color: 'white', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              style={{
+                background: "#3B82F6",
+                color: "white",
+                padding: "12px 16px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <div>
                 <h3 style={{ margin: 0 }}>Uploaded Attendee Documents</h3>
-                <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Uploaded IDs</p>
+                <p style={{ color: "#E5E7EB", fontSize: 14, margin: 0 }}>
+                  Uploaded IDs
+                </p>
               </div>
-              <button onClick={() => setDocsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer' }}>✕</button>
+              <button
+                onClick={() => setDocsModalOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  fontSize: 20,
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
             </div>
-            <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
+            <div style={{ padding: 12, overflowY: "auto", flex: 1 }}>
               {docsLoading ? (
-                <div style={{ padding: 16, textAlign: "center" }}>Loading...</div>
+                <div style={{ padding: 16, textAlign: "center" }}>
+                  Loading...
+                </div>
               ) : docsList.length === 0 ? (
-                <div style={{ padding: 16, color: "#6B7280", textAlign: "center" }}>No uploaded documents found.</div>
+                <div
+                  style={{ padding: 16, color: "#6B7280", textAlign: "center" }}
+                >
+                  No uploaded documents found.
+                </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ textAlign: "left", borderBottom: "1px solid #E5E7EB" }}>
+                    <tr
+                      style={{
+                        textAlign: "left",
+                        borderBottom: "1px solid #E5E7EB",
+                      }}
+                    >
                       <th style={{ padding: 8 }}>Name</th>
                       <th style={{ padding: 8 }}>Email</th>
                       <th style={{ padding: 8 }}>Source</th>
@@ -1739,16 +1879,39 @@ export default function EventsHome() {
                         <td style={{ padding: 8 }}>{d.name}</td>
                         <td style={{ padding: 8 }}>{d.email}</td>
                         <td style={{ padding: 8 }}>{d.source}</td>
-                        <td style={{ padding: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        <td
+                          style={{
+                            padding: 8,
+                            display: "flex",
+                            gap: 8,
+                            justifyContent: "center",
+                          }}
+                        >
                           <button
                             onClick={() => openViewer(d.url, d.name)}
-                            style={{ background: 'transparent', border: '1px solid #2563EB', color: '#2563EB', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid #2563EB",
+                              color: "#2563EB",
+                              padding: "6px 10px",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                            }}
                           >
                             View
                           </button>
                           <button
-                            onClick={() => downloadFile(d.url, `${d.name || 'document'}`)}
-                            style={{ background: '#2563EB', border: 'none', color: 'white', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                            onClick={() =>
+                              downloadFile(d.url, `${d.name || "document"}`)
+                            }
+                            style={{
+                              background: "#2563EB",
+                              border: "none",
+                              color: "white",
+                              padding: "6px 10px",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                            }}
                           >
                             Download
                           </button>
@@ -1759,8 +1922,27 @@ export default function EventsHome() {
                 </table>
               )}
             </div>
-            <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setDocsModalOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+            <div
+              style={{
+                padding: "10px 15px",
+                borderTop: "1px solid #E5E7EB",
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={() => setDocsModalOpen(false)}
+                style={{
+                  backgroundColor: "#9CA3AF",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -1770,34 +1952,130 @@ export default function EventsHome() {
       {viewerOpen && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'rgba(0,0,0,0.45)',
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            background: "rgba(0,0,0,0.45)",
             zIndex: 9999,
           }}
         >
-          <div style={{ background: 'white', padding: 0, width: '80%', maxWidth: 1000, height: '90vh', borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ background: '#3B82F6', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            style={{
+              background: "white",
+              padding: 0,
+              width: "80%",
+              maxWidth: 1000,
+              height: "90vh",
+              borderRadius: 10,
+              boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                background: "#3B82F6",
+                color: "white",
+                padding: "10px 15px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <div>
                 <h3 style={{ margin: 0 }}>{viewerName}</h3>
-                <p style={{ color: '#E5E7EB', fontSize: 14, margin: 0 }}>Preview</p>
+                <p style={{ color: "#E5E7EB", fontSize: 14, margin: 0 }}>
+                  Preview
+                </p>
               </div>
-              <button onClick={() => setViewerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer' }}>✕</button>
+              <button
+                onClick={() => setViewerOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  fontSize: 18,
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
             </div>
-            <div style={{ flex: 1, padding: 0, background: '#f8fafc', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              {viewerUrl && (viewerUrl.endsWith('.pdf') || !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
-                <iframe src={viewerUrl} title={viewerName} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+            <div
+              style={{
+                flex: 1,
+                padding: 0,
+                background: "#f8fafc",
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {viewerUrl &&
+              (viewerUrl.endsWith(".pdf") ||
+                !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
+                <iframe
+                  src={viewerUrl}
+                  title={viewerName}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    display: "block",
+                  }}
+                />
               ) : (
-                <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
-                  <img src={viewerUrl} alt={viewerName} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                <div
+                  style={{
+                    width: "100%",
+                    flex: 1,
+                    minHeight: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 12,
+                  }}
+                >
+                  <img
+                    src={viewerUrl}
+                    alt={viewerName}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      width: "auto",
+                      height: "auto",
+                      objectFit: "contain",
+                      display: "block",
+                    }}
+                  />
                 </div>
               )}
             </div>
-            <div style={{ padding: '10px 15px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setViewerOpen(false)} style={{ backgroundColor: '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Close</button>
+            <div
+              style={{
+                padding: "10px 15px",
+                borderTop: "1px solid #E5E7EB",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={() => setViewerOpen(false)}
+                style={{
+                  backgroundColor: "#9CA3AF",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

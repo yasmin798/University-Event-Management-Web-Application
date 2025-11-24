@@ -1,8 +1,19 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import { Menu, X, Search, LogOut, User as UserIcon } from "lucide-react";
-import "./EventRegistrationForm.css"; // reuse same styles
+import {
+  Menu,
+  Search,
+  User as UserIcon,
+  Percent,
+  Building,
+  Tag,
+  FileText,
+  ArrowLeft,
+  CheckCircle2,
+} from "lucide-react";
+import "./EventRegistrationForm.css";
+import VendorSidebar from "../components/VendorSidebar";
 
 const GUCLoyaltyForm = () => {
   const navigate = useNavigate();
@@ -27,10 +38,18 @@ const GUCLoyaltyForm = () => {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.companyName.trim()) errors.companyName = "Company Name is required";
-    if (!formData.discountRate) errors.discountRate = "Discount Rate is required";
+    if (!formData.companyName.trim())
+      errors.companyName = "Company Name is required";
+    if (!formData.discountRate)
+      errors.discountRate = "Discount Rate is required";
+    else if (formData.discountRate < 1 || formData.discountRate > 100)
+      errors.discountRate = "Discount rate must be between 1% and 100%";
     if (!formData.promoCode.trim()) errors.promoCode = "Promo Code is required";
-    if (!formData.termsAndConditions.trim()) errors.termsAndConditions = "Terms & Conditions required";
+    else if (!/^[A-Z0-9_-]+$/.test(formData.promoCode))
+      errors.promoCode =
+        "Promo code can only contain uppercase letters, numbers, hyphens, and underscores";
+    if (!formData.termsAndConditions.trim())
+      errors.termsAndConditions = "Terms & Conditions are required";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -53,7 +72,9 @@ const GUCLoyaltyForm = () => {
       setSuccess("Application submitted successfully!");
       setTimeout(() => navigate("/vendors"), 2000);
     } catch (err) {
-      setError(err.response?.data?.error || "Submission failed. Try again.");
+      setError(
+        err.response?.data?.error || "Submission failed. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -62,221 +83,246 @@ const GUCLoyaltyForm = () => {
   const handleCancel = () => navigate("/vendors");
 
   return (
-    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
-      {/* ==================== MOBILE SIDEBAR OVERLAY ==================== */}
-      {isMobileSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* ==================== SIDEBAR (Permanent on desktop, toggle on mobile) ==================== */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Logo / Title */}
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">Vendor Hub</span>
-          </div>
-          <button
-            onClick={() => setIsMobileSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg md:hidden"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Navigation Links (Vendor Options) */}
-        <nav className="flex-1 px-4">
-          <ul className="space-y-2">
-            <li>
-              <Link
-                to="/vendors"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Upcoming Bazaars
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/apply-booth"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Apply for Booth in Platform
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/my-applications/accepted"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                View Applications
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/guc-loyalty-apply"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Apply for GUC Loyalty Program
-              </Link>
-            </li>
-          </ul>
-        </nav>
-
-        {/* Logout */}
-        <div className="px-4 pb-4">
-          <button
-            onClick={() => navigate("/")}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      {/* --- Shared Vendor Sidebar --- */}
+      <VendorSidebar
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+        fetchBazaars={() => {}}
+      />
 
       {/* ==================== MAIN AREA ==================== */}
-      <main style={{ flex: 1, marginLeft: "260px", padding: "0 24px 24px" }}>
-        {/* ---- Top Search & Info Bar (Mobile menu button) ---- */}
-        <header
-          style={{
-            marginLeft: "-24px",
-            marginRight: "-24px",
-            width: "calc(100% + 48px)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: "var(--card)",
-            borderRadius: "0 0 16px 16px",
-            boxShadow: "var(--shadow)",
-            padding: "10px 20px",
-            marginBottom: "20px",
-            position: "sticky",
-            top: 0,
-            zIndex: 5,
-          }}
-        >
-          {/* LEFT: Mobile menu + search */}
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              alignItems: "center",
-              flexWrap: "wrap",
-              flex: 1,
-            }}
-          >
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors md:hidden"
-            >
-              <Menu size={24} className="text-[#2f4156]" />
-            </button>
-            <div style={{ position: "relative", width: "260px", flex: 1, maxWidth: "100%" }}>
-              <Search
-                size={16}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "10px",
-                  transform: "translateY(-50%)",
-                  color: "var(--teal)",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Search..."
-                style={{
-                  width: "100%",
-                  padding: "8px 12px 8px 34px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(47,65,86,0.2)",
-                  fontSize: "13px",
-                }}
-              />
+      <main className="flex-1 ml-0 lg:ml-[260px] px-4 lg:px-8 py-6">
+        {/* Main Content */}
+        <div className="max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
+              GUC Loyalty Program
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Join our exclusive loyalty program and offer special discounts to
+              GUC community members. Increase your visibility and build lasting
+              relationships with our students and staff.
+            </p>
+          </div>
+
+          {/* Benefits Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Building size={24} className="text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-blue-900 mb-1">
+                Brand Exposure
+              </h3>
+              <p className="text-blue-700 text-sm">
+                Reach thousands of GUC members
+              </p>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Percent size={24} className="text-green-600" />
+              </div>
+              <h3 className="font-semibold text-green-900 mb-1">
+                Customer Loyalty
+              </h3>
+              <p className="text-green-700 text-sm">
+                Build long-term customer relationships
+              </p>
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Tag size={24} className="text-purple-600" />
+              </div>
+              <h3 className="font-semibold text-purple-900 mb-1">
+                Exclusive Promotions
+              </h3>
+              <p className="text-purple-700 text-sm">
+                Feature your special offers
+              </p>
             </div>
           </div>
-          {/* RIGHT: user icon */}
-          <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
-            <UserIcon size={20} className="text-[#2f4156]" />
-          </div>
-        </header>
 
-        <div className="event-reg-page">
-          <div className="event-reg-container">
-            <div className="event-reg-card">
-              <div className="event-reg-form-header">
-                <h2>GUC Loyalty Program Application</h2>
-                <p>Fill in your company details and submit your application</p>
-              </div>
+          {/* Application Form */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-6 py-4">
+              <h2 className="text-xl font-bold text-white">Application Form</h2>
+              <p className="text-teal-100 text-sm">
+                Fill in your company details below
+              </p>
+            </div>
 
-              <form className="event-reg-form" onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label className="form-label">Company Name *</label>
+            <form className="p-6 lg:p-8" onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Company Name */}
+                <div className="lg:col-span-2">
+                  <label className="form-label flex items-center gap-2 mb-3">
+                    <Building size={18} className="text-teal-600" />
+                    Company Name *
+                  </label>
                   <input
-                    className={`event-reg-input ${formErrors.companyName ? "error" : ""}`}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:ring-2 focus:ring-teal-200 ${
+                      formErrors.companyName
+                        ? "border-red-300 bg-red-50 focus:border-red-500"
+                        : "border-gray-300 focus:border-teal-500"
+                    }`}
                     name="companyName"
                     value={formData.companyName}
                     onChange={handleChange}
                     placeholder="Enter your company name"
                   />
-                  {formErrors.companyName && <span className="error-text">{formErrors.companyName}</span>}
+                  {formErrors.companyName && (
+                    <span className="text-red-600 text-sm font-medium mt-2 flex items-center gap-1">
+                      {formErrors.companyName}
+                    </span>
+                  )}
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Discount Rate (%) *</label>
-                  <input
-                    className={`event-reg-input ${formErrors.discountRate ? "error" : ""}`}
-                    name="discountRate"
-                    type="number"
-                    value={formData.discountRate}
-                    onChange={handleChange}
-                    placeholder="Enter discount rate"
-                  />
-                  {formErrors.discountRate && <span className="error-text">{formErrors.discountRate}</span>}
+                {/* Discount Rate */}
+                <div>
+                  <label className="form-label flex items-center gap-2 mb-3">
+                    <Percent size={18} className="text-teal-600" />
+                    Discount Rate (%) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:ring-2 focus:ring-teal-200 ${
+                        formErrors.discountRate
+                          ? "border-red-300 bg-red-50 focus:border-red-500"
+                          : "border-gray-300 focus:border-teal-500"
+                      }`}
+                      name="discountRate"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={formData.discountRate}
+                      onChange={handleChange}
+                      placeholder="e.g., 15"
+                    />
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">
+                      %
+                    </div>
+                  </div>
+                  {formErrors.discountRate && (
+                    <span className="text-red-600 text-sm font-medium mt-2 flex items-center gap-1">
+                      {formErrors.discountRate}
+                    </span>
+                  )}
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Promo Code *</label>
+                {/* Promo Code */}
+                <div>
+                  <label className="form-label flex items-center gap-2 mb-3">
+                    <Tag size={18} className="text-teal-600" />
+                    Promo Code *
+                  </label>
                   <input
-                    className={`event-reg-input ${formErrors.promoCode ? "error" : ""}`}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:ring-2 focus:ring-teal-200 uppercase ${
+                      formErrors.promoCode
+                        ? "border-red-300 bg-red-50 focus:border-red-500"
+                        : "border-gray-300 focus:border-teal-500"
+                    }`}
                     name="promoCode"
                     value={formData.promoCode}
                     onChange={handleChange}
-                    placeholder="Enter promo code"
+                    placeholder="e.g., GUC15OFF"
+                    style={{ textTransform: "uppercase" }}
                   />
-                  {formErrors.promoCode && <span className="error-text">{formErrors.promoCode}</span>}
+                  {formErrors.promoCode && (
+                    <span className="text-red-600 text-sm font-medium mt-2 flex items-center gap-1">
+                      {formErrors.promoCode}
+                    </span>
+                  )}
+                  <p className="text-gray-500 text-xs mt-2">
+                    Use uppercase letters, numbers, hyphens, and underscores
+                    only
+                  </p>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Terms & Conditions *</label>
+                {/* Terms & Conditions */}
+                <div className="lg:col-span-2">
+                  <label className="form-label flex items-center gap-2 mb-3">
+                    <FileText size={18} className="text-teal-600" />
+                    Terms & Conditions *
+                  </label>
                   <textarea
-                    className={`event-reg-input ${formErrors.termsAndConditions ? "error" : ""}`}
+                    rows="4"
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:ring-2 focus:ring-teal-200 resize-none ${
+                      formErrors.termsAndConditions
+                        ? "border-red-300 bg-red-50 focus:border-red-500"
+                        : "border-gray-300 focus:border-teal-500"
+                    }`}
                     name="termsAndConditions"
                     value={formData.termsAndConditions}
                     onChange={handleChange}
-                    placeholder="Enter terms and conditions"
+                    placeholder="Describe the terms and conditions for using this discount..."
                   />
-                  {formErrors.termsAndConditions && <span className="error-text">{formErrors.termsAndConditions}</span>}
+                  {formErrors.termsAndConditions && (
+                    <span className="text-red-600 text-sm font-medium mt-2 flex items-center gap-1">
+                      {formErrors.termsAndConditions}
+                    </span>
+                  )}
                 </div>
+              </div>
 
-                <div className="form-actions">
-                  <button type="button" className="event-reg-button secondary" onClick={handleCancel}>Cancel</button>
-                  <button type="submit" className="event-reg-button primary" disabled={isLoading}>
-                    {isLoading ? "Submitting..." : "Submit Application"}
-                  </button>
+              {/* Success/Error Messages */}
+              {success && (
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <div className="flex items-center gap-2 text-green-800">
+                    <CheckCircle2 size={20} />
+                    <span className="font-semibold">{success}</span>
+                  </div>
                 </div>
+              )}
 
-                {success && <div className="event-reg-message">{success}</div>}
-                {error && <div className="event-reg-error">{error}</div>}
-              </form>
-            </div>
+              {error && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <span className="font-semibold">{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="flex-1 py-4 px-6 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200 border border-gray-300"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-4 px-6 rounded-xl font-semibold text-white bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Submitting...
+                    </div>
+                  ) : (
+                    "Submit Application"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Additional Info */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-500 text-sm">
+              Application review typically takes 2-3 business days. You will be
+              notified via email once approved.
+            </p>
           </div>
         </div>
       </main>

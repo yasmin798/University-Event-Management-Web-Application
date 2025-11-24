@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Menu, X, Search, LogOut, User as UserIcon } from "lucide-react";
-
+import VendorSidebar from "../components/VendorSidebar";
 const BoothApplicationForm = () => {
   const navigate = useNavigate();
 
@@ -60,7 +60,8 @@ const BoothApplicationForm = () => {
 
     try {
       for (let i = 0; i < attendees.length; i++) {
-        if (!idFiles[i]) throw new Error(`Please upload ID file for attendee ${i + 1}`);
+        if (!idFiles[i])
+          throw new Error(`Please upload ID file for attendee ${i + 1}`);
       }
 
       const form = new FormData();
@@ -82,7 +83,10 @@ const BoothApplicationForm = () => {
       } catch (_e) {
         data = dataText;
       }
-      if (!res.ok) throw new Error((data && data.error) || res.statusText || "Submission failed");
+      if (!res.ok)
+        throw new Error(
+          (data && data.error) || res.statusText || "Submission failed"
+        );
 
       setSuccessMsg("Application submitted!");
       setTimeout(() => navigate("/vendors"), 1200);
@@ -96,152 +100,17 @@ const BoothApplicationForm = () => {
   const handleCancel = () => navigate("/vendors");
 
   return (
-    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
-      {/* ==================== MOBILE SIDEBAR OVERLAY ==================== */}
-      {isMobileSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* ==================== SIDEBAR (Permanent on desktop, toggle on mobile) ==================== */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Logo / Title */}
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">Vendor Hub</span>
-          </div>
-          <button
-            onClick={() => setIsMobileSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg md:hidden"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Navigation Links (Vendor Options) */}
-        <nav className="flex-1 px-4">
-          <ul className="space-y-2">
-            <li>
-              <Link
-                to="/vendors"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Upcoming Bazaars
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/apply-booth"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Apply for Booth in Platform
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/my-applications/accepted"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                View Applications
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/guc-loyalty-apply"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Apply for GUC Loyalty Program
-              </Link>
-            </li>
-          </ul>
-        </nav>
-
-        {/* Logout */}
-        <div className="px-4 pb-4">
-          <button
-            onClick={() => navigate("/")}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
+      <VendorSidebar
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+        fetchBazaars={() => {}}
+      />
       {/* ==================== MAIN AREA ==================== */}
       <main style={{ flex: 1, marginLeft: "260px", padding: "0 24px 24px" }}>
-        {/* ---- Top Search & Info Bar (Mobile menu button) ---- */}
-        <header
-          style={{
-            marginLeft: "-24px",
-            marginRight: "-24px",
-            width: "calc(100% + 48px)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: "var(--card)",
-            borderRadius: "0 0 16px 16px",
-            boxShadow: "var(--shadow)",
-            padding: "10px 20px",
-            marginBottom: "20px",
-            position: "sticky",
-            top: 0,
-            zIndex: 5,
-          }}
-        >
-          {/* LEFT: Mobile menu + search */}
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              alignItems: "center",
-              flexWrap: "wrap",
-              flex: 1,
-            }}
-          >
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors md:hidden"
-            >
-              <Menu size={24} className="text-[#2f4156]" />
-            </button>
-            <div style={{ position: "relative", width: "260px", flex: 1, maxWidth: "100%" }}>
-              <Search
-                size={16}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "10px",
-                  transform: "translateY(-50%)",
-                  color: "var(--teal)",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Search..."
-                style={{
-                  width: "100%",
-                  padding: "8px 12px 8px 34px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(47,65,86,0.2)",
-                  fontSize: "13px",
-                }}
-              />
-            </div>
-          </div>
-          {/* RIGHT: user icon */}
-          <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
-            <UserIcon size={20} className="text-[#2f4156]" />
-          </div>
-        </header>
-
         <h1 className="text-2xl font-bold mb-6">Booth Application</h1>
         <h2 className="text-xl mb-6 font-semibold">Booth Application Form</h2>
 

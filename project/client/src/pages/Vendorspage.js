@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, LogOut, User as UserIcon, Menu, X } from "lucide-react";
 import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg"; // Reuse from EventsHome imports
+import { Calendar, Store, FileText, Users } from "lucide-react";
 
 const VendorsPage = () => {
   const navigate = useNavigate();
@@ -70,7 +71,10 @@ const VendorsPage = () => {
   const currentBazaars = filteredBazaars.slice(indexOfFirst, indexOfLast);
 
   return (
-    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
       {/* ==================== MOBILE SIDEBAR OVERLAY ==================== */}
       {isMobileSidebarOpen && (
         <div
@@ -79,71 +83,74 @@ const VendorsPage = () => {
         />
       )}
 
-      {/* ==================== SIDEBAR (Permanent on desktop, toggle on mobile) ==================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed left-0 top-0 h-screen w-[260px] bg-[#2f4156] text-white shadow-lg flex flex-col z-50
+    transition-transform duration-300
+    ${
+      isMobileSidebarOpen
+        ? "translate-x-0"
+        : "-translate-x-full md:translate-x-0"
+    }
+  `}
       >
-        {/* Logo / Title */}
-        <div className="p-6 flex items-center justify-between">
+        {/* LOGO */}
+        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between md:justify-start">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full" />
-            <span className="text-xl font-bold">Vendor Hub</span>
+            <div className="w-8 h-8 rounded-full bg-teal-500" />
+            <h2 className="text-[22px] font-extrabold">Vendor Hub</h2>
           </div>
+
+          {/* Close button only on mobile */}
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg md:hidden"
+            className="md:hidden p-2 hover:bg-white/10 rounded-lg"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Navigation Links (Vendor Options) */}
-        <nav className="flex-1 px-4">
-          <ul className="space-y-2">
-            <li>
-              <button
-                onClick={fetchBazaars}
-                className="w-full text-left py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Refresh Upcoming Bazaars
-              </button>
-            </li>
-            <li>
-              <Link
-                to="/apply-booth"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Apply for Booth in Platform
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/my-applications/accepted"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                View Applications
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/guc-loyalty-apply"
-                className="block py-2 px-4 hover:bg-[#567c8d] rounded transition-colors"
-              >
-                Apply for GUC Loyalty Program
-              </Link>
-            </li>
-          </ul>
+        {/* NAVIGATION */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          <button
+            onClick={() => navigate("/vendors")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/5"
+          >
+            <Calendar size={18} />
+            <span>Upcoming Bazaars</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/apply-booth")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/5"
+          >
+            <Store size={18} />
+            <span>Apply for Booth in Platform</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/my-applications/accepted")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/5"
+          >
+            <FileText size={18} />
+            <span>View Applications</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/guc-loyalty-apply")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/5"
+          >
+            <Users size={20} />
+            <span>Apply for GUC Loyalty Program</span>
+          </button>
         </nav>
 
-        {/* Logout */}
-        <div className="px-4 pb-4">
+        {/* LOGOUT */}
+        <div className="px-3 pb-8 pt-4 border-t border-white/10 mt-auto">
           <button
             onClick={() => navigate("/")}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-white/10 hover:bg-white/20"
           >
-            <LogOut size={18} />
+            <LogOut size={30} />
             <span>Logout</span>
           </button>
         </div>
@@ -186,7 +193,14 @@ const VendorsPage = () => {
             >
               <Menu size={24} className="text-[#2f4156]" />
             </button>
-            <div style={{ position: "relative", width: "260px", flex: 1, maxWidth: "100%" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "260px",
+                flex: 1,
+                maxWidth: "100%",
+              }}
+            >
               <Search
                 size={16}
                 style={{
@@ -203,7 +217,7 @@ const VendorsPage = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  width: "100%",
+                  width: "60%",
                   padding: "8px 12px 8px 34px",
                   borderRadius: "10px",
                   border: "1px solid rgba(47,65,86,0.2)",
@@ -260,7 +274,9 @@ const VendorsPage = () => {
               </button>
               <div className="pg-btn current">{currentPage}</div>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
                 className="pg-btn arrow"
               >
@@ -327,11 +343,15 @@ const VendorsPage = () => {
                   </div>
                   <div className="kv">
                     <span className="k">Start:</span>
-                    <span className="v">{new Date(bazaar.startDateTime).toLocaleString()}</span>
+                    <span className="v">
+                      {new Date(bazaar.startDateTime).toLocaleString()}
+                    </span>
                   </div>
                   <div className="kv">
                     <span className="k">End:</span>
-                    <span className="v">{new Date(bazaar.endDateTime).toLocaleString()}</span>
+                    <span className="v">
+                      {new Date(bazaar.endDateTime).toLocaleString()}
+                    </span>
                   </div>
                   {bazaar.shortDescription && (
                     <div className="kv">
