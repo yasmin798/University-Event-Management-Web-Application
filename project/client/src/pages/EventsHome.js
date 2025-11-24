@@ -1,7 +1,7 @@
 // client/src/pages/EventsHome.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Bell, X } from "lucide-react";
+import { Search, Calendar } from "lucide-react";
 import NotificationsDropdown from "../components/NotificationsDropdown";
 
 import workshopPlaceholder from "../images/workshop.png";
@@ -1611,38 +1611,69 @@ export default function EventsHome() {
         </div>
       )}
 
-      {/* ===== Choose event type modal */}
+      {/* ===== Horizontal Layout */}
       {chooseOpen && (
-        <div className="confirm-overlay">
-          <div className="confirm" style={{ maxWidth: "400px" }}>
-            <h2 style={{ marginTop: 0 }}>Create New Event</h2>
-            <p>Choose event type:</p>
-            <div className="form-grid form-grid-3">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full animate-scale-in">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+                  <Calendar size={18} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">New Event</h3>
+                  <p className="text-gray-500 text-sm">Choose event type</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Event Options */}
+            <div className="flex p-4 gap-2">
               {[
-                { type: "trip", label: "Trip" },
-                { type: "conference", label: "Conference" },
-                { type: "workshop", label: "Workshop" },
-                { type: "bazaar", label: "Bazaar" },
-              ].map(({ type, label }) => (
+                {
+                  type: "trip",
+                  label: "Trip",
+                  icon: "🚌",
+                  color: "border-blue-200 hover:bg-blue-50",
+                },
+                {
+                  type: "conference",
+                  label: "Conference",
+                  icon: "🎤",
+                  color: "border-purple-200 hover:bg-purple-50",
+                },
+
+                {
+                  type: "bazaar",
+                  label: "Bazaar",
+                  icon: "🛍️",
+                  color: "border-orange-200 hover:bg-orange-50",
+                },
+              ].map(({ type, label, icon, color }) => (
                 <button
                   key={type}
-                  className="btn"
                   onClick={() => {
                     setChooseOpen(false);
                     navigate(createPathMap[type]);
                   }}
+                  className={`flex-1 flex flex-col items-center p-3 rounded-lg border-2 ${color} transition-all duration-200 hover:scale-105`}
                 >
-                  {label}
+                  <span className="text-2xl mb-1">{icon}</span>
+                  <span className="font-medium text-xs">{label}</span>
                 </button>
               ))}
             </div>
-            <button
-              className="btn btn-outline"
-              style={{ marginTop: "20px" }}
-              onClick={() => setChooseOpen(false)}
-            >
-              Cancel
-            </button>
+
+            {/* Cancel */}
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={() => setChooseOpen(false)}
+                className="w-full py-2.5 text-gray-600 hover:text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
