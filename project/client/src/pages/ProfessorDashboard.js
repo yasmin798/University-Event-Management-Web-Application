@@ -88,7 +88,7 @@ const ProfessorDashboard = () => {
       const data = await workshopAPI.getAllWorkshops();
 
       const normalizedWorkshops = data
-        .filter((w) => w.status === "published")
+        .filter((w) => w.status !== "archived")
         .map((w) => ({
           ...w,
           type: "WORKSHOP",
@@ -162,7 +162,7 @@ const ProfessorDashboard = () => {
 
   // Combine events like EventsHome
   const allEvents = [
-    ...otherEvents.filter((e) => !e.status || e.status === "published"),
+    ...otherEvents.filter((e) => e.status !== "archived"),
     ...workshops,
     ...booths,
   ];
@@ -244,8 +244,10 @@ const ProfessorDashboard = () => {
   const filteredEvents = allEvents
     .filter((e) => {
       if (e.type === "BOOTH") return true; // always show booths
-      const eventDate = new Date(e.startDateTime || e.startDate || e.date);
-      return eventDate > now; // Only future events
+       // ❗ NEW: only hide archived events, show past & future events
+    if (e.status === "archived") return false;
+
+    return true; // keep all other events
     })
     .filter((e) => {
       const name = e.title || e.name || e.workshopName || e.bazaarName;
