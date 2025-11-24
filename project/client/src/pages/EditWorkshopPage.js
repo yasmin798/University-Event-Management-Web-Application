@@ -1,27 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, X } from 'lucide-react';
-import { workshopAPI } from '../api/workshopApi';
-
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Save, X } from "lucide-react";
+import { workshopAPI } from "../api/workshopApi";
 
 const EditWorkshopPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  
+
   const [formData, setFormData] = useState({
-    workshopName: '',
-    location: '',
-    startDateTime: '',
-    endDateTime: '',
-    shortDescription: '',
-    fullAgenda: '',
-    facultyResponsible: '',
-    professorsParticipating: '',
-    requiredBudget: '',
-    fundingSource: '',
-    extraResources: '',
-    capacity: '',
-    registrationDeadline: ''
+    workshopName: "",
+    location: "",
+    startDateTime: "",
+    endDateTime: "",
+    shortDescription: "",
+    fullAgenda: "",
+    facultyResponsible: "",
+    professorsParticipating: "",
+    requiredBudget: "",
+    fundingSource: "",
+    extraResources: "",
+    capacity: "",
+    registrationDeadline: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -31,82 +30,94 @@ const EditWorkshopPage = () => {
     const fetchWorkshop = async () => {
       if (id) {
         try {
-          console.log('🔍 Fetching workshop with ID:', id);
+          console.log("🔍 Fetching workshop with ID:", id);
           const workshop = await workshopAPI.getWorkshopById(id);
-          console.log('✅ Workshop data received:', workshop);
-          
+          console.log("✅ Workshop data received:", workshop);
+
           // Format datetime fields for datetime-local input (YYYY-MM-DDTHH:mm)
           const formattedWorkshop = {
-            workshopName: workshop.workshopName || '',
-            location: workshop.location || '',
-            startDateTime: workshop.startDateTime 
-              ? new Date(workshop.startDateTime).toISOString().slice(0, 16) 
-              : '',
-            endDateTime: workshop.endDateTime 
-              ? new Date(workshop.endDateTime).toISOString().slice(0, 16) 
-              : '',
-            shortDescription: workshop.shortDescription || '',
-            fullAgenda: workshop.fullAgenda || '',
-            facultyResponsible: workshop.facultyResponsible || '',
-            professorsParticipating: workshop.professorsParticipating || '',
-            requiredBudget: workshop.requiredBudget || '',
-            fundingSource: workshop.fundingSource || '',
-            extraResources: workshop.extraResources || '',
-            capacity: workshop.capacity || '',
-            registrationDeadline: workshop.registrationDeadline 
-              ? new Date(workshop.registrationDeadline).toISOString().split('T')[0] 
-              : '',
+            workshopName: workshop.workshopName || "",
+            location: workshop.location || "",
+            startDateTime: workshop.startDateTime
+              ? new Date(workshop.startDateTime).toISOString().slice(0, 16)
+              : "",
+            endDateTime: workshop.endDateTime
+              ? new Date(workshop.endDateTime).toISOString().slice(0, 16)
+              : "",
+            shortDescription: workshop.shortDescription || "",
+            fullAgenda: workshop.fullAgenda || "",
+            facultyResponsible: workshop.facultyResponsible || "",
+            professorsParticipating: workshop.professorsParticipating || "",
+            requiredBudget: workshop.requiredBudget || "",
+            fundingSource: workshop.fundingSource || "",
+            extraResources: workshop.extraResources || "",
+            capacity: workshop.capacity || "",
+            registrationDeadline: workshop.registrationDeadline
+              ? new Date(workshop.registrationDeadline)
+                  .toISOString()
+                  .split("T")[0]
+              : "",
           };
-          
-          console.log('📝 Formatted data for form:', formattedWorkshop);
+
+          console.log("📝 Formatted data for form:", formattedWorkshop);
           setFormData(formattedWorkshop);
           setLoading(false);
         } catch (error) {
-          console.error('❌ Error fetching workshop:', error);
-          alert('Failed to load workshop');
-          navigate('/professor/workshops');
+          console.error("❌ Error fetching workshop:", error);
+          alert("Failed to load workshop");
+          navigate("/professor/workshops");
         }
       }
     };
-    
+
     fetchWorkshop();
   }, [id, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.workshopName.trim()) newErrors.workshopName = 'Workshop name is required';
-    if (!formData.location) newErrors.location = 'Location is required';
-    if (!formData.startDateTime) newErrors.startDateTime = 'Start date and time is required';
-    if (!formData.endDateTime) newErrors.endDateTime = 'End date and time is required';
-    if (!formData.shortDescription.trim()) newErrors.shortDescription = 'Short description is required';
-    if (!formData.fullAgenda.trim()) newErrors.fullAgenda = 'Full agenda is required';
-    if (!formData.facultyResponsible) newErrors.facultyResponsible = 'Faculty is required';
-    if (!formData.professorsParticipating.trim()) newErrors.professorsParticipating = 'Professors are required';
-    if (!formData.requiredBudget) newErrors.requiredBudget = 'Budget is required';
-    if (!formData.fundingSource) newErrors.fundingSource = 'Funding source is required';
-    if (!formData.capacity) newErrors.capacity = 'Capacity is required';
-    if (!formData.registrationDeadline) newErrors.registrationDeadline = 'Registration deadline is required';
+
+    if (!formData.workshopName.trim())
+      newErrors.workshopName = "Workshop name is required";
+    if (!formData.location) newErrors.location = "Location is required";
+    if (!formData.startDateTime)
+      newErrors.startDateTime = "Start date and time is required";
+    if (!formData.endDateTime)
+      newErrors.endDateTime = "End date and time is required";
+    if (!formData.shortDescription.trim())
+      newErrors.shortDescription = "Short description is required";
+    if (!formData.fullAgenda.trim())
+      newErrors.fullAgenda = "Full agenda is required";
+    if (!formData.facultyResponsible)
+      newErrors.facultyResponsible = "Faculty is required";
+    if (!formData.professorsParticipating.trim())
+      newErrors.professorsParticipating = "Professors are required";
+    if (!formData.requiredBudget)
+      newErrors.requiredBudget = "Budget is required";
+    if (!formData.fundingSource)
+      newErrors.fundingSource = "Funding source is required";
+    if (!formData.capacity) newErrors.capacity = "Capacity is required";
+    if (!formData.registrationDeadline)
+      newErrors.registrationDeadline = "Registration deadline is required";
 
     if (formData.startDateTime && formData.endDateTime) {
       const start = new Date(formData.startDateTime);
       const end = new Date(formData.endDateTime);
       if (end <= start) {
-        newErrors.endDateTime = 'End date/time must be after start date/time';
+        newErrors.endDateTime = "End date/time must be after start date/time";
       }
     }
 
@@ -114,7 +125,8 @@ const EditWorkshopPage = () => {
       const deadline = new Date(formData.registrationDeadline);
       const start = new Date(formData.startDateTime);
       if (deadline >= start) {
-        newErrors.registrationDeadline = 'Registration deadline must be before start date/time';
+        newErrors.registrationDeadline =
+          "Registration deadline must be before start date/time";
       }
     }
 
@@ -124,18 +136,18 @@ const EditWorkshopPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
       try {
-        console.log('📤 Updating workshop with data:', formData);
+        console.log("📤 Updating workshop with data:", formData);
         const updatedWorkshop = await workshopAPI.updateWorkshop(id, formData);
-        
-        console.log('✅ Workshop updated:', updatedWorkshop);
-        alert('Workshop updated successfully!');
-        navigate('/professor/workshops');
+
+        console.log("✅ Workshop updated:", updatedWorkshop);
+        alert("Workshop updated successfully!");
+        navigate("/professor/workshops");
       } catch (error) {
-        console.error('❌ Error updating workshop:', error);
-        alert('Failed to update workshop. Please try again.');
+        console.error("❌ Error updating workshop:", error);
+        alert("Failed to update workshop. Please try again.");
       }
     }
   };
@@ -154,7 +166,7 @@ const EditWorkshopPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/professor/workshops')}
+              onClick={() => navigate("/professor/workshops")}
               className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
             >
               <ArrowLeft size={20} className="text-[#567c8d]" />
@@ -176,11 +188,13 @@ const EditWorkshopPage = () => {
               value={formData.workshopName}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.workshopName ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.workshopName ? "border-red-500" : "border-[#c8d9e6]"
               }`}
               placeholder="Enter workshop name"
             />
-            {errors.workshopName && <p className="text-red-500 text-sm mt-1">{errors.workshopName}</p>}
+            {errors.workshopName && (
+              <p className="text-red-500 text-sm mt-1">{errors.workshopName}</p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -192,14 +206,16 @@ const EditWorkshopPage = () => {
               value={formData.location}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.location ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.location ? "border-red-500" : "border-[#c8d9e6]"
               }`}
             >
               <option value="">Select location</option>
               <option value="GUC Cairo">GUC Cairo</option>
               <option value="GUC Berlin">GUC Berlin</option>
             </select>
-            {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+            {errors.location && (
+              <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
@@ -213,10 +229,14 @@ const EditWorkshopPage = () => {
                 value={formData.startDateTime}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.startDateTime ? 'border-red-500' : 'border-[#c8d9e6]'
+                  errors.startDateTime ? "border-red-500" : "border-[#c8d9e6]"
                 }`}
               />
-              {errors.startDateTime && <p className="text-red-500 text-sm mt-1">{errors.startDateTime}</p>}
+              {errors.startDateTime && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.startDateTime}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-[#2f4156] font-semibold mb-2">
@@ -228,10 +248,14 @@ const EditWorkshopPage = () => {
                 value={formData.endDateTime}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.endDateTime ? 'border-red-500' : 'border-[#c8d9e6]'
+                  errors.endDateTime ? "border-red-500" : "border-[#c8d9e6]"
                 }`}
               />
-              {errors.endDateTime && <p className="text-red-500 text-sm mt-1">{errors.endDateTime}</p>}
+              {errors.endDateTime && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.endDateTime}
+                </p>
+              )}
             </div>
           </div>
 
@@ -245,11 +269,15 @@ const EditWorkshopPage = () => {
               onChange={handleChange}
               rows="3"
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.shortDescription ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.shortDescription ? "border-red-500" : "border-[#c8d9e6]"
               }`}
               placeholder="Brief overview of the workshop"
             />
-            {errors.shortDescription && <p className="text-red-500 text-sm mt-1">{errors.shortDescription}</p>}
+            {errors.shortDescription && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.shortDescription}
+              </p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -262,11 +290,13 @@ const EditWorkshopPage = () => {
               onChange={handleChange}
               rows="6"
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.fullAgenda ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.fullAgenda ? "border-red-500" : "border-[#c8d9e6]"
               }`}
               placeholder="Detailed agenda with schedule and topics"
             />
-            {errors.fullAgenda && <p className="text-red-500 text-sm mt-1">{errors.fullAgenda}</p>}
+            {errors.fullAgenda && (
+              <p className="text-red-500 text-sm mt-1">{errors.fullAgenda}</p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -278,20 +308,32 @@ const EditWorkshopPage = () => {
               value={formData.facultyResponsible}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.facultyResponsible ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.facultyResponsible
+                  ? "border-red-500"
+                  : "border-[#c8d9e6]"
               }`}
             >
               <option value="">Select faculty</option>
-              <option value="MET">MET - Media Engineering and Technology</option>
-              <option value="IET">IET - Information Engineering and Technology</option>
+              <option value="MET">
+                MET - Media Engineering and Technology
+              </option>
+              <option value="IET">
+                IET - Information Engineering and Technology
+              </option>
               <option value="PBT">PBT - Pharmacy and Biotechnology</option>
-              <option value="EMS">EMS - Engineering and Materials Science</option>
+              <option value="EMS">
+                EMS - Engineering and Materials Science
+              </option>
               <option value="MNGT">MNGT - Management Technology</option>
               <option value="ASA">ASA - Applied Sciences and Arts</option>
               <option value="DNT">DNT - Dentistry</option>
               <option value="LAW">LAW - Law and Legal Studies</option>
             </select>
-            {errors.facultyResponsible && <p className="text-red-500 text-sm mt-1">{errors.facultyResponsible}</p>}
+            {errors.facultyResponsible && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.facultyResponsible}
+              </p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -304,11 +346,17 @@ const EditWorkshopPage = () => {
               value={formData.professorsParticipating}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.professorsParticipating ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.professorsParticipating
+                  ? "border-red-500"
+                  : "border-[#c8d9e6]"
               }`}
               placeholder="Enter professor names (comma-separated)"
             />
-            {errors.professorsParticipating && <p className="text-red-500 text-sm mt-1">{errors.professorsParticipating}</p>}
+            {errors.professorsParticipating && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.professorsParticipating}
+              </p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -321,12 +369,16 @@ const EditWorkshopPage = () => {
               value={formData.requiredBudget}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.requiredBudget ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.requiredBudget ? "border-red-500" : "border-[#c8d9e6]"
               }`}
               placeholder="Enter budget amount"
               min="0"
             />
-            {errors.requiredBudget && <p className="text-red-500 text-sm mt-1">{errors.requiredBudget}</p>}
+            {errors.requiredBudget && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.requiredBudget}
+              </p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -338,14 +390,18 @@ const EditWorkshopPage = () => {
               value={formData.fundingSource}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.fundingSource ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.fundingSource ? "border-red-500" : "border-[#c8d9e6]"
               }`}
             >
               <option value="">Select funding source</option>
               <option value="GUC">GUC</option>
               <option value="External">External</option>
             </select>
-            {errors.fundingSource && <p className="text-red-500 text-sm mt-1">{errors.fundingSource}</p>}
+            {errors.fundingSource && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.fundingSource}
+              </p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -372,12 +428,14 @@ const EditWorkshopPage = () => {
               value={formData.capacity}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.capacity ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.capacity ? "border-red-500" : "border-[#c8d9e6]"
               }`}
               placeholder="Maximum number of participants"
               min="1"
             />
-            {errors.capacity && <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>}
+            {errors.capacity && (
+              <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -390,16 +448,23 @@ const EditWorkshopPage = () => {
               value={formData.registrationDeadline}
               onChange={handleChange}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.registrationDeadline ? 'border-red-500' : 'border-[#c8d9e6]'
+                errors.registrationDeadline
+                  ? "border-red-500"
+                  : "border-[#c8d9e6]"
               }`}
             />
-            {errors.registrationDeadline && <p className="text-red-500 text-sm mt-1">{errors.registrationDeadline}</p>}
+            {errors.registrationDeadline && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.registrationDeadline}
+              </p>
+            )}
           </div>
 
-          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">'
+          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">
+            '
             <button
               type="button"
-              onClick={() => navigate('/professor/workshops')}
+              onClick={() => navigate("/professor/workshops")}
               className="flex items-center gap-2 px-6 py-3 border border-[#c8d9e6] text-[#567c8d] rounded-lg hover:bg-[#f5efeb] transition-colors"
             >
               <X size={18} />

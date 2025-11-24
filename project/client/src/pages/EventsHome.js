@@ -519,7 +519,7 @@ export default function EventsHome() {
 
   const handleUpdateRestriction = async () => {
     const { eventId, eventType, currentRoles } = restrictionModal;
-    
+
     try {
       const token = localStorage.getItem("token");
       const typeMap = {
@@ -544,20 +544,31 @@ export default function EventsHome() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setToast({ open: true, text: err.error || "Failed to update restrictions" });
+        setToast({
+          open: true,
+          text: err.error || "Failed to update restrictions",
+        });
         return;
       }
 
       setToast({ open: true, text: "Restrictions updated successfully!" });
-      setRestrictionModal({ open: false, eventId: null, eventType: null, currentRoles: [] });
-      
+      setRestrictionModal({
+        open: false,
+        eventId: null,
+        eventType: null,
+        currentRoles: [],
+      });
+
       // Refresh data
       fetchWorkshops();
       fetchBooths();
       refreshEvents && refreshEvents();
     } catch (e) {
       console.error("Restriction update error:", e);
-      setToast({ open: true, text: "Network error: Could not update restrictions" });
+      setToast({
+        open: true,
+        text: "Network error: Could not update restrictions",
+      });
     }
   };
 
@@ -1305,8 +1316,17 @@ export default function EventsHome() {
                               </button>
                               <button
                                 className="btn"
-                                style={{ background: "#f59e0b", color: "white" }}
-                                onClick={() => handleOpenRestriction(id, "WORKSHOP", ev.allowedRoles || [])}
+                                style={{
+                                  background: "#f59e0b",
+                                  color: "white",
+                                }}
+                                onClick={() =>
+                                  handleOpenRestriction(
+                                    id,
+                                    "WORKSHOP",
+                                    ev.allowedRoles || []
+                                  )
+                                }
                               >
                                 Restriction
                               </button>
@@ -1490,17 +1510,20 @@ export default function EventsHome() {
           <div className="confirm" style={{ maxWidth: "500px" }}>
             <h2>Manage Role Restrictions</h2>
             <p style={{ marginBottom: "16px", color: "#567c8d" }}>
-              Select which roles can register for this event. If no roles are selected, the event will be open to everyone.
+              Select which roles can register for this event. If no roles are
+              selected, the event will be open to everyone.
             </p>
-            <div style={{ 
-              display: "flex", 
-              flexWrap: "wrap", 
-              gap: "16px", 
-              marginBottom: "24px",
-              padding: "16px",
-              background: "#f5efeb",
-              borderRadius: "8px"
-            }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "16px",
+                marginBottom: "24px",
+                padding: "16px",
+                background: "#f5efeb",
+                borderRadius: "8px",
+              }}
+            >
               {["student", "professor", "ta", "staff"].map((role) => (
                 <label
                   key={role}
@@ -1518,29 +1541,39 @@ export default function EventsHome() {
                     value={role}
                     checked={restrictionModal.currentRoles.includes(role)}
                     onChange={() => handleToggleRole(role)}
-                    style={{ 
-                      width: "18px", 
-                      height: "18px", 
+                    style={{
+                      width: "18px",
+                      height: "18px",
                       marginRight: "8px",
-                      cursor: "pointer"
+                      cursor: "pointer",
                     }}
                   />
-                  <span style={{ textTransform: "capitalize" }}>{role}s only</span>
+                  <span style={{ textTransform: "capitalize" }}>
+                    {role}s only
+                  </span>
                 </label>
               ))}
             </div>
-            
+
             {/* Preview */}
-            <div style={{
-              padding: "12px",
-              background: restrictionModal.currentRoles.length > 0 ? "#fef3c7" : "#d1fae5",
-              border: restrictionModal.currentRoles.length > 0 ? "2px solid #f59e0b" : "2px solid #10b981",
-              borderRadius: "8px",
-              marginBottom: "16px",
-              fontWeight: "bold",
-              fontSize: "14px",
-              color: "#1f2937"
-            }}>
+            <div
+              style={{
+                padding: "12px",
+                background:
+                  restrictionModal.currentRoles.length > 0
+                    ? "#fef3c7"
+                    : "#d1fae5",
+                border:
+                  restrictionModal.currentRoles.length > 0
+                    ? "2px solid #f59e0b"
+                    : "2px solid #10b981",
+                borderRadius: "8px",
+                marginBottom: "16px",
+                fontWeight: "bold",
+                fontSize: "14px",
+                color: "#1f2937",
+              }}
+            >
               {restrictionModal.currentRoles.length > 0 ? (
                 <>
                   Restricted to:{" "}
@@ -1557,7 +1590,12 @@ export default function EventsHome() {
               <button
                 className="btn btn-outline"
                 onClick={() =>
-                  setRestrictionModal({ open: false, eventId: null, eventType: null, currentRoles: [] })
+                  setRestrictionModal({
+                    open: false,
+                    eventId: null,
+                    eventType: null,
+                    currentRoles: [],
+                  })
                 }
               >
                 Cancel

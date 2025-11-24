@@ -10,49 +10,51 @@ const reviewSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-const workshopSchema = new mongoose.Schema({
-  workshopName: { type: String, required: true },
-  location: { type: String, required: true },
-  startDateTime: { type: Date, required: true },
-  endDateTime: { type: Date, required: true },
-  shortDescription: { type: String, required: true },
-  fullAgenda: { type: String, required: true },
-  facultyResponsible: { type: String, required: true },
-  professorsParticipating: { type: String, required: true },
-  requiredBudget: { type: Number, required: true },
-  fundingSource: { type: String, required: true },
-  extraResources: { type: String },
-  capacity: { type: Number, required: true },
-  registrationDeadline: { type: Date, required: true },
-  
-  // Registered users (attendees)
-  registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+const workshopSchema = new mongoose.Schema(
+  {
+    workshopName: { type: String, required: true },
+    location: { type: String, required: true },
+    startDateTime: { type: Date, required: true },
+    endDateTime: { type: Date, required: true },
+    shortDescription: { type: String, required: true },
+    fullAgenda: { type: String, required: true },
+    facultyResponsible: { type: String, required: true },
+    professorsParticipating: { type: String, required: true },
+    requiredBudget: { type: Number, required: true },
+    fundingSource: { type: String, required: true },
+    extraResources: { type: String },
+    capacity: { type: Number, required: true },
+    registrationDeadline: { type: Date, required: true },
 
-  createdBy: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
-  },
-  
-  status: { 
-    type: String, 
-    default: "pending",
-    enum: ['pending', 'published', 'rejected', 'edits_requested']
-  },
-  
-  image: { type: String },
+    // Registered users (attendees)
+    registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
-  // ADD THIS: Reviews array
-  reviews: [reviewSchema],
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
 
-  // ADD THIS: Allowed roles for registration (empty array = open to all)
-  allowedRoles: {
-    type: [String],
-    enum: ["student", "professor", "ta", "staff"],
-    default: [],
+    status: {
+      type: String,
+      default: "pending",
+      enum: ["pending", "published", "rejected", "edits_requested"],
+    },
+
+    image: { type: String },
+
+    // ADD THIS: Reviews array
+    reviews: [reviewSchema],
+
+    // ADD THIS: Allowed roles for registration (empty array = open to all)
+    allowedRoles: {
+      type: [String],
+      enum: ["student", "professor", "ta", "staff"],
+      default: [],
+    },
   },
-  
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 // Optional: Index for faster queries
 workshopSchema.index({ startDateTime: 1 });
