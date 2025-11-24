@@ -12,7 +12,6 @@ const BoothApplication = require("../models/BoothApplication");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 
-
 // Controllers
 const { register } = require("../controllers/registrationController");
 const boothController = require("../controllers/boothController");
@@ -134,7 +133,7 @@ router.post("/bazaars", async (req, res) => {
       userId: u._id,
       message: `A new bazaar was created: ${title}`,
       type: "bazaar",
-      bazaarId: bazaar._id,  // optional, you can rename to eventId later
+      bazaarId: bazaar._id, // optional, you can rename to eventId later
     }));
 
     await Notification.insertMany(notifications);
@@ -145,7 +144,6 @@ router.post("/bazaars", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
-
 
 router.put("/bazaars/:id", async (req, res) => {
   try {
@@ -409,7 +407,6 @@ router.post("/conferences", async (req, res) => {
   }
 });
 
-
 router.put("/conferences/:id", async (req, res) => {
   try {
     const {
@@ -652,15 +649,28 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
       }
     }
 
-    // 4. Try Booth (has attendees array)
+    // 4. Try Booth (has registrations array for visitors)
     if (!attendees.length) {
-      event = await BoothApplication.findById(id);
-      if (event && event.attendees) {
+      event = await BoothApplication.findById(id).populate(
+        "registrations.userId",
+        "firstName lastName email"
+      );
+      if (event && event.registrations) {
         eventType = "booth";
-        attendees = event.attendees.map((a) => ({
-          name: a.name || "—",
-          email: a.email || "—",
-        }));
+        attendees = event.registrations.map((r) => {
+          // If userId is populated, use the user's name
+          if (r.userId && typeof r.userId === "object" && r.userId.firstName) {
+            return {
+              name: `${r.userId.firstName} ${r.userId.lastName}`,
+              email: r.userId.email || r.email || "—",
+            };
+          }
+          // Otherwise use the registration's name/email
+          return {
+            name: r.name || "Guest",
+            email: r.email || "—",
+          };
+        });
       }
     }
 
