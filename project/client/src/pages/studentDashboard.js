@@ -74,6 +74,40 @@ const StudentDashboard = () => {
     fetchEvents();
   }, [searchTerm, searchLocation, eventTypeFilter, dateFilter, sortOrder]);
 
+  /* ---------------------- Fetch Favorites ---------------------- */
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await fetch("/api/users/me/favorites", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setFavorites(data.map((e) => e._id));
+        }
+      } catch (err) {
+        console.error("Failed to fetch favorites", err);
+      }
+    };
+
+    fetchFavorites();
+
+    // Re-fetch favorites when window regains focus (user returns from another page)
+    const handleFocus = () => fetchFavorites();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
   /* ---------------------- Favorite Toggle ---------------------- */
 
   const toggleFavorite = async (eventId) => {

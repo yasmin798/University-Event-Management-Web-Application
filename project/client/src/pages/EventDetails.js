@@ -1,7 +1,15 @@
 // client/src/pages/EventDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Menu, Bell, User, LogOut, Star, MessageCircle } from "lucide-react";
+import {
+  Menu,
+  Bell,
+  User,
+  LogOut,
+  Star,
+  MessageCircle,
+  Heart,
+} from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
@@ -46,6 +54,9 @@ const EventDetails = () => {
   const [userRole, setUserRole] = useState(null);
   const [isEventsOffice, setIsEventsOffice] = useState(false);
 
+  // Favorites State
+  const [isFavorite, setIsFavorite] = useState(false);
+
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
 
   // Get user ID and role from token
@@ -61,6 +72,7 @@ const EventDetails = () => {
           "User ID from token:",
           payload.id || payload.userId || payload._id
         );
+        console.log("User Role:", payload.role?.toLowerCase());
       } catch (e) {
         console.error("Invalid token");
       }
@@ -68,6 +80,30 @@ const EventDetails = () => {
       console.log("No token found — user not logged in");
     }
   }, []);
+
+  // Check if event is in favorites
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!userId || !userRole || userRole === "events_office") return;
+
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/users/me/favorites", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const favoriteIds = data.map((e) => e._id);
+          setIsFavorite(favoriteIds.includes(id));
+        }
+      } catch (err) {
+        console.error("Failed to fetch favorites", err);
+      }
+    };
+    fetchFavorites();
+  }, [userId, userRole, id]);
 
   // Fetch Reviews
   useEffect(() => {
@@ -183,6 +219,32 @@ const EventDetails = () => {
   // Handle registration with role check
   const handleRegister = () => {
     navigate(`/events/${id}/register`);
+  };
+
+  // Toggle favorite
+  const toggleFavorite = async () => {
+    if (!userId || userRole === "events_office") return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const method = isFavorite ? "DELETE" : "POST";
+      const url = `/api/users/me/favorites${isFavorite ? `/${id}` : ""}`;
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: method === "POST" ? JSON.stringify({ eventId: id }) : null,
+      });
+
+      if (res.ok) {
+        setIsFavorite(!isFavorite);
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    }
   };
 
   // Submit Review
@@ -531,9 +593,30 @@ const EventDetails = () => {
                   <p className="text-red-500 text-sm">This event has passed</p>
                 )}
               </div>
-              <span className="bg-[#c8d9e6] text-[#2f4156] px-4 py-2 rounded-full text-sm font-medium">
-                {type}
-              </span>
+              <div className="flex items-center gap-3">
+                {/* Favorites Button - Only for student, staff, ta, professor */}
+                {userRole && userRole !== "events_office" && (
+                  <button
+                    onClick={toggleFavorite}
+                    className="p-3 bg-white border-2 border-[#c8d9e6] rounded-full shadow-sm hover:shadow-md transition-all"
+                    title={
+                      isFavorite ? "Remove from favorites" : "Add to favorites"
+                    }
+                  >
+                    <Heart
+                      size={20}
+                      className={
+                        isFavorite
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
+                      }
+                    />
+                  </button>
+                )}
+                <span className="bg-[#c8d9e6] text-[#2f4156] px-4 py-2 rounded-full text-sm font-medium">
+                  {type}
+                </span>
+              </div>
             </div>
 
             <div className="h-64 w-full bg-gray-200 rounded-lg mb-6 overflow-hidden">
