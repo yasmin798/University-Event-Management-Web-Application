@@ -24,16 +24,20 @@ const BoothApplicationSchema = new mongoose.Schema(
     attendees: { type: [AttendeeSchema], required: true },
     boothSize: { type: String, enum: ["2x2", "4x4"], required: true },
     durationWeeks: { type: Number, min: 1, max: 4, required: true },
-    platformSlot: { type: String, enum: ["B1", "B2", "B3", "B4", "B5"], required: true },
-    
+    platformSlot: {
+      type: String,
+      enum: ["B1", "B2", "B3", "B4", "B5"],
+      required: true,
+    },
+
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
     paid: { type: Boolean, default: false },
-    paymentDeadline: { type: Date }, 
-    
+    paymentDeadline: { type: Date },
+
     bazaar: { type: mongoose.Schema.Types.ObjectId, ref: "Bazaar" },
 
     // ADD THIS: Reviews from visitors who visited this booth
@@ -41,10 +45,23 @@ const BoothApplicationSchema = new mongoose.Schema(
 
     // Optional: Add this to make booth title visible in reviews
     boothTitle: { type: String, trim: true }, // e.g. "Handmade Jewelry by Sara"
+
+    // Registrations for visitors who simply register (distinct from `attendees` who are booth team members)
+    registrations: {
+      type: [
+        {
+          userId: { type: String },
+          name: { type: String, default: "Guest" },
+          email: { type: String, required: true },
+          registeredAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
-  { 
+  {
     timestamps: true,
-    collection: "boothapplications" // optional: explicit collection name
+    collection: "boothapplications", // optional: explicit collection name
   }
 );
 

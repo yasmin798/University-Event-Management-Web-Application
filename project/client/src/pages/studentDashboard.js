@@ -25,6 +25,10 @@ import EventTypeDropdown from "../components/EventTypeDropdown";
 const StudentDashboard = () => {
   const navigate = useNavigate();
 
+  const API =
+    process.env.REACT_APP_API_URL?.replace(/\/$/, "") ||
+    "http://localhost:3001";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
@@ -56,7 +60,7 @@ const StudentDashboard = () => {
         params.append("sort", "startDateTime");
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
-        const res = await fetch(`/api/events/all?${params}`);
+        const res = await fetch(`${API}/api/events/all?${params}`);
         const data = await res.json();
         setAllEvents(res.ok ? data : []);
       } catch (err) {

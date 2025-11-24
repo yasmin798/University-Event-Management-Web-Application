@@ -28,11 +28,16 @@ const adminRoutes = require("./routes/admin");
 const boothRoutes = require("./routes/booths");
 const reservationRoutes = require("./routes/reservationRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
-const stripeWebhook = require("./webhooks/stripeWebhook");
+let stripeWebhook;
+try {
+  stripeWebhook = require("./webhooks/stripeWebhook");
+} catch (e) {
+  console.warn("Stripe webhook module not found — skipping webhook mount");
+  stripeWebhook = null;
+}
 const reviewsRouter = require("./routes/reviews"); // or whatever the file is called
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const walletRoutes = require("./routes/walletRoutes");
-
 
 // Models
 const User = require("./models/User");
@@ -99,16 +104,23 @@ app.use("/api/reservations", reservationRoutes);
 // Payment routes / Stripe webhook temporarily disabled because `paymentRoutes` / `stripeWebhook` are not defined in this branch.
 // If you add Stripe integration, require and mount it here, e.g.:
 // const paymentRoutes = require('./routes/paymentRoutes');
-app.use('/api/payments', paymentRoutes);
-app.post('/webhook/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
+app.use("/api/payments", paymentRoutes);
+if (stripeWebhook) {
+  app.post(
+    "/webhook/stripe",
+    express.raw({ type: "application/json" }),
+    stripeWebhook
+  );
+} else {
+  // Provide a safe fallback route to avoid 500s if someone probes the endpoint
+  app.post("/webhook/stripe", (req, res) =>
+    res
+      .status(501)
+      .json({ error: "Stripe webhook not configured on this server" })
+  );
+}
 
 // Reviews router is not present in this version — keep events routes mounted above.
-
-
-
-
-
-
 
 // loyalty program
 app.use("/api/loyalty", loyaltyRoutes);
@@ -521,8 +533,7 @@ app.use((err, _req, res, _next) => {
 app.use("/api/polls", require("./routes/pollRoutes"));
 
 /* ---------------- Start ---------------- */
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () =>
   console.log(`🚀 Backend running at http://localhost:${PORT}`)
 );
-

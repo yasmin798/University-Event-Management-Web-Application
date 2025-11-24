@@ -38,7 +38,13 @@ router.patch("/:type/:id", protect, async (req, res) => {
       return res.status(400).json({ error: "Status must be 'archived'" });
     }
 
-    const validTypes = ["bazaars", "trips", "conferences", "workshops", "booths"];
+    const validTypes = [
+      "bazaars",
+      "trips",
+      "conferences",
+      "workshops",
+      "booths",
+    ];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: "Invalid event type" });
     }
@@ -54,9 +60,9 @@ router.patch("/:type/:id", protect, async (req, res) => {
 
     const updated = await Model.findByIdAndUpdate(
       id,
-      { 
+      {
         status: "archived",
-        archivedAt: new Date()
+        archivedAt: new Date(),
       },
       { new: true, runValidators: true }
     );
@@ -66,15 +72,11 @@ router.patch("/:type/:id", protect, async (req, res) => {
     }
 
     return res.json({ message: "Event archived successfully", event: updated });
-
   } catch (err) {
     console.error("Archive error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
-
-
-
 
 /* ------------------- BAZAARS ------------------- */
 router.get("/bazaars", async (req, res) => {
@@ -442,7 +444,8 @@ router.put("/conferences/:id", async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    if (!updated) return res.status(404).json({ error: "Conference not found" });
+    if (!updated)
+      return res.status(404).json({ error: "Conference not found" });
     res.json(updated);
   } catch (err) {
     console.error("Update conference error:", err);
@@ -455,7 +458,9 @@ router.delete("/conferences/:id", async (req, res) => {
     const conference = await Conference.findById(req.params.id);
     if (!conference) return res.status(404).json({ error: "Not found" });
     if (conference.registrations?.length > 0) {
-      return res.status(403).json({ error: "Cannot delete: participants registered" });
+      return res
+        .status(403)
+        .json({ error: "Cannot delete: participants registered" });
     }
     await Conference.findByIdAndDelete(req.params.id);
     res.json({ ok: true, message: "Conference deleted successfully" });
@@ -672,7 +677,7 @@ router.get("/events/:id", async (req, res) => {
       return res.status(400).json({ error: "Missing id or type" });
 
     let event;
-    if (type === "¿workshop") event = await Workshop.findById(id);
+    if (type === "workshop") event = await Workshop.findById(id);
     else if (type === "bazaar") event = await Bazaar.findById(id);
     else if (type === "trip") event = await Trip.findById(id);
     else if (type === "conference") event = await Conference.findById(id);

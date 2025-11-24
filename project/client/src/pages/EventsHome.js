@@ -1,7 +1,7 @@
 // client/src/pages/EventsHome.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Bell, X } from "lucide-react";
+import { Search, Calendar } from "lucide-react";
 import NotificationsDropdown from "../components/NotificationsDropdown";
 
 import workshopPlaceholder from "../images/workshop.png";
@@ -201,6 +201,13 @@ export default function EventsHome() {
     message: "",
   });
 
+  const [restrictionModal, setRestrictionModal] = useState({
+    open: false,
+    eventId: null,
+    eventType: null,
+    currentRoles: [],
+  });
+
   const {
     events: otherEvents,
     loading: otherLoading,
@@ -234,35 +241,12 @@ export default function EventsHome() {
         image: w.image || workshopPlaceholder,
         allowedRoles: w.allowedRoles || [], // Add this if workshops have allowedRoles
       }));
-      const normalizedConferences = otherEvents
-        .filter((ev) => ev.type === "CONFERENCE")
-        .map((c) => ({
-          _id: c._id,
-          type: "CONFERENCE",
-          title: c.name || c.title,
-          name: c.name || c.title,
-          location: c.location,
-          startDateTime: c.startDateTime, // ← correct backend field
-          endDateTime: c.endDateTime, // ← correct backend field
-          shortDescription: c.shortDescription,
-          description: c.shortDescription, // for view modal fallback
-          agenda: c.fullAgenda || c.agenda,
-          website: c.website,
-          budget: c.requiredBudget || c.budget,
-          fundingSource: c.fundingSource,
-          extraResources: c.extraResources,
-          registrations: c.registeredUsers || [],
-          status: c.status,
-          image: conferenceImg,
-          allowedRoles: c.allowedRoles || [], // FIX: Add allowedRoles here
-        }));
-      setConferences(normalizedConferences);
       setWorkshops(normalized);
     } catch (err) {
       console.error("Error fetching workshops:", err);
       setToast({ open: true, text: "Failed to load workshops" });
     }
-  }, [otherEvents]); // Add otherEvents to deps
+  }, []); // Remove otherEvents dependency to prevent infinite loop
 
   const fetchBooths = useCallback(async () => {
     try {
@@ -294,6 +278,33 @@ export default function EventsHome() {
       setLoading(false)
     );
   }, [fetchWorkshops, fetchBooths]);
+
+  // Separate effect to update conferences from otherEvents
+  useEffect(() => {
+    const normalizedConferences = otherEvents
+      .filter((ev) => ev.type === "CONFERENCE")
+      .map((c) => ({
+        _id: c._id,
+        type: "CONFERENCE",
+        title: c.name || c.title,
+        name: c.name || c.title,
+        location: c.location,
+        startDateTime: c.startDateTime,
+        endDateTime: c.endDateTime,
+        shortDescription: c.shortDescription,
+        description: c.shortDescription,
+        agenda: c.fullAgenda || c.agenda,
+        website: c.website,
+        budget: c.requiredBudget || c.budget,
+        fundingSource: c.fundingSource,
+        extraResources: c.extraResources,
+        registrations: c.registeredUsers || [],
+        status: c.status,
+        image: conferenceImg,
+        allowedRoles: c.allowedRoles || [],
+      }));
+    setConferences(normalizedConferences);
+  }, [otherEvents]);
 
   function normalizeConferenceFields(conf) {
     return {
@@ -368,6 +379,7 @@ export default function EventsHome() {
   // Initial load (only once)
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const allEvents = [
@@ -493,6 +505,82 @@ export default function EventsHome() {
     } catch (e) {
       setToast({ open: true, text: "Export error" });
     }
+  };
+
+  // ====== Restriction Modal Handlers ======
+  const handleOpenRestriction = (eventId, eventType, currentRoles = []) => {
+    setRestrictionModal({
+      open: true,
+      eventId,
+      eventType,
+      currentRoles: currentRoles || [],
+    });
+  };
+
+  const handleUpdateRestriction = async () => {
+    const { eventId, eventType, currentRoles } = restrictionModal;
+
+    try {
+      const token = localStorage.getItem("token");
+      const typeMap = {
+        WORKSHOP: "workshops",
+        CONFERENCE: "conferences",
+        TRIP: "trips",
+      };
+      const path = typeMap[eventType.toUpperCase()];
+      if (!path) {
+        setToast({ open: true, text: "Unknown event type: " + eventType });
+        return;
+      }
+
+      const res = await fetch(`/api/${path}/${eventId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ allowedRoles: currentRoles }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setToast({
+          open: true,
+          text: err.error || "Failed to update restrictions",
+        });
+        return;
+      }
+
+      setToast({ open: true, text: "Restrictions updated successfully!" });
+      setRestrictionModal({
+        open: false,
+        eventId: null,
+        eventType: null,
+        currentRoles: [],
+      });
+
+      // Refresh data
+      fetchWorkshops();
+      fetchBooths();
+      refreshEvents && refreshEvents();
+    } catch (e) {
+      console.error("Restriction update error:", e);
+      setToast({
+        open: true,
+        text: "Network error: Could not update restrictions",
+      });
+    }
+  };
+
+  const handleToggleRole = (role) => {
+    setRestrictionModal((prev) => {
+      const roles = prev.currentRoles || [];
+      if (roles.includes(role)) {
+        return { ...prev, currentRoles: roles.filter((r) => r !== role) };
+      } else {
+        return { ...prev, currentRoles: [...roles, role] };
+      }
+    });
   };
 
   // ====== Handlers for modals & buttons ======
@@ -1227,6 +1315,22 @@ export default function EventsHome() {
                                 Accept & Publish
                               </button>
                               <button
+                                className="btn"
+                                style={{
+                                  background: "#f59e0b",
+                                  color: "white",
+                                }}
+                                onClick={() =>
+                                  handleOpenRestriction(
+                                    id,
+                                    "WORKSHOP",
+                                    ev.allowedRoles || []
+                                  )
+                                }
+                              >
+                                Restriction
+                              </button>
+                              <button
                                 className="btn btn-danger"
                                 onClick={() => handleReject(id)}
                               >
@@ -1400,39 +1504,176 @@ export default function EventsHome() {
         </div>
       )}
 
-      {/* ===== Choose event type modal */}
+      {/* ===== Restriction Modal ===== */}
+      {restrictionModal.open && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm" style={{ maxWidth: "500px" }}>
+            <h2>Manage Role Restrictions</h2>
+            <p style={{ marginBottom: "16px", color: "#567c8d" }}>
+              Select which roles can register for this event. If no roles are
+              selected, the event will be open to everyone.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "16px",
+                marginBottom: "24px",
+                padding: "16px",
+                background: "#f5efeb",
+                borderRadius: "8px",
+              }}
+            >
+              {["student", "professor", "ta", "staff"].map((role) => (
+                <label
+                  key={role}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "15px",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    minWidth: "120px",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    value={role}
+                    checked={restrictionModal.currentRoles.includes(role)}
+                    onChange={() => handleToggleRole(role)}
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      marginRight: "8px",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <span style={{ textTransform: "capitalize" }}>
+                    {role}s only
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {/* Preview */}
+            <div
+              style={{
+                padding: "12px",
+                background:
+                  restrictionModal.currentRoles.length > 0
+                    ? "#fef3c7"
+                    : "#d1fae5",
+                border:
+                  restrictionModal.currentRoles.length > 0
+                    ? "2px solid #f59e0b"
+                    : "2px solid #10b981",
+                borderRadius: "8px",
+                marginBottom: "16px",
+                fontWeight: "bold",
+                fontSize: "14px",
+                color: "#1f2937",
+              }}
+            >
+              {restrictionModal.currentRoles.length > 0 ? (
+                <>
+                  Restricted to:{" "}
+                  {restrictionModal.currentRoles
+                    .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                    .join(", ")}
+                </>
+              ) : (
+                <>Open to ALL users (Students, Professors, TAs, Staff)</>
+              )}
+            </div>
+
+            <div className="confirm-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() =>
+                  setRestrictionModal({
+                    open: false,
+                    eventId: null,
+                    eventType: null,
+                    currentRoles: [],
+                  })
+                }
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleUpdateRestriction}
+              >
+                Save Restrictions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Horizontal Layout */}
       {chooseOpen && (
-        <div className="confirm-overlay">
-          <div className="confirm" style={{ maxWidth: "400px" }}>
-            <h2 style={{ marginTop: 0 }}>Create New Event</h2>
-            <p>Choose event type:</p>
-            <div className="form-grid form-grid-3">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full animate-scale-in">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+                  <Calendar size={18} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">New Event</h3>
+                  <p className="text-gray-500 text-sm">Choose event type</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Event Options */}
+            <div className="flex p-4 gap-2">
               {[
-                { type: "trip", label: "Trip" },
-                { type: "conference", label: "Conference" },
-                { type: "workshop", label: "Workshop" },
-                { type: "bazaar", label: "Bazaar" },
-                { type: "booth", label: "Booth" },
-              ].map(({ type, label }) => (
+                {
+                  type: "trip",
+                  label: "Trip",
+                  icon: "🚌",
+                  color: "border-blue-200 hover:bg-blue-50",
+                },
+                {
+                  type: "conference",
+                  label: "Conference",
+                  icon: "🎤",
+                  color: "border-purple-200 hover:bg-purple-50",
+                },
+
+                {
+                  type: "bazaar",
+                  label: "Bazaar",
+                  icon: "🛍️",
+                  color: "border-orange-200 hover:bg-orange-50",
+                },
+              ].map(({ type, label, icon, color }) => (
                 <button
                   key={type}
-                  className="btn"
                   onClick={() => {
                     setChooseOpen(false);
                     navigate(createPathMap[type]);
                   }}
+                  className={`flex-1 flex flex-col items-center p-3 rounded-lg border-2 ${color} transition-all duration-200 hover:scale-105`}
                 >
-                  {label}
+                  <span className="text-2xl mb-1">{icon}</span>
+                  <span className="font-medium text-xs">{label}</span>
                 </button>
               ))}
             </div>
-            <button
-              className="btn btn-outline"
-              style={{ marginTop: "20px" }}
-              onClick={() => setChooseOpen(false)}
-            >
-              Cancel
-            </button>
+
+            {/* Cancel */}
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={() => setChooseOpen(false)}
+                className="w-full py-2.5 text-gray-600 hover:text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

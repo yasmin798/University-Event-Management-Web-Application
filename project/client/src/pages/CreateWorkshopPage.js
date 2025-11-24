@@ -424,6 +424,7 @@ const CreateWorkshopPage = () => {
           </div>
 
           <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">
+            '
             <button
               type="button"
               onClick={handleCancel}

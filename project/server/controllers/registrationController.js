@@ -5,7 +5,7 @@ const Workshop = require("../models/Workshop");
 const Conference = require("../models/Conference");
 const Bazaar = require("../models/Bazaar");
 const BoothApplication = require("../models/BoothApplication");
-const User = require("../models/User");        // Needed for name/email
+const User = require("../models/User"); // Needed for name/email
 
 // Helper to get model by event type
 const getEventModel = (type) => {
@@ -35,7 +35,7 @@ exports.register = async (req, res) => {
     // Updated: Find the event across all models and determine its type
     let event;
     let eventType;
-    
+
     // Try Conference first (since your model supports registrations)
     event = await Conference.findById(eventId);
     if (event) {
@@ -77,13 +77,29 @@ exports.register = async (req, res) => {
     }
 
     const userEmail = user.email;
-    const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Guest";
+    const userName =
+      `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Guest";
 
     // Check 5: Role restriction (if defined)
     if (event.allowedRoles && event.allowedRoles.length > 0) {
-      if (!event.allowedRoles.includes(req.user.role) && req.user.role !== "events_office") {
-        const allowed = event.allowedRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1) + "s").join(", ");
-        return res.status(403).json({ error: `This event is intended for ${allowed}!` });
+      const allowedLower = event.allowedRoles.map((r) =>
+        String(r).toLowerCase().trim()
+      );
+      const userRoleLower = String(req.user.role || "")
+        .toLowerCase()
+        .trim();
+      if (
+        !allowedLower.includes(userRoleLower) &&
+        userRoleLower !== "events_office"
+      ) {
+        const allowed = event.allowedRoles
+          .map(
+            (r) => String(r).charAt(0).toUpperCase() + String(r).slice(1) + "s"
+          )
+          .join(", ");
+        return res
+          .status(403)
+          .json({ error: `This event is intended for ${allowed}!` });
       }
     }
 
@@ -105,7 +121,9 @@ exports.register = async (req, res) => {
     }
 
     // Check 4: Check if user is already registered
-    const isAlreadyRegistered = event.registeredUsers ? event.registeredUsers.includes(userId) : false;
+    const isAlreadyRegistered = event.registeredUsers
+      ? event.registeredUsers.includes(userId)
+      : false;
     if (isAlreadyRegistered) {
       return res
         .status(400)
@@ -161,7 +179,7 @@ exports.unregister = async (req, res) => {
     // Find the event across all models (similar logic as register)
     let event;
     let eventType;
-    
+
     event = await Conference.findById(eventId);
     if (event) {
       eventType = "conference";
@@ -192,22 +210,30 @@ exports.unregister = async (req, res) => {
     }
 
     // Check if user is registered
-    const isRegistered = event.registeredUsers ? event.registeredUsers.includes(userId) : false;
+    const isRegistered = event.registeredUsers
+      ? event.registeredUsers.includes(userId)
+      : false;
     if (!isRegistered) {
       return res.status(400).json({ error: "Not registered for this event" });
     }
 
     // Remove from registeredUsers
-    event.registeredUsers = event.registeredUsers.filter(id => id.toString() !== userId.toString());
+    event.registeredUsers = event.registeredUsers.filter(
+      (id) => id.toString() !== userId.toString()
+    );
 
     // Remove from registrations
-    event.registrations = event.registrations.filter(r => r.userId !== userId.toString());
+    event.registrations = event.registrations.filter(
+      (r) => r.userId !== userId.toString()
+    );
 
     await event.save();
 
     res.status(200).json({ message: "Unregistered successfully" });
   } catch (err) {
     console.error("Unregistration Error:", err);
-    return res.status(500).json({ error: "Server error during unregistration" });
+    return res
+      .status(500)
+      .json({ error: "Server error during unregistration" });
   }
 };

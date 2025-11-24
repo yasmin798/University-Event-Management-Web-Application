@@ -1,11 +1,12 @@
 // client/src/pages/EventReviewsPage.js
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Star, ArrowLeft } from "lucide-react";
 
 export default function EventReviewsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [event, setEvent] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,21 +40,31 @@ export default function EventReviewsPage() {
   // Calculate average rating
   const avgRating =
     reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+      ? (
+          reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        ).toFixed(1)
       : "0.0";
 
-  // ALWAYS go back to EventsHome page
+  // Go back to the appropriate events page based on where we came from
   const goToEventsHome = () => {
-    navigate("/events"); // CHANGE THIS ONLY IF YOUR EVENTS PAGE HAS A DIFFERENT URL
-    // Examples:
-    // navigate("/");
-    // navigate("/events");
-    // navigate("/admin/events");
+    const fromAdmin = location.state?.from === "admin";
+    if (fromAdmin) {
+      navigate("/admin/events");
+    } else {
+      navigate("/events");
+    }
   };
 
   if (loading) {
     return (
-      <div style={{ padding: "80px", textAlign: "center", fontSize: "22px", color: "#567c8d" }}>
+      <div
+        style={{
+          padding: "80px",
+          textAlign: "center",
+          fontSize: "22px",
+          color: "#567c8d",
+        }}
+      >
         Loading reviews...
       </div>
     );
@@ -69,7 +80,14 @@ export default function EventReviewsPage() {
       }}
     >
       {/* HEADER + BACK TO EVENTS HOME */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "32px",
+        }}
+      >
         <button
           onClick={goToEventsHome}
           style={{
@@ -123,11 +141,20 @@ export default function EventReviewsPage() {
             border: "1px solid #bae6fd",
           }}
         >
-          <div style={{ fontSize: "80px", fontWeight: "900", color: "#0ea5e9" }}>
+          <div
+            style={{ fontSize: "80px", fontWeight: "900", color: "#0ea5e9" }}
+          >
             {avgRating}
             <span style={{ fontSize: "60px", marginLeft: "12px" }}>★</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", margin: "24px 0" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "12px",
+              margin: "24px 0",
+            }}
+          >
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
@@ -158,7 +185,8 @@ export default function EventReviewsPage() {
               fontSize: "20px",
             }}
           >
-            No reviews yet.<br />
+            No reviews yet.
+            <br />
             <span style={{ fontSize: "18px", color: "#94a3b8" }}>
               Be the first to share your experience!
             </span>
@@ -177,19 +205,39 @@ export default function EventReviewsPage() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-6px)";
-                e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)";
+                e.currentTarget.style.boxShadow =
+                  "0 20px 40px rgba(0,0,0,0.12)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
                 e.currentTarget.style.boxShadow = "0 8px 25px rgba(0,0,0,0.08)";
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "16px",
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: "700", fontSize: "20px", color: "#1e293b" }}>
+                  <div
+                    style={{
+                      fontWeight: "700",
+                      fontSize: "20px",
+                      color: "#1e293b",
+                    }}
+                  >
                     {review.userName || "Anonymous"}
                   </div>
-                  <div style={{ color: "#64748b", fontSize: "15px", marginTop: "6px" }}>
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: "15px",
+                      marginTop: "6px",
+                    }}
+                  >
                     {new Date(review.createdAt).toLocaleDateString("en-US", {
                       weekday: "long",
                       year: "numeric",
@@ -212,11 +260,24 @@ export default function EventReviewsPage() {
               </div>
 
               {review.comment ? (
-                <p style={{ margin: "20px 0 0", fontSize: "17px", lineHeight: "1.7", color: "#334155" }}>
+                <p
+                  style={{
+                    margin: "20px 0 0",
+                    fontSize: "17px",
+                    lineHeight: "1.7",
+                    color: "#334155",
+                  }}
+                >
                   "{review.comment}"
                 </p>
               ) : (
-                <p style={{ margin: "20px 0 0", color: "#94a3b8", fontStyle: "italic" }}>
+                <p
+                  style={{
+                    margin: "20px 0 0",
+                    color: "#94a3b8",
+                    fontStyle: "italic",
+                  }}
+                >
                   No written comment
                 </p>
               )}
