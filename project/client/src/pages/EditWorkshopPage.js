@@ -396,7 +396,7 @@ const EditWorkshopPage = () => {
             {errors.registrationDeadline && <p className="text-red-500 text-sm mt-1">{errors.registrationDeadline}</p>}
           </div>
 
-          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">
+          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">'
             <button
               type="button"
               onClick={() => navigate('/professor/workshops')}

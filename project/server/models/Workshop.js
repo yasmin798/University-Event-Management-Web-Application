@@ -44,6 +44,13 @@ const workshopSchema = new mongoose.Schema({
 
   // ADD THIS: Reviews array
   reviews: [reviewSchema],
+
+  // ADD THIS: Allowed roles for registration (empty array = open to all)
+  allowedRoles: {
+    type: [String],
+    enum: ["student", "professor", "ta", "staff"],
+    default: [],
+  },
   
 }, { timestamps: true });
 

@@ -201,6 +201,13 @@ export default function EventsHome() {
     message: "",
   });
 
+  const [restrictionModal, setRestrictionModal] = useState({
+    open: false,
+    eventId: null,
+    eventType: null,
+    currentRoles: [],
+  });
+
   const {
     events: otherEvents,
     loading: otherLoading,
@@ -234,35 +241,12 @@ export default function EventsHome() {
         image: w.image || workshopPlaceholder,
         allowedRoles: w.allowedRoles || [], // Add this if workshops have allowedRoles
       }));
-      const normalizedConferences = otherEvents
-        .filter((ev) => ev.type === "CONFERENCE")
-        .map((c) => ({
-          _id: c._id,
-          type: "CONFERENCE",
-          title: c.name || c.title,
-          name: c.name || c.title,
-          location: c.location,
-          startDateTime: c.startDateTime, // ← correct backend field
-          endDateTime: c.endDateTime, // ← correct backend field
-          shortDescription: c.shortDescription,
-          description: c.shortDescription, // for view modal fallback
-          agenda: c.fullAgenda || c.agenda,
-          website: c.website,
-          budget: c.requiredBudget || c.budget,
-          fundingSource: c.fundingSource,
-          extraResources: c.extraResources,
-          registrations: c.registeredUsers || [],
-          status: c.status,
-          image: conferenceImg,
-          allowedRoles: c.allowedRoles || [], // FIX: Add allowedRoles here
-        }));
-      setConferences(normalizedConferences);
       setWorkshops(normalized);
     } catch (err) {
       console.error("Error fetching workshops:", err);
       setToast({ open: true, text: "Failed to load workshops" });
     }
-  }, [otherEvents]); // Add otherEvents to deps
+  }, []); // Remove otherEvents dependency to prevent infinite loop
 
   const fetchBooths = useCallback(async () => {
     try {
@@ -294,6 +278,33 @@ export default function EventsHome() {
       setLoading(false)
     );
   }, [fetchWorkshops, fetchBooths]);
+
+  // Separate effect to update conferences from otherEvents
+  useEffect(() => {
+    const normalizedConferences = otherEvents
+      .filter((ev) => ev.type === "CONFERENCE")
+      .map((c) => ({
+        _id: c._id,
+        type: "CONFERENCE",
+        title: c.name || c.title,
+        name: c.name || c.title,
+        location: c.location,
+        startDateTime: c.startDateTime,
+        endDateTime: c.endDateTime,
+        shortDescription: c.shortDescription,
+        description: c.shortDescription,
+        agenda: c.fullAgenda || c.agenda,
+        website: c.website,
+        budget: c.requiredBudget || c.budget,
+        fundingSource: c.fundingSource,
+        extraResources: c.extraResources,
+        registrations: c.registeredUsers || [],
+        status: c.status,
+        image: conferenceImg,
+        allowedRoles: c.allowedRoles || [],
+      }));
+    setConferences(normalizedConferences);
+  }, [otherEvents]);
 
   function normalizeConferenceFields(conf) {
     return {
@@ -368,6 +379,7 @@ export default function EventsHome() {
   // Initial load (only once)
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const allEvents = [
@@ -493,6 +505,71 @@ export default function EventsHome() {
     } catch (e) {
       setToast({ open: true, text: "Export error" });
     }
+  };
+
+  // ====== Restriction Modal Handlers ======
+  const handleOpenRestriction = (eventId, eventType, currentRoles = []) => {
+    setRestrictionModal({
+      open: true,
+      eventId,
+      eventType,
+      currentRoles: currentRoles || [],
+    });
+  };
+
+  const handleUpdateRestriction = async () => {
+    const { eventId, eventType, currentRoles } = restrictionModal;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const typeMap = {
+        WORKSHOP: "workshops",
+        CONFERENCE: "conferences",
+        TRIP: "trips",
+      };
+      const path = typeMap[eventType.toUpperCase()];
+      if (!path) {
+        setToast({ open: true, text: "Unknown event type: " + eventType });
+        return;
+      }
+
+      const res = await fetch(`/api/${path}/${eventId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ allowedRoles: currentRoles }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setToast({ open: true, text: err.error || "Failed to update restrictions" });
+        return;
+      }
+
+      setToast({ open: true, text: "Restrictions updated successfully!" });
+      setRestrictionModal({ open: false, eventId: null, eventType: null, currentRoles: [] });
+      
+      // Refresh data
+      fetchWorkshops();
+      fetchBooths();
+      refreshEvents && refreshEvents();
+    } catch (e) {
+      console.error("Restriction update error:", e);
+      setToast({ open: true, text: "Network error: Could not update restrictions" });
+    }
+  };
+
+  const handleToggleRole = (role) => {
+    setRestrictionModal((prev) => {
+      const roles = prev.currentRoles || [];
+      if (roles.includes(role)) {
+        return { ...prev, currentRoles: roles.filter((r) => r !== role) };
+      } else {
+        return { ...prev, currentRoles: [...roles, role] };
+      }
+    });
   };
 
   // ====== Handlers for modals & buttons ======
@@ -1227,6 +1304,13 @@ export default function EventsHome() {
                                 Accept & Publish
                               </button>
                               <button
+                                className="btn"
+                                style={{ background: "#f59e0b", color: "white" }}
+                                onClick={() => handleOpenRestriction(id, "WORKSHOP", ev.allowedRoles || [])}
+                              >
+                                Restriction
+                              </button>
+                              <button
                                 className="btn btn-danger"
                                 onClick={() => handleReject(id)}
                               >
@@ -1394,6 +1478,95 @@ export default function EventsHome() {
                 disabled={!editRequest.message.trim()}
               >
                 Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Restriction Modal ===== */}
+      {restrictionModal.open && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm" style={{ maxWidth: "500px" }}>
+            <h2>Manage Role Restrictions</h2>
+            <p style={{ marginBottom: "16px", color: "#567c8d" }}>
+              Select which roles can register for this event. If no roles are selected, the event will be open to everyone.
+            </p>
+            <div style={{ 
+              display: "flex", 
+              flexWrap: "wrap", 
+              gap: "16px", 
+              marginBottom: "24px",
+              padding: "16px",
+              background: "#f5efeb",
+              borderRadius: "8px"
+            }}>
+              {["student", "professor", "ta", "staff"].map((role) => (
+                <label
+                  key={role}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "15px",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    minWidth: "120px",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    value={role}
+                    checked={restrictionModal.currentRoles.includes(role)}
+                    onChange={() => handleToggleRole(role)}
+                    style={{ 
+                      width: "18px", 
+                      height: "18px", 
+                      marginRight: "8px",
+                      cursor: "pointer"
+                    }}
+                  />
+                  <span style={{ textTransform: "capitalize" }}>{role}s only</span>
+                </label>
+              ))}
+            </div>
+            
+            {/* Preview */}
+            <div style={{
+              padding: "12px",
+              background: restrictionModal.currentRoles.length > 0 ? "#fef3c7" : "#d1fae5",
+              border: restrictionModal.currentRoles.length > 0 ? "2px solid #f59e0b" : "2px solid #10b981",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              fontWeight: "bold",
+              fontSize: "14px",
+              color: "#1f2937"
+            }}>
+              {restrictionModal.currentRoles.length > 0 ? (
+                <>
+                  Restricted to:{" "}
+                  {restrictionModal.currentRoles
+                    .map((r) => r.charAt(0).toUpperCase() + r.slice(1) + "s")
+                    .join(", ")}
+                </>
+              ) : (
+                <>Open to ALL users (Students, Professors, TAs, Staff)</>
+              )}
+            </div>
+
+            <div className="confirm-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() =>
+                  setRestrictionModal({ open: false, eventId: null, eventType: null, currentRoles: [] })
+                }
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleUpdateRestriction}
+              >
+                Save Restrictions
               </button>
             </div>
           </div>

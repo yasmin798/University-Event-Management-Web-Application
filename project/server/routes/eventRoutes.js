@@ -619,7 +619,7 @@ router.get("/events/:id", async (req, res) => {
       return res.status(400).json({ error: "Missing id or type" });
 
     let event;
-    if (type === "¿workshop") event = await Workshop.findById(id);
+    if (type === "workshop") event = await Workshop.findById(id);
     else if (type === "bazaar") event = await Bazaar.findById(id);
     else if (type === "trip") event = await Trip.findById(id);
     else if (type === "conference") event = await Conference.findById(id);

@@ -18,7 +18,7 @@ const CreateWorkshopPage = () => {
     fundingSource: "",
     extraResources: "",
     capacity: "",
-    registrationDeadline: "",
+    registrationDeadline: ""
   });
 
   const [errors, setErrors] = useState({});
@@ -423,7 +423,7 @@ const CreateWorkshopPage = () => {
             )}
           </div>
 
-          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">
+          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">'
             <button
               type="button"
               onClick={handleCancel}
