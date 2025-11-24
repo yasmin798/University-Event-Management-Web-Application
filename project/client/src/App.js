@@ -21,7 +21,8 @@ import GymSessions from "./pages/GymSessions";
 import GymManager from "./pages/GymManager";
 import GymSessionsForRegister from "./pages/GymSessionsForRegister";
 import VerifiedUsersPage from "./pages/VerifiedUsers";
-
+import WalletSuccess from "./pages/WalletSuccess";
+import WalletCancel from "./pages/WalletCancel";
 // Dashboards
 import StudentDashboard from "./pages/studentDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
@@ -84,6 +85,7 @@ import AdminVendor from "./pages/AdminVendor";
 //workshops
 import WorkshopParticipants from "./pages/WorkshopParticipants";
 import WorkshopEditsPage from './pages/WorkshopEditsPage';
+import WalletPage from "./pages/WalletPage";
 
 
 // Simple 404
@@ -185,11 +187,16 @@ function App() {
         <Route path="/vendors/loyalty" element={<LoyaltyVendors />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
+        <Route path="/wallet" element={<WalletPage />} />
         {/* Courts */}
         <Route
           path="/courts-availability"
           element={<CourtsAvailabilityWrapper />}
         />
+        <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/wallet/success" element={<WalletSuccess />} />  ← ADD THIS
+        <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/wallet/cancel" element={<WalletCancel />} />
         <Route path="/reserve/:courtId" element={<ReserveCourt />} />
         <Route path="/apply-booth" element={<BoothApplicationForm />} />
         <Route path="/gym-sessions" element={<GymSessions />} />

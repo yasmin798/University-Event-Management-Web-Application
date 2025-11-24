@@ -31,6 +31,8 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const reviewsRouter = require("./routes/reviews"); // or whatever the file is called
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
+const walletRoutes = require("./routes/walletRoutes");
+
 
 // Models
 const User = require("./models/User");
@@ -38,6 +40,7 @@ const User = require("./models/User");
 const app = express();
 
 /* ---------------- Middleware ---------------- */
+
 app.use(express.json());
 app.use(
   cors({
@@ -73,7 +76,8 @@ app.use("/api/admin", require("./routes/admin"));
 // Notifications
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportsRoutes);
-
+app.use("/api/wallet", walletRoutes);
+app.use("/api/wallet", require("./routes/walletRoutes"));
 // Feature routers
 app.use("/api/workshops", workshopRoutes);
 app.use("/api/users", userRoutes);
