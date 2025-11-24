@@ -47,7 +47,7 @@ const sendWarningEmail = async (to, userName, eventTitle, commentSnippet) => {
         <p>Your review on <strong>${eventTitle}</strong> has been deleted by an admin.</p>
         <p>Details: ${commentSnippet}</p>
         <p>This may be due to guideline violations. Please review our community standards before posting again.</p>
-        <p>Best,<br><strong>EventHub Admin Team</strong></p>
+        <p>Best,<br><strong>Eventity Admin Team</strong></p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="font-size: 12px; color: #666;">This is an automated message. Please do not reply.</p>
       </div>
