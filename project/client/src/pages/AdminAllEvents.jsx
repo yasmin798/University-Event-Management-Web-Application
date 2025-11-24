@@ -15,7 +15,6 @@ export default function AdminAllEvents() {
   const eventsPerPage = 10; // adjust to any number you want
   const [viewEvent, setViewEvent] = useState(null);
 
-
   // ===== Filters =====
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -66,23 +65,22 @@ export default function AdminAllEvents() {
         );
       }
 
-     // Hide archived events
-list = list.filter(ev => {
-  const status = (ev.status || "").toLowerCase();
-  const state = (ev.state || "").toLowerCase();
+      // Hide archived events
+      list = list.filter((ev) => {
+        const status = (ev.status || "").toLowerCase();
+        const state = (ev.state || "").toLowerCase();
 
-  // hide archived events no matter what field the backend uses
-  if (status === "archived") return false;
-  if (state === "archived") return false;
-  if (ev.isArchived === true) return false;
-  if (ev.archived === true) return false;
-  if (ev.deleted === true) return false;
+        // hide archived events no matter what field the backend uses
+        if (status === "archived") return false;
+        if (state === "archived") return false;
+        if (ev.isArchived === true) return false;
+        if (ev.archived === true) return false;
+        if (ev.deleted === true) return false;
 
-  return true;
-});
+        return true;
+      });
 
-setEvents(list);
-
+      setEvents(list);
 
       if (!list.length) {
         setMessage("⚠️ No events found with these filters.");
@@ -234,12 +232,11 @@ setEvents(list);
                     </td>
                     <td className="p-3 text-center">
                       <button
-  onClick={() => setViewEvent(event)}
-  className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
->
-  Details
-</button>
-
+                        onClick={() => setViewEvent(event)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Details
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -275,66 +272,64 @@ setEvents(list);
           </div>
 
           {/* ===================== EVENT DETAILS MODAL ===================== */}
-{viewEvent && (
-  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-    <div className="bg-white p-6 rounded-xl w-[500px] shadow-lg animate-fadeIn">
-      
-      <h2 className="text-2xl font-bold mb-4 text-[#2f4156]">
-        Event Details
-      </h2>
+          {viewEvent && (
+            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-xl w-[500px] shadow-lg animate-fadeIn">
+                <h2 className="text-2xl font-bold mb-4 text-[#2f4156]">
+                  Event Details
+                </h2>
 
-      <div className="space-y-2 text-sm">
-        <p>
-          <strong>Title:</strong> {viewEvent.title || viewEvent.name}
-        </p>
-        <p>
-          <strong>Type:</strong> {(viewEvent.type || "").toUpperCase()}
-        </p>
-        <p>
-          <strong>Location:</strong> {viewEvent.location || "—"}
-        </p>
-        <p>
-          <strong>Start:</strong>{" "}
-          {viewEvent.startDateTime
-            ? new Date(viewEvent.startDateTime).toLocaleString()
-            : "—"}
-        </p>
-        <p>
-          <strong>End:</strong>{" "}
-          {viewEvent.endDateTime
-            ? new Date(viewEvent.endDateTime).toLocaleString()
-            : "—"}
-        </p>
-      </div>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong>Title:</strong> {viewEvent.title || viewEvent.name}
+                  </p>
+                  <p>
+                    <strong>Type:</strong>{" "}
+                    {(viewEvent.type || "").toUpperCase()}
+                  </p>
+                  <p>
+                    <strong>Location:</strong> {viewEvent.location || "—"}
+                  </p>
+                  <p>
+                    <strong>Start:</strong>{" "}
+                    {viewEvent.startDateTime
+                      ? new Date(viewEvent.startDateTime).toLocaleString()
+                      : "—"}
+                  </p>
+                  <p>
+                    <strong>End:</strong>{" "}
+                    {viewEvent.endDateTime
+                      ? new Date(viewEvent.endDateTime).toLocaleString()
+                      : "—"}
+                  </p>
+                </div>
 
-      {/* Footer Buttons */}
-      <div className="mt-6 flex justify-end gap-3">
-        
-        {/* Reviews & Comments */}
-        <button
-          onClick={() => {
-            navigate(`/event-reviews/${viewEvent._id}`);
-            setViewEvent(null); // close modal
-          }}
-          className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm"
-        >
-          Reviews & Comments
-        </button>
+                {/* Footer Buttons */}
+                <div className="mt-6 flex justify-end gap-3">
+                  {/* Reviews & Comments */}
+                  <button
+                    onClick={() => {
+                      navigate(`/event-reviews/${viewEvent._id}`, {
+                        state: { from: "admin" },
+                      });
+                      setViewEvent(null); // close modal
+                    }}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm"
+                  >
+                    Reviews & Comments
+                  </button>
 
-        {/* Close */}
-        <button
-          onClick={() => setViewEvent(null)}
-          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-
+                  {/* Close */}
+                  <button
+                    onClick={() => setViewEvent(null)}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
