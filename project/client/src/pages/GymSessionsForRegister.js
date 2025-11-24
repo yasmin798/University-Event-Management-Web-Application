@@ -184,6 +184,23 @@ export default function GymManager({ SidebarComponent = null }) {
     const spotsLeft =
       session.maxParticipants - (session.registeredUsers?.length || 0);
 
+    // Check if current user is already registered
+    let currentUserEmail = null;
+    try {
+      const raw =
+        localStorage.getItem("user") || localStorage.getItem("currentUser");
+      if (raw) {
+        const u = JSON.parse(raw);
+        currentUserEmail = u?.email;
+      }
+    } catch (e) {
+      console.warn("Error reading email from localStorage:", e);
+    }
+
+    const isRegistered = session.registeredUsers?.some(
+      (user) => user.email === currentUserEmail
+    );
+
     const restrictionText = isOpenToAll ? (
       <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>
         Open to everyone
@@ -206,33 +223,49 @@ export default function GymManager({ SidebarComponent = null }) {
       </div>
     );
 
-    const action =
-      canRegister && spotsLeft > 0 ? (
-        <button
-          onClick={() => registerSession(session._id)}
-          style={{
-            marginTop: "8px",
-            padding: "6px 14px",
-            fontSize: "14px",
-            borderRadius: "10px",
-            background: "#4CAF50",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          Register
-        </button>
-      ) : spotsLeft <= 0 ? (
-        <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>
-          Full
-        </div>
-      ) : (
-        <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>
-          Not eligible (role: {userRole})
-        </div>
-      );
+    const action = isRegistered ? (
+      <button
+        style={{
+          marginTop: "8px",
+          padding: "6px 14px",
+          fontSize: "14px",
+          borderRadius: "10px",
+          background: "#9E9E9E",
+          color: "white",
+          border: "none",
+          cursor: "not-allowed",
+          width: "100%",
+        }}
+        disabled
+      >
+        Registered
+      </button>
+    ) : canRegister && spotsLeft > 0 ? (
+      <button
+        onClick={() => registerSession(session._id)}
+        style={{
+          marginTop: "8px",
+          padding: "6px 14px",
+          fontSize: "14px",
+          borderRadius: "10px",
+          background: "#4CAF50",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+          width: "100%",
+        }}
+      >
+        Register
+      </button>
+    ) : spotsLeft <= 0 ? (
+      <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>
+        Full
+      </div>
+    ) : (
+      <div style={{ marginTop: "8px", fontSize: "12px", color: "#f44336" }}>
+        Not eligible (role: {userRole})
+      </div>
+    );
 
     return (
       <div
