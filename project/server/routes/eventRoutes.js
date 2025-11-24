@@ -9,6 +9,9 @@ const Trip = require("../models/Trips");
 const Conference = require("../models/Conference");
 const Workshop = require("../models/Workshop");
 const BoothApplication = require("../models/BoothApplication");
+const User = require("../models/User");
+const Notification = require("../models/Notification");
+
 
 // Controllers
 const { register } = require("../controllers/registrationController");
@@ -105,7 +108,8 @@ router.post("/bazaars", async (req, res) => {
         .status(400)
         .json({ error: "startDateTime and endDateTime are required" });
 
-    const doc = await Bazaar.create({
+    // 1. Create bazaar document
+    const bazaar = await Bazaar.create({
       type: "bazaar",
       title,
       location: b.location,
@@ -119,11 +123,27 @@ router.post("/bazaars", async (req, res) => {
       capacity: b.capacity != null ? Number(b.capacity) : 0,
       status: "published",
     });
-    res.status(201).json(doc);
+
+    // 2. Fetch all users
+    const users = await User.find({}, "_id");
+
+    // 3. Create notifications for all users
+    const notifications = users.map((u) => ({
+      userId: u._id,
+      message: `A new bazaar was created: ${title}`,
+      type: "bazaar",
+      bazaarId: bazaar._id,  // optional, you can rename to eventId later
+    }));
+
+    await Notification.insertMany(notifications);
+
+    res.status(201).json(bazaar);
   } catch (e) {
+    console.error("Create bazaar error:", e);
     res.status(400).json({ error: e.message });
   }
 });
+
 
 router.put("/bazaars/:id", async (req, res) => {
   try {
@@ -214,9 +234,10 @@ router.post("/trips", async (req, res) => {
       registrationDeadline,
       price,
       capacity,
-      allowedRoles = [], // ← Make sure this is accepted
+      allowedRoles = [],
     } = req.body;
 
+    // 1. Create trip
     const trip = new Trip({
       title,
       location,
@@ -226,18 +247,32 @@ router.post("/trips", async (req, res) => {
       registrationDeadline,
       price: price || 0,
       capacity: capacity || 0,
-      allowedRoles, // ← This was missing before!
+      allowedRoles,
       registeredUsers: [],
       registrations: [],
     });
 
     await trip.save();
+
+    // 2. Create notification for ALL users (temporary test)
+    const users = await User.find({}, "_id"); // get all user IDs
+
+    const notifications = users.map((u) => ({
+      userId: u._id,
+      message: `A new trip was created: ${title}`,
+      type: "trip",
+      tripId: trip._id, // optional, you can rename to eventId later
+    }));
+
+    await Notification.insertMany(notifications);
+
     res.status(201).json(trip);
   } catch (err) {
     console.error("Create trip error:", err);
     res.status(400).json({ error: err.message });
   }
 });
+
 /* ------------------- UPDATE TRIP (MISSING BEFORE) ------------------- */
 router.put("/trips/:id", async (req, res) => {
   try {
@@ -332,6 +367,7 @@ router.post("/conferences", async (req, res) => {
       allowedRoles = [],
     } = req.body;
 
+    // 1. Create Conference
     const conference = new Conference({
       title: title || name,
       name: name || title,
@@ -348,12 +384,29 @@ router.post("/conferences", async (req, res) => {
     });
 
     await conference.save();
+
+    // 2. Fetch all users
+    const users = await User.find({}, "_id");
+
+    // 3. Create notifications (one per user)
+    const notifications = users.map((u) => ({
+      userId: u._id,
+      message: `A new conference was created: ${conference.title}`,
+      type: "conference",
+      conferenceId: conference._id, // use this on frontend later
+    }));
+
+    // 4. Insert all notifications at once
+    await Notification.insertMany(notifications);
+
+    // 5. Return response
     res.status(201).json(conference);
   } catch (err) {
     console.error("Create conference error:", err);
     res.status(400).json({ error: err.message });
   }
 });
+
 
 router.put("/conferences/:id", async (req, res) => {
   try {

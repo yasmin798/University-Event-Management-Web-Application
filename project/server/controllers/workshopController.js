@@ -15,6 +15,11 @@ exports.createWorkshop = async (req, res) => {
 
     await workshop.save();
 
+
+    // -----------------------------
+    // NOTIFICATIONS SECTION
+    // -----------------------------
+
     // Get professor name
     const professor = await User.findById(req.user._id).select("name");
     const profName = professor?.name || "A professor";
@@ -44,17 +49,38 @@ exports.createWorkshop = async (req, res) => {
       unread: true,
     });
 
+
+    // 🔥 3. NEW: Notify **all users** that a new workshop exists (same style as trips/bazaars)
+    const allUsers = await User.find({}, "_id");
+
+    allUsers.forEach((u) => {
+      notificationsToCreate.push({
+        userId: u._id,
+        message: `A new workshop has been proposed: ${workshop.workshopName}`,
+        type: "workshop",
+        workshopId: workshop._id,
+        unread: true,
+      });
+    });
+
     // Save all notifications at once
     if (notificationsToCreate.length > 0) {
       await Notification.insertMany(notificationsToCreate);
     }
 
+
+    // -----------------------------
+    // END NOTIFICATIONS
+    // -----------------------------
+
     res.status(201).json(workshop);
+
   } catch (err) {
     console.error("CREATE WORKSHOP ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // GET all workshops
 exports.getAllWorkshops = async (req, res) => {
