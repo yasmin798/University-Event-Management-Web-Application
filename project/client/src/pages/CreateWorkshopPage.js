@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { workshopAPI } from "../api/workshopApi";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 
 const CreateWorkshopPage = () => {
   const navigate = useNavigate();
@@ -91,6 +92,10 @@ const CreateWorkshopPage = () => {
       try {
         // Get professor ID from localStorage (or your auth context)
         const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const token = localStorage.getItem("token");
+        
+        console.log("Token from localStorage:", token);
+        console.log("User from localStorage:", user);
 
         const workshopData = {
           ...formData,
@@ -104,6 +109,8 @@ const CreateWorkshopPage = () => {
           createdBy: user.id || user._id || "unknown-professor",
           status: "pending",
         };
+        
+        console.log("Workshop data being sent:", workshopData);
 
         const createdWorkshop = await workshopAPI.createWorkshop(workshopData);
 
@@ -112,7 +119,9 @@ const CreateWorkshopPage = () => {
         navigate("/professor/workshops");
       } catch (error) {
         console.error("Error creating workshop:", error);
-        alert("Failed to create workshop. Please try again.");
+        console.error("Error response:", error.response?.data);
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to create workshop. Please try again.";
+        alert(errorMessage);
       }
     }
   };
@@ -122,8 +131,11 @@ const CreateWorkshopPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5efeb]">
-      <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
+    <div className="flex h-screen bg-[#f5efeb]">
+      <ProfessorSidebar />
+      
+      <div className="flex-1 overflow-auto ml-64">
+        <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -443,6 +455,7 @@ const CreateWorkshopPage = () => {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

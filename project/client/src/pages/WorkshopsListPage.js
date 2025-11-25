@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo fo
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit, Trash2, Calendar, MapPin, Users, Clock, UserCheck } from 'lucide-react'; // Added UserCheck for participants btn
 import { workshopAPI } from '../api/workshopApi';
+import ProfessorSidebar from '../components/ProfessorSidebar';
 
 const WorkshopsListPage = () => {
   const navigate = useNavigate();
@@ -129,8 +130,11 @@ const WorkshopsListPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#f5efeb]">
-      <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
+    <div className="flex h-screen bg-[#f5efeb]">
+      <ProfessorSidebar />
+      
+      <div className="flex-1 overflow-auto ml-64">
+        <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -344,6 +348,7 @@ const WorkshopsListPage = () => {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
