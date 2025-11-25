@@ -427,44 +427,24 @@ const markAsRead = async () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
+  <div className="flex items-center gap-4">
   <button
-    onClick={() => setShowNotifications((prev) => !prev)}
-    className="p-2 hover:bg-[#f5efeb] rounded-lg relative"
+    onClick={() => setShowNotifications(!showNotifications)}
+    className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
   >
     <Bell size={20} className="text-[#567c8d]" />
 
-    {unreadCount > 0 && (
+    {notifications.some((n) => n.unread) && (
       <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
     )}
   </button>
 
-  {/* Dropdown */}
-  {showNotifications && (
-    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-xl z-50 max-h-96 overflow-y-auto">
-      <div className="p-4 font-bold text-[#2f4156] border-b bg-gray-50">
-        Notifications
-      </div>
 
-      {notifications.length === 0 ? (
-        <p className="p-4 text-gray-500 text-sm">No notifications yet.</p>
-      ) : (
-        notifications.map((n) => (
-          <div
-            key={n._id}
-            className={`p-4 border-b ${
-              !n.read ? "bg-[#eef6ff]" : "bg-white"
-            }`}
-          >
-            <p className="font-semibold text-[#2f4156]">{n.title}</p>
-            <p className="text-sm text-[#567c8d]">{n.message}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {new Date(n.createdAt).toLocaleString()}
-            </p>
-          </div>
-        ))
-      )}
-    </div>
-  )}
+</div>
+
+
+  
+
 </div>
 
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
@@ -472,6 +452,29 @@ const markAsRead = async () => {
             </div>
           </div>
         </header>
+        {/* Dropdown */}
+  {showNotifications && (
+  <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
+    <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
+
+    {notifications.length === 0 ? (
+      <p className="text-sm text-[#567c8d]">No notifications yet.</p>
+    ) : (
+      notifications.map((n) => (
+        <div
+          key={n._id}
+          className={`p-3 mb-2 rounded-lg border ${
+            n.unread
+              ? "bg-blue-50 border-blue-200"
+              : "bg-gray-50 border-gray-200"
+          }`}
+        >
+          <p className="text-sm text-[#2f4156]">{n.message}</p>
+        </div>
+      ))
+    )}
+  </div>
+)}
 
         <main className="p-4 md:p-8">
           <h1 className="text-3xl font-bold text-[#2f4156] mb-6">

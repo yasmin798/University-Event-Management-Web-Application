@@ -25,6 +25,9 @@ import {
 import StudentSidebar from "../components/StudentSidebar";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 
+const API_BASE = "http://localhost:3000"; // Your working backend
+
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
 
@@ -43,6 +46,14 @@ const StudentDashboard = () => {
   const [favorites, setFavorites] = useState([]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [notifications, setNotifications] = useState([]);
+const [showNotifications, setShowNotifications] = useState(false);
+
+  const [userId, setUserId] = useState(null);
+
+
+
 
   /* ---------------------- Fetch Events ---------------------- */
 
@@ -78,6 +89,20 @@ const StudentDashboard = () => {
   }, [searchTerm, searchLocation, eventTypeFilter, dateFilter, sortOrder]);
 
   /* ---------------------- Fetch Favorites ---------------------- */
+
+
+  // Get user ID from token
+    useEffect(() => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          setUserId(payload.id || payload.userId || payload._id);
+        } catch (e) {
+          console.error("Invalid token");
+        }
+      }
+    }, []);
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -145,6 +170,28 @@ const StudentDashboard = () => {
     }
   };
 
+
+  useEffect(() => {
+  if (!userId) return;
+
+  const fetchNotifications = async () => {
+    try {
+      // No token needed anymore
+      const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
+
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      } else {
+        console.error("Failed to fetch notifications");
+      }
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    }
+  };
+
+  fetchNotifications();
+}, [userId]);
   /* ---------------------- UI ---------------------- */
 
   if (loading) {
@@ -211,15 +258,47 @@ const StudentDashboard = () => {
 
           {/* User + Notifications */}
           <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg">
-              <Bell size={20} className="text-[#567c8d]" />
-            </button>
+            <button
+  onClick={() => setShowNotifications(!showNotifications)}
+  className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
+>
+  <Bell size={20} className="text-[#567c8d]" />
+
+  {notifications.some((n) => n.unread) && (
+    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+  )}
+</button>
+
 
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
             </div>
           </div>
         </header>
+
+        {showNotifications && (
+  <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
+    <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
+
+    {notifications.length === 0 ? (
+      <p className="text-sm text-[#567c8d]">No notifications yet.</p>
+    ) : (
+      notifications.map((n) => (
+        <div
+          key={n._id}
+          className={`p-3 mb-2 rounded-lg border ${
+            n.unread
+              ? "bg-blue-50 border-blue-200"
+              : "bg-gray-50 border-gray-200"
+          }`}
+        >
+          <p className="text-sm text-[#2f4156]">{n.message}</p>
+        </div>
+      ))
+    )}
+  </div>
+)}
+
 
         {/* ---- PAGE CONTENT ---- */}
         <main className="p-4 md:p-8">
