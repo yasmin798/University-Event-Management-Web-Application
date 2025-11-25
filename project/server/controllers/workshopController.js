@@ -118,15 +118,76 @@ exports.updateWorkshop = async (req, res) => {
   try {
     console.log('Updating workshop:', req.params.id);
     console.log('Update data:', req.body);
-    const updated = await Workshop.findByIdAndUpdate(req.params.id, req.body, { 
-      new: true,
-      runValidators: true 
-    });
+
+    // 🔥 NEW: Fetch the original workshop to check for status change
+    const originalWorkshop = await Workshop.findById(req.params.id);
+    if (!originalWorkshop) {
+      console.log('Workshop not found for update');
+      return res.status(404).json({ error: "Workshop not found" });
+    }
+
+    const updated = await Workshop.findByIdAndUpdate(
+      req.params.id, 
+      req.body, 
+      { 
+        new: true,
+        runValidators: true 
+      }
+    );
+
     if (!updated) {
       console.log('Workshop not found for update');
       return res.status(404).json({ error: "Workshop not found" });
     }
+
     console.log('Workshop updated successfully:', updated._id);
+
+    // 🔥 NEW: Check if status changed to "published" or "rejected"
+    const statusChange = req.body.status && req.body.status !== originalWorkshop.status;
+    if (statusChange) {
+      const newStatus = req.body.status.toLowerCase();
+      if (newStatus === "published" || newStatus === "rejected") {
+        console.log(`🔄 Status changed to "${newStatus}" for workshop "${updated.workshopName}"`);
+
+        // Resolve professor IDs: Start with createdBy (submitter)
+        let professorIds = [originalWorkshop.createdBy];
+
+        // If professorsParticipating is provided and different, add them
+        if (updated.professorsParticipating) {
+          let additionalProfs = [];
+          if (Array.isArray(updated.professorsParticipating)) {
+            // If array of ObjectIds
+            additionalProfs = updated.professorsParticipating.filter(id => id.toString() !== originalWorkshop.createdBy.toString());
+          } else if (typeof updated.professorsParticipating === 'string') {
+            // If comma-separated names, lookup by fullName in User
+            const profNames = updated.professorsParticipating.split(',').map(name => name.trim()).filter(name => name);
+            const users = await User.find({ fullName: { $in: profNames }, role: "professor" }, '_id');
+            additionalProfs = users.map(u => u._id);
+          }
+          professorIds = [...new Set([...professorIds, ...additionalProfs])];  // Dedupe
+        }
+
+        // Create notifications for each professor
+        const notificationsToCreate = [];
+        for (const profId of professorIds) {
+          notificationsToCreate.push({
+            userId: profId,
+            message: `Your workshop "${updated.workshopName}" has been ${newStatus}!`,
+            type: "workshop_status",
+            eventType: "workshop",  // For polymorphic ref
+            workshopId: updated._id,
+            unread: true,
+          });
+        }
+
+        // Save all at once
+        if (notificationsToCreate.length > 0) {
+          await Notification.insertMany(notificationsToCreate);
+          console.log(`📩 Created ${notificationsToCreate.length} status notifications`);
+        }
+      }
+    }
+
     res.status(200).json(updated);
   } catch (err) {
     console.error('Error updating workshop:', err);
