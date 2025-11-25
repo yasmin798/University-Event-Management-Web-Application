@@ -143,6 +143,31 @@ router.patch("/:id", /* adminOnly, */ async (req, res) => {
 
     doc.status = s;
     await doc.save();
+
+    // ======================================================
+        // 🔔 SEND NOTIFICATION TO ALL USERS ONLY IF ACCEPTED
+        // ======================================================
+        if (s === "accepted") {
+  const users = await User.find({}, "_id");
+
+  const boothTitle =
+    doc.boothTitle ||
+    (doc.attendees?.length > 0 && doc.attendees[0].name
+      ? `by ${doc.attendees[0].name}`
+      : `Booth at platform ${doc.platformSlot}`);
+
+  const notifications = users.map((u) => ({
+    userId: u._id,
+    message: `A new booth has been opened: ${boothTitle}`,
+    type: "booth_announcement",
+    boothId: doc._id,
+    unread: true,
+  }));
+
+  await Notification.insertMany(notifications);
+}
+
+        // ======================================================
     res.json({ success: true, application: doc });
   } catch (err) {
     console.error("PATCH /api/booth-applications/:id error:", err);
