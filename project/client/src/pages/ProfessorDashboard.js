@@ -17,6 +17,8 @@ import {
   Heart,
   VoteIcon,
   CheckCircle,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import workshopPlaceholder from "../images/workshop.png";
 import tripPlaceholder from "../images/trip.jpeg";
@@ -25,6 +27,7 @@ import conferencePlaceholder from "../images/conference.jpg";
 import boothPlaceholder from "../images/booth.jpg";
 import { workshopAPI } from "../api/workshopApi";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { boothAPI } from "../api/boothApi";
 import ProfessorSidebar from "../components/ProfessorSidebar";
@@ -35,6 +38,8 @@ const ProfessorDashboard = () => {
   const [workshops, setWorkshops] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
@@ -167,6 +172,21 @@ const ProfessorDashboard = () => {
     ...booths,
   ];
 
+  // Extract unique filter options
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
+
   useEffect(() => {
     const fetchWorkshops = async () => {
       try {
@@ -241,6 +261,22 @@ const ProfessorDashboard = () => {
           ?.toLowerCase()
           .includes(searchTerm.toLowerCase()) ??
           false);
+
+      const matchesLocation =
+        !searchLocation ||
+        (e.location?.toLowerCase().includes(searchLocation.toLowerCase()) ??
+          false);
+
+      const matchesProfessor =
+        !professorFilter ||
+        ((e.professorsParticipating
+          ?.toLowerCase()
+          .includes(professorFilter.toLowerCase()) ||
+          e.facultyResponsible
+            ?.toLowerCase()
+            .includes(professorFilter.toLowerCase())) ??
+          false);
+
       const matchesType =
         eventTypeFilter === "All" || e.type === eventTypeFilter;
 
@@ -252,7 +288,13 @@ const ProfessorDashboard = () => {
           eventDate.toDateString() === selectedCalendarDate.toDateString();
       }
 
-      return matchesSearch && matchesType && matchesCalendarDate;
+      return (
+        matchesSearch &&
+        matchesLocation &&
+        matchesProfessor &&
+        matchesType &&
+        matchesCalendarDate
+      );
     })
     .sort((a, b) => {
       const dateA = new Date(a.startDateTime || a.startDate || a.date);
@@ -603,20 +645,42 @@ const ProfessorDashboard = () => {
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1">
-
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-[3]">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
-                  size={20}
+                  size={22}
                 />
                 <input
                   type="text"
-                  placeholder="Search by workshop or professor or location..."
+                  placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+                  className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
                 />
               </div>
+
+              <div className="w-48">
+                <SearchableDropdown
+                  options={uniqueLocations}
+                  value={searchLocation}
+                  onChange={setSearchLocation}
+                  placeholder="All Locations"
+                  label="Location"
+                  icon={MapPin}
+                />
+              </div>
+
+              <div className="w-48">
+                <SearchableDropdown
+                  options={uniqueProfessors}
+                  value={professorFilter}
+                  onChange={setProfessorFilter}
+                  placeholder="All Professors"
+                  label="Professor"
+                  icon={Users}
+                />
+              </div>
+
               <EventTypeDropdown
                 selected={eventTypeFilter}
                 onChange={setEventTypeFilter}
@@ -625,9 +689,14 @@ const ProfessorDashboard = () => {
                 onClick={() =>
                   setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
                 }
-                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors flex items-center gap-2"
               >
-                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+                {sortOrder === "asc" ? (
+                  <ArrowUp size={18} />
+                ) : (
+                  <ArrowDown size={18} />
+                )}
+                {sortOrder === "asc" ? "Oldest" : "Newest"} First
               </button>
             </div>
 

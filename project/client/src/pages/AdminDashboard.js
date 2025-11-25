@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, User, LogOut } from "lucide-react";
+import {
+  Search,
+  Menu,
+  User,
+  LogOut,
+  MapPin,
+  Users,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import NotificationsDropdown from "../components/NotificationsDropdown";
 import workshopPlaceholder from "../images/workshop.png";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -44,14 +54,8 @@ const AdminDashboard = () => {
       try {
         const params = new URLSearchParams();
 
-        // Combine search and professor filter into search param
-        const searchParts = [];
-        if (debouncedSearch) searchParts.push(debouncedSearch);
-        if (debouncedProfessor) searchParts.push(debouncedProfessor);
-        if (searchParts.length > 0) {
-          params.append("search", searchParts.join(" "));
-        }
-
+        if (debouncedSearch) params.append("search", debouncedSearch);
+        if (debouncedProfessor) params.append("professor", debouncedProfessor);
         if (debouncedLocation) params.append("location", debouncedLocation);
         if (eventTypeFilter !== "All") {
           params.append("type", eventTypeFilter.toUpperCase());
@@ -79,6 +83,21 @@ const AdminDashboard = () => {
     debouncedDate,
     sortOrder,
   ]);
+
+  // Extract unique filter options
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) navigate("/");
@@ -130,20 +149,43 @@ const AdminDashboard = () => {
           {/* Menu toggle */}
 
           {/* Search + filter */}
-          <div className="relative flex-1 max-w-3xl flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[320px]">
+          <div className="relative flex-1 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
-                size={20}
+                size={22}
               />
               <input
                 type="text"
-                placeholder="Search by name or professor or location..."
+                placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+                className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
               />
             </div>
+
+            <div className="w-48">
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={locationFilter}
+                onChange={setLocationFilter}
+                placeholder="All Locations"
+                label="Location"
+                icon={MapPin}
+              />
+            </div>
+
+            <div className="w-48">
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="All Professors"
+                label="Professor"
+                icon={Users}
+              />
+            </div>
+
             <input
               type="date"
               value={dateFilter}
@@ -158,9 +200,14 @@ const AdminDashboard = () => {
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
-              className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg whitespace-nowrap flex items-center gap-2"
             >
-              Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+              {sortOrder === "asc" ? (
+                <ArrowUp size={18} />
+              ) : (
+                <ArrowDown size={18} />
+              )}
+              {sortOrder === "asc" ? "Newest" : "Oldest"}
             </button>
           </div>
 

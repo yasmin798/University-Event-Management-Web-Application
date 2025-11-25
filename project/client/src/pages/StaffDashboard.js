@@ -12,6 +12,10 @@ import {
   Star,
   MessageCircle,
   CheckCircle,
+  MapPin,
+  Users,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 import workshopPlaceholder from "../images/workshop.png";
@@ -19,6 +23,7 @@ import tripPlaceholder from "../images/trip.jpeg";
 import bazaarPlaceholder from "../images/bazaar.jpeg";
 import conferencePlaceholder from "../images/conference.jpg";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 const API_BASE = "http://localhost:3000"; // Your working backend
 
@@ -27,6 +32,7 @@ const StaffDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [favorites, setFavorites] = useState([]);
@@ -36,6 +42,7 @@ const StaffDashboard = () => {
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedSearchLocation, setDebouncedSearchLocation] = useState("");
+  const [debouncedProfessorFilter, setDebouncedProfessorFilter] = useState("");
 
   // Reviews state
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -46,8 +53,7 @@ const StaffDashboard = () => {
   const [userId, setUserId] = useState(null);
 
   const [notifications, setNotifications] = useState([]);
-const [showNotifications, setShowNotifications] = useState(false);
-
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -58,6 +64,14 @@ const [showNotifications, setShowNotifications] = useState(false);
     const t = setTimeout(() => setDebouncedSearchLocation(searchLocation), 300);
     return () => clearTimeout(t);
   }, [searchLocation]);
+
+  useEffect(() => {
+    const t = setTimeout(
+      () => setDebouncedProfessorFilter(professorFilter),
+      300
+    );
+    return () => clearTimeout(t);
+  }, [professorFilter]);
 
   // Get user ID from token
   useEffect(() => {
@@ -97,12 +111,11 @@ const [showNotifications, setShowNotifications] = useState(false);
       setServerLoading(true);
       try {
         const params = new URLSearchParams();
-        const searchValue = [debouncedSearch, debouncedSearchLocation]
-          .filter(Boolean)
-          .join(" ");
-        if (searchValue) params.append("search", searchValue);
+        if (debouncedSearch) params.append("search", debouncedSearch);
         if (debouncedSearchLocation)
           params.append("location", debouncedSearchLocation);
+        if (debouncedProfessorFilter)
+          params.append("professor", debouncedProfessorFilter);
         if (eventTypeFilter && eventTypeFilter !== "All")
           params.append("type", eventTypeFilter);
         params.append("sort", "startDateTime");
@@ -123,7 +136,28 @@ const [showNotifications, setShowNotifications] = useState(false);
       }
     };
     fetchEvents();
-  }, [debouncedSearch, eventTypeFilter, debouncedSearchLocation, sortOrder]);
+  }, [
+    debouncedSearch,
+    eventTypeFilter,
+    debouncedSearchLocation,
+    debouncedProfessorFilter,
+    sortOrder,
+  ]);
+
+  // Extract unique filter options
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
 
   // Load reviews for selected event
   const loadReviews = async (eventId) => {
@@ -215,40 +249,38 @@ const [showNotifications, setShowNotifications] = useState(false);
   };
 
   useEffect(() => {
-  if (!userId) return;
+    if (!userId) return;
 
-  const fetchNotifications = async () => {
-    try {
-      // No token needed anymore
-      const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
+    const fetchNotifications = async () => {
+      try {
+        // No token needed anymore
+        const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
 
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
-      } else {
-        console.error("Failed to fetch notifications");
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data);
+        } else {
+          console.error("Failed to fetch notifications");
+        }
+      } catch (err) {
+        console.error("Failed to load notifications", err);
       }
+    };
+
+    fetchNotifications();
+  }, [userId]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markAsRead = async () => {
+    try {
+      await fetch(`${API_BASE}/api/notifications/mark-read/${userId}`, {
+        method: "PUT",
+      });
     } catch (err) {
-      console.error("Failed to load notifications", err);
+      console.error("Failed to mark notifications as read", err);
     }
   };
-
-  fetchNotifications();
-}, [userId]);
-
-const unreadCount = notifications.filter(n => !n.read).length;
-
-const markAsRead = async () => {
-  try {
-    await fetch(`${API_BASE}/api/notifications/mark-read/${userId}`, {
-      method: "PUT"
-    });
-  } catch (err) {
-    console.error("Failed to mark notifications as read", err);
-  }
-};
-
-
 
   const closeModal = () => setSelectedEvent(null);
 
@@ -397,55 +429,77 @@ const markAsRead = async () => {
           >
             <Menu size={24} className="text-[#2f4156]" />
           </button>
-          <div className="flex-1 max-w-2xl flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="flex-1 flex items-center gap-4">
+            <div className="relative flex-[3]">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
-                size={20}
+                size={22}
               />
               <input
                 type="text"
-                placeholder="Search by name, professor, location..."
+                placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:ring-2 focus:ring-[#567c8d]"
+                className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg focus:ring-2 focus:ring-[#567c8d]"
               />
             </div>
+
+            <div className="w-48">
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={searchLocation}
+                onChange={setSearchLocation}
+                placeholder="All Locations"
+                label="Location"
+                icon={MapPin}
+              />
+            </div>
+
+            <div className="w-48">
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="All Professors"
+                label="Professor"
+                icon={Users}
+              />
+            </div>
+
             <EventTypeDropdown
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}
             />
-            
+
             <button
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
-              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg hover:bg-[#45687a]"
+              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg hover:bg-[#45687a] flex items-center gap-2"
             >
-              Sort {sortOrder === "asc" ? "Newest" : "Oldest"}
+              {sortOrder === "asc" ? (
+                <ArrowUp size={18} />
+              ) : (
+                <ArrowDown size={18} />
+              )}
+              {sortOrder === "asc" ? "Newest" : "Oldest"}
             </button>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
-  <div className="flex items-center gap-4">
-  <button
-    onClick={() => setShowNotifications(!showNotifications)}
-    className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
-  >
-    <Bell size={20} className="text-[#567c8d]" />
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
+                >
+                  <Bell size={20} className="text-[#567c8d]" />
 
-    {notifications.some((n) => n.unread) && (
-      <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-    )}
-  </button>
-
-
-</div>
-
-
-  
-
-</div>
+                  {notifications.some((n) => n.unread) && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
+                </button>
+              </div>
+            </div>
 
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
@@ -453,28 +507,28 @@ const markAsRead = async () => {
           </div>
         </header>
         {/* Dropdown */}
-  {showNotifications && (
-  <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
-    <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
+        {showNotifications && (
+          <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
+            <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
 
-    {notifications.length === 0 ? (
-      <p className="text-sm text-[#567c8d]">No notifications yet.</p>
-    ) : (
-      notifications.map((n) => (
-        <div
-          key={n._id}
-          className={`p-3 mb-2 rounded-lg border ${
-            n.unread
-              ? "bg-blue-50 border-blue-200"
-              : "bg-gray-50 border-gray-200"
-          }`}
-        >
-          <p className="text-sm text-[#2f4156]">{n.message}</p>
-        </div>
-      ))
-    )}
-  </div>
-)}
+            {notifications.length === 0 ? (
+              <p className="text-sm text-[#567c8d]">No notifications yet.</p>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n._id}
+                  className={`p-3 mb-2 rounded-lg border ${
+                    n.unread
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <p className="text-sm text-[#2f4156]">{n.message}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         <main className="p-4 md:p-8">
           <h1 className="text-3xl font-bold text-[#2f4156] mb-6">

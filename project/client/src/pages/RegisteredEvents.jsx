@@ -9,12 +9,15 @@ import {
   Home,
   Search,
   Heart,
+  MapPin,
+  Users,
 } from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
 import StudentSidebar from "../components/StudentSidebar";
 import Sidebar from "../components/Sidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 import "./RegisteredEvents.css";
 import workshopImage from "../images/workshop.png";
@@ -44,6 +47,8 @@ const RegisteredEvents = () => {
   const [events, setEvents] = useState({ upcoming: [], past: [] });
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [activeEventType, setActiveEventType] = useState("all");
@@ -150,6 +155,26 @@ const RegisteredEvents = () => {
   useEffect(() => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
   }, [activeEventType]); // uncomment after testing ui
+
+  // Extract unique locations and professors from all events
+  const allEventsArray = React.useMemo(() => {
+    return [...events.upcoming, ...events.past];
+  }, [events.upcoming, events.past]);
+
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEventsArray
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEventsArray]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEventsArray
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEventsArray]);
+
   /* useEffect(() => {
     getMyRegisteredEvents()
       .then(setEvents)
@@ -218,18 +243,25 @@ const RegisteredEvents = () => {
 
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
-      // Unified search across name, location, and professor
+      // Search by name and description only
       const matchesSearch =
         !searchTerm ||
         (event.title || event.workshopName || "")
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        (event.location || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        (event.professorsParticipating || event.facultyResponsible || "")
+        (event.description || event.shortDescription || "")
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
+
+      // Filter by location (exact match)
+      const matchesLocation =
+        !searchLocation || (event.location || "") === searchLocation;
+
+      // Filter by professor
+      const matchesProfessor =
+        !professorFilter ||
+        (event.professorsParticipating || event.facultyResponsible || "") ===
+          professorFilter;
 
       // Filter by event type
       const matchesCategory =
@@ -247,9 +279,16 @@ const RegisteredEvents = () => {
           return eventDate.toDateString() === filterDate.toDateString();
         })();
 
-      return matchesSearch && matchesCategory && matchesDate;
+      return (
+        matchesSearch &&
+        matchesLocation &&
+        matchesProfessor &&
+        matchesCategory &&
+        matchesDate
+      );
     });
   };
+
   const filteredUpcoming = filterEvents(events.upcoming);
   const filteredPast = filterEvents(events.past);
 
@@ -398,7 +437,7 @@ const RegisteredEvents = () => {
 
             <div className="search-filter-section">
               <div className="search-filter-bar">
-                {/* Unified Search - searches name, location, and professor */}
+                {/* Search by name */}
                 <div className="search-box" style={{ position: "relative" }}>
                   <Search
                     size={18}
@@ -412,11 +451,35 @@ const RegisteredEvents = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Search by name, location, or professor..."
+                    placeholder="Search events..."
                     className="search-input"
-                    style={{ paddingLeft: "40px", minWidth: "350px" }}
+                    style={{ paddingLeft: "40px", minWidth: "300px" }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                {/* Location Filter */}
+                <div style={{ minWidth: "200px" }}>
+                  <SearchableDropdown
+                    options={uniqueLocations}
+                    value={searchLocation}
+                    onChange={setSearchLocation}
+                    placeholder="All Locations"
+                    label="Location"
+                    icon={MapPin}
+                  />
+                </div>
+
+                {/* Professor Filter */}
+                <div style={{ minWidth: "200px" }}>
+                  <SearchableDropdown
+                    options={uniqueProfessors}
+                    value={professorFilter}
+                    onChange={setProfessorFilter}
+                    placeholder="All Professors"
+                    label="Professor"
+                    icon={Users}
                   />
                 </div>
 
@@ -444,11 +507,17 @@ const RegisteredEvents = () => {
                 </div>
 
                 {/* Clear All Filters Button */}
-                {(searchTerm || dateFilter || activeEventType !== "all") && (
+                {(searchTerm ||
+                  searchLocation ||
+                  professorFilter ||
+                  dateFilter ||
+                  activeEventType !== "all") && (
                   <button
                     className="search-btn"
                     onClick={() => {
                       setSearchTerm("");
+                      setSearchLocation("");
+                      setProfessorFilter("");
                       setDateFilter("");
                       setActiveEventType("all");
                       setSelectedCategory("");
