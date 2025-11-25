@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 
 const API_URL = "http://localhost:3000/api/polls";
 
@@ -86,7 +87,9 @@ export default function PollVoting() {
   if (loading) return <div style={{ textAlign: "center", padding: "40px" }}>Loading polls...</div>;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "30px 20px", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
+      <ProfessorSidebar />
+      <div style={{ flex: 1, marginLeft: "260px", padding: "30px 20px", fontFamily: "system-ui, sans-serif", overflowY: "auto" }}>
       {/* Floating Message */}
       {message && (
         <div style={{
@@ -244,6 +247,7 @@ export default function PollVoting() {
           );
         })
       )}
+      </div>
     </div>
   );
 }

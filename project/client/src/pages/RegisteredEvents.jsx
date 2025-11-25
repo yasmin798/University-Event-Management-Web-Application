@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
-import /* useNavigate */ "react-router-dom";
-import { Menu, Bell, User, LogOut, Calendar, Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  Menu,
+  Bell,
+  User,
+  LogOut,
+  Calendar,
+  Home,
+  Search,
+  Heart,
+} from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
 import StudentSidebar from "../components/StudentSidebar";
@@ -31,13 +40,15 @@ http.interceptors.request.use((cfg) => {
   return cfg;
 });
 const RegisteredEvents = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState({ upcoming: [], past: [] });
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [activeEventType, setActiveEventType] = useState("all");
-  // no navigate required in this view
   const [viewEvent, setViewEvent] = useState(null);
+  const [favorites, setFavorites] = useState([]);
 
   const [userRole, setUserRole] = useState("");
   useEffect(() => {
@@ -81,6 +92,32 @@ const RegisteredEvents = () => {
     }
   }, [selectedCategory]);
   // Sidebar helper (no local sidebar state needed here)
+  // Fetch favorites
+  const fetchFavorites = async () => {
+    try {
+      const response = await http.get("/api/users/me/favorites");
+      const favoriteIds = response.data.map((fav) => fav._id);
+      setFavorites(favoriteIds);
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+    }
+  };
+
+  // Toggle favorite status
+  const toggleFavorite = async (eventId) => {
+    try {
+      if (favorites.includes(eventId)) {
+        await http.delete(`/api/users/me/favorites/${eventId}`);
+        setFavorites(favorites.filter((id) => id !== eventId));
+      } else {
+        await http.post("/api/users/me/favorites", { eventId });
+        setFavorites([...favorites, eventId]);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
+  };
+
   useEffect(() => {
     const getUserRole = () => {
       try {
@@ -96,6 +133,17 @@ const RegisteredEvents = () => {
     };
 
     setUserRole(getUserRole());
+    fetchFavorites();
+  }, []);
+
+  // Refetch favorites when window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchFavorites();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
   // navigation helpers unused in this view are omitted
 
@@ -165,20 +213,41 @@ const RegisteredEvents = () => {
   };
 
   const handleViewDetails = (event) => {
-    setViewEvent(event);
+    navigate(`/events/${event._id}`);
   };
 
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
-      const matchesSearch = (event.title || event.workshopName || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      // Unified search across name, location, and professor
+      const matchesSearch =
+        !searchTerm ||
+        (event.title || event.workshopName || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        (event.location || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        (event.professorsParticipating || event.facultyResponsible || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
+      // Filter by event type
       const matchesCategory =
         activeEventType === "all" ||
         (event.type && (event.type || "").toLowerCase() === activeEventType);
 
-      return matchesSearch && matchesCategory;
+      // Filter by date
+      const matchesDate =
+        !dateFilter ||
+        (() => {
+          const eventDate = new Date(
+            event.startDateTime || event.startDate || event.date
+          );
+          const filterDate = new Date(dateFilter);
+          return eventDate.toDateString() === filterDate.toDateString();
+        })();
+
+      return matchesSearch && matchesCategory && matchesDate;
     });
   };
   const filteredUpcoming = filterEvents(events.upcoming);
@@ -208,11 +277,57 @@ const RegisteredEvents = () => {
               day: "numeric",
             })}
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavorite(event._id);
+            }}
+            style={{
+              position: "absolute",
+              bottom: "10px",
+              left: "10px",
+              background: "white",
+              border: "none",
+              borderRadius: "50%",
+              width: "36px",
+              height: "36px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              transition: "transform 0.2s",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.transform = "scale(1.1)")
+            }
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            <Heart
+              size={20}
+              className={
+                favorites.includes(event._id)
+                  ? "fill-red-500 text-red-500"
+                  : "text-gray-600"
+              }
+              style={{
+                fill: favorites.includes(event._id) ? "#ef4444" : "none",
+                stroke: favorites.includes(event._id) ? "#ef4444" : "#4b5563",
+              }}
+            />
+          </button>
         </div>
 
         <div className="event-content">
           <h3 className="event-title">{getEventTitle(event)}</h3>
-          <p className="event-organizer">Organized By: GUC Events</p>
+          <p className="event-organizer">
+            Organized by{" "}
+            {event.professorsParticipating ||
+              event.facultyResponsible ||
+              event.organizer ||
+              event.createdBy?.name ||
+              "GUC Events"}
+          </p>
 
           <div className="event-details">
             <div className="event-detail-item">
@@ -283,16 +398,66 @@ const RegisteredEvents = () => {
 
             <div className="search-filter-section">
               <div className="search-filter-bar">
-                <div className="search-box">
+                {/* Unified Search - searches name, location, and professor */}
+                <div className="search-box" style={{ position: "relative" }}>
+                  <Search
+                    size={18}
+                    style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#567c8d",
+                    }}
+                  />
                   <input
                     type="text"
-                    placeholder="Search events..."
+                    placeholder="Search by name, location, or professor..."
                     className="search-input"
+                    style={{ paddingLeft: "40px", minWidth: "350px" }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <button className="search-btn">Search</button>
                 </div>
+
+                {/* Filter by Date */}
+                <div className="search-box" style={{ position: "relative" }}>
+                  <Calendar
+                    size={18}
+                    style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#567c8d",
+                      pointerEvents: "none",
+                      zIndex: 1,
+                    }}
+                  />
+                  <input
+                    type="date"
+                    className="search-input"
+                    style={{ paddingLeft: "40px" }}
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                  />
+                </div>
+
+                {/* Clear All Filters Button */}
+                {(searchTerm || dateFilter || activeEventType !== "all") && (
+                  <button
+                    className="search-btn"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setDateFilter("");
+                      setActiveEventType("all");
+                      setSelectedCategory("");
+                    }}
+                    style={{ backgroundColor: "#c88585" }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
 
               <div className="quick-filters">
@@ -361,6 +526,7 @@ const RegisteredEvents = () => {
                       className="btn-primary"
                       onClick={() => {
                         setSearchTerm("");
+                        setDateFilter("");
                         setActiveEventType("all");
                         setSelectedCategory("");
                       }}

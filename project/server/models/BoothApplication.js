@@ -51,8 +51,8 @@ const BoothApplicationSchema = new mongoose.Schema(
       type: [
         {
           userId: { type: String },
-          name: { type: String, default: "Guest" },
-          email: { type: String, required: true },
+          name: { type: String, required: true, trim: true },
+          email: { type: String, required: true, trim: true },
           registeredAt: { type: Date, default: Date.now },
         },
       ],

@@ -17,6 +17,9 @@ import {
   Map,
   Heart,
   CheckCircle,
+  MapPin,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
 
 import StudentSidebar from "../components/StudentSidebar";
@@ -73,6 +76,40 @@ const StudentDashboard = () => {
 
     fetchEvents();
   }, [searchTerm, searchLocation, eventTypeFilter, dateFilter, sortOrder]);
+
+  /* ---------------------- Fetch Favorites ---------------------- */
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await fetch("/api/users/me/favorites", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setFavorites(data.map((e) => e._id));
+        }
+      } catch (err) {
+        console.error("Failed to fetch favorites", err);
+      }
+    };
+
+    fetchFavorites();
+
+    // Re-fetch favorites when window regains focus (user returns from another page)
+    const handleFocus = () => fetchFavorites();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
 
   /* ---------------------- Favorite Toggle ---------------------- */
 
@@ -186,23 +223,92 @@ const StudentDashboard = () => {
 
         {/* ---- PAGE CONTENT ---- */}
         <main className="p-4 md:p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156]">
-              Available Events
-            </h1>
+          {/* Header Section with Stats */}
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-[#2f4156] mb-2">
+                  Discover Events
+                </h1>
+                <p className="text-[#567c8d]">
+                  Explore and register for upcoming campus events
+                </p>
+              </div>
 
-            <button
-              onClick={() => navigate("/favorites")}
-              className="text-[#567c8d] hover:text-[#2f4156] flex items-center gap-1"
-            >
-              <Heart
-                size={20}
-                className={
-                  favorites.length > 0 ? "fill-red-500 text-red-500" : ""
-                }
-              />
-              Favorites ({favorites.length})
-            </button>
+              <button
+                onClick={() => navigate("/favorites")}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-[#c8d9e6] rounded-xl hover:border-red-300 hover:bg-red-50 transition-all group shadow-sm"
+              >
+                <Heart
+                  size={20}
+                  className={
+                    favorites.length > 0
+                      ? "fill-red-500 text-red-500"
+                      : "text-[#567c8d] group-hover:text-red-500"
+                  }
+                />
+                <span className="font-medium text-[#2f4156]">My Favorites</span>
+                {favorites.length > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {favorites.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-600 font-medium mb-1">
+                      Total Events
+                    </p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      {allEvents.length}
+                    </p>
+                  </div>
+                  <div className="bg-blue-200 p-3 rounded-lg">
+                    <Calendar size={24} className="text-blue-700" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-purple-600 font-medium mb-1">
+                      Favorites
+                    </p>
+                    <p className="text-2xl font-bold text-purple-900">
+                      {favorites.length}
+                    </p>
+                  </div>
+                  <div className="bg-purple-200 p-3 rounded-lg">
+                    <Heart size={24} className="text-purple-700" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-green-600 font-medium mb-1">
+                      Event Types
+                    </p>
+                    <p className="text-2xl font-bold text-green-900">
+                      {
+                        new Set(allEvents.map((e) => e.type).filter(Boolean))
+                          .size
+                      }
+                    </p>
+                  </div>
+                  <div className="bg-green-200 p-3 rounded-lg">
+                    <TrendingUp size={24} className="text-green-700" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Events Grid */}
@@ -217,20 +323,37 @@ const StudentDashboard = () => {
                   BOOTH: workshopPlaceholder,
                 }[e.type] || workshopPlaceholder;
 
+              // Format date
+              const eventDate = e.startDateTime
+                ? new Date(e.startDateTime).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "";
+
               return (
                 <div
                   key={e._id}
-                  className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-lg transition-all"
+                  className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group"
                 >
-                  <div className="h-40 w-full bg-gray-200 relative">
+                  <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
                     <img
                       src={e.image || fallbackImage}
-                      className="h-full w-full object-cover"
+                      alt={e.title}
+                      className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
                     />
 
+                    {/* Event Type Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+                        {e.type}
+                      </span>
+                    </div>
+
+                    {/* Favorite Button */}
                     <button
                       onClick={() => toggleFavorite(e._id)}
-                      className="absolute top-2 right-2 p-2 bg-white rounded-full shadow"
+                      className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
                     >
                       <Heart
                         size={18}
@@ -241,21 +364,37 @@ const StudentDashboard = () => {
                         }
                       />
                     </button>
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
 
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+                  <div className="p-5">
+                    <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
                       {e.title}
                     </h3>
-                    <p className="text-sm text-[#567c8d] truncate">
-                      Type: {e.type}
-                    </p>
+
+                    <div className="space-y-2 mb-4">
+                      {e.location && (
+                        <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                          <MapPin size={16} className="flex-shrink-0" />
+                          <span className="truncate">{e.location}</span>
+                        </div>
+                      )}
+
+                      {eventDate && (
+                        <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                          <Clock size={16} className="flex-shrink-0" />
+                          <span>{eventDate}</span>
+                        </div>
+                      )}
+                    </div>
 
                     <button
-                      className="mt-4 w-full bg-[#567c8d] text-white py-2 rounded-lg hover:bg-[#45687a]"
+                      className="mt-4 w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
                       onClick={() => navigate(`/events/${e._id}`)}
                     >
-                      Details
+                      View Details
                     </button>
                   </div>
                 </div>

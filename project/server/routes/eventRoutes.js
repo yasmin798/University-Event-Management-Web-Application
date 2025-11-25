@@ -12,7 +12,6 @@ const BoothApplication = require("../models/BoothApplication");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 
-
 // Controllers
 const { register } = require("../controllers/registrationController");
 const boothController = require("../controllers/boothController");
@@ -134,7 +133,7 @@ router.post("/bazaars", async (req, res) => {
       userId: u._id,
       message: `A new bazaar was created: ${title}`,
       type: "bazaar",
-      bazaarId: bazaar._id,  // optional, you can rename to eventId later
+      bazaarId: bazaar._id, // optional, you can rename to eventId later
     }));
 
     await Notification.insertMany(notifications);
@@ -145,7 +144,6 @@ router.post("/bazaars", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
-
 
 router.put("/bazaars/:id", async (req, res) => {
   try {
@@ -409,7 +407,6 @@ router.post("/conferences", async (req, res) => {
   }
 });
 
-
 router.put("/conferences/:id", async (req, res) => {
   try {
     const {
@@ -585,59 +582,110 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     // Try to find event in any model
     let event = null;
     let attendees = [];
+    let eventType = null;
 
     // 1. Try Workshop (has registeredUsers as User refs)
     event = await Workshop.findById(id).populate(
       "registeredUsers",
       "firstName lastName email"
     );
-    if (event && event.registeredUsers) {
-      attendees = event.registeredUsers.map((u) => ({
-        name: `${u.firstName} ${u.lastName}`,
-        email: u.email,
+    if (event) {
+      eventType = "workshop";
+      attendees = (event.registeredUsers || []).map((u) => ({
+        name:
+          `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Unknown User",
+        email: u.email || "—",
       }));
     }
 
     // 2. Try Bazaar (has registrations array of objects)
     if (!attendees.length) {
-      event = await Bazaar.findById(id);
+      event = await Bazaar.findById(id).populate(
+        "registrations.userId",
+        "firstName lastName email"
+      );
       if (event && event.registrations) {
-        attendees = event.registrations.map((r) => ({
-          name: r.name || "—",
-          email: r.email || "—",
-        }));
+        eventType = "bazaar";
+        attendees = event.registrations.map((r) => {
+          // If userId is populated, use the user's name
+          if (r.userId && typeof r.userId === "object" && r.userId.firstName) {
+            return {
+              name: `${r.userId.firstName} ${r.userId.lastName}`,
+              email: r.userId.email || r.email || "—",
+            };
+          }
+          // Otherwise use the registration's name/email
+          return {
+            name: r.name || "Guest",
+            email: r.email || "—",
+          };
+        });
       }
     }
 
-    // 3. Try Trip (has registrations array)
+    // 3. Try Trip (has both registeredUsers and registrations array)
     if (!attendees.length) {
-      event = await Trip.findById(id);
-      if (event && event.registrations) {
-        attendees = event.registrations.map((r) => ({
-          name: r.name || "—",
-          email: r.email || "—",
-        }));
+      event = await Trip.findById(id).populate(
+        "registeredUsers",
+        "firstName lastName email"
+      );
+      if (event) {
+        eventType = "trip";
+        // First, add registered users (logged-in users)
+        if (event.registeredUsers && event.registeredUsers.length > 0) {
+          attendees = event.registeredUsers.map((u) => ({
+            name: `${u.firstName} ${u.lastName}`,
+            email: u.email,
+          }));
+        }
+        // Then, add guest registrations
+        if (event.registrations && event.registrations.length > 0) {
+          const guestAttendees = event.registrations.map((r) => ({
+            name: r.name || "Guest",
+            email: r.email || "—",
+          }));
+          attendees = [...attendees, ...guestAttendees];
+        }
       }
     }
 
-    // 4. Try Booth (has attendees array)
+    // 4. Try Booth (has registrations array for visitors)
     if (!attendees.length) {
-      event = await BoothApplication.findById(id);
-      if (event && event.attendees) {
-        attendees = event.attendees.map((a) => ({
-          name: a.name || "—",
-          email: a.email || "—",
-        }));
+      event = await BoothApplication.findById(id).populate(
+        "registrations.userId",
+        "firstName lastName email"
+      );
+      if (event && event.registrations) {
+        eventType = "booth";
+        attendees = event.registrations.map((r) => {
+          // If userId is populated, use the user's name
+          if (r.userId && typeof r.userId === "object" && r.userId.firstName) {
+            return {
+              name: `${r.userId.firstName} ${r.userId.lastName}`,
+              email: r.userId.email || r.email || "—",
+            };
+          }
+          // Otherwise use the registration's name/email
+          return {
+            name: r.name || "Guest",
+            email: r.email || "—",
+          };
+        });
+      }
+    }
+
+    // 5. Check if it's a Conference (should be blocked)
+    if (!event) {
+      const conferenceEvent = await Conference.findById(id);
+      if (conferenceEvent) {
+        return res
+          .status(403)
+          .json({ error: "Conferences cannot be exported" });
       }
     }
 
     if (!event || attendees.length === 0) {
       return res.status(404).json({ error: "No attendees found" });
-    }
-
-    // Block Conference
-    if (event instanceof Conference) {
-      return res.status(403).json({ error: "Conferences cannot be exported" });
     }
 
     if (format === "xlsx") {
