@@ -28,6 +28,7 @@ import EventTypeDropdown from "../components/EventTypeDropdown";
 import SearchableDropdown from "../components/SearchableDropdown";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
+import { Wallet } from "lucide-react";
 const now = new Date();
 const ProfessorDashboard = () => {
   const navigate = useNavigate();
@@ -727,6 +728,7 @@ const ProfessorDashboard = () => {
             <Heart size={20} />
             <span>Favorites</span>
           </button>
+          
 
           <button
             onClick={handleGymSessions}
@@ -746,6 +748,16 @@ const ProfessorDashboard = () => {
             <FileText size={20} />
             <span>Create Workshop</span>
           </button>
+          <button
+  onClick={() => {
+    navigate("/wallet");
+    closeSidebar();
+  }}
+  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
+>
+  <Wallet size={20} className="text-white" />
+  <span>Wallet</span>
+</button>
         </nav>
 
         <div className="p-4 m-4 border-t border-[#567c8d]">

@@ -367,7 +367,7 @@ const RegisteredEvents = () => {
       };
       fetchBalance();
     }, []);
-
+    
     // === PAYMENT HANDLER ===
     const handlePay = async (method) => {
       if (paying || alreadyPaid || !hasPrice) return;
@@ -407,6 +407,35 @@ const RegisteredEvents = () => {
         setPaying(false);
       }
     };
+    const handleRefund = async (eventId, eventType) => {
+  if (!window.confirm("Are you sure you want to request a refund? This cannot be undone.")) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:3001/api/payments/refund-event", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        eventId,
+        eventType: eventType.toLowerCase(),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert(`Refund successful! ${data.refundedAmount} EGP returned to your wallet.`);
+      window.location.reload();
+    } else {
+      alert(data.error || "Refund failed");
+    }
+  } catch (err) {
+    alert("Network error. Please try again.");
+  }
+};
 
     return (
       <div className="event-card">
@@ -449,52 +478,70 @@ const RegisteredEvents = () => {
 
           {/* PAYMENT SECTION – ONLY FOR WORKSHOPS & TRIPS WITH PRICE */}
           {hasPrice && isWorkshopOrTrip && !isPast && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-lg font-bold text-emerald-700 mb-4">
-                Registration Fee: {price} EGP
-              </p>
+  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <p className="text-lg font-bold text-emerald-700 mb-4">
+      Registration Fee: {price} EGP
+    </p>
 
-              {alreadyPaid ? (
-                <div className="text-green-600 font-bold flex items-center gap-2">
-                  Paid
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  {/* STRIPE BUTTON */}
-                  <button
-                    onClick={() => handlePay("stripe")}
-                    disabled={paying}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70"
-                  >
-                    <CreditCard size={18} />
-                    Pay with Card
-                  </button>
+    {alreadyPaid ? (
+      <div className="flex items-center gap-3">
+        <div className="text-green-600 font-bold flex items-center gap-2">
+          Paid
+        </div>
 
-                  {/* WALLET BUTTON */}
-                  <button
-                    onClick={() => handlePay("wallet")}
-                    disabled={paying || walletBalance < price}
-                    className={`font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 ${
-                      walletBalance >= price
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-gray-400 text-gray-700 cursor-not-allowed"
-                    }`}
-                  >
-                    <Wallet size={18} />
-                    Pay with Wallet ({walletBalance.toFixed(0)} EGP)
-                  </button>
-                </div>
-              )}
+        {/* REFUND BUTTON — ONLY IF 14+ DAYS AWAY */}
+        {(() => {
+          const startDate = new Date(event.startDateTime || event.startDate);
+          const twoWeeksFromNow = new Date();
+          twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+          const canRefund = startDate > twoWeeksFromNow;
 
-              {/* INSUFFICIENT BALANCE MESSAGE */}
-              {walletBalance < price && !alreadyPaid && (
-                <p className="text-xs text-red-600 mt-3">
-                  You need {(price - walletBalance).toFixed(0)} EGP more in your
-                  wallet
-                </p>
-              )}
-            </div>
-          )}
+          return canRefund ? (
+            <button
+              onClick={() => handleRefund(event._id, eventType)}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition shadow-sm"
+            >
+              Request Refund
+            </button>
+          ) : null;
+        })()}
+      </div>
+    ) : (
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* STRIPE BUTTON */}
+        <button
+          onClick={() => handlePay("stripe")}
+          disabled={paying}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70"
+        >
+          <CreditCard size={18} />
+          Pay with Card
+        </button>
+
+        {/* WALLET BUTTON */}
+        <button
+          onClick={() => handlePay("wallet")}
+          disabled={paying || walletBalance < price}
+          className={`font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 ${
+            walletBalance >= price
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+              : "bg-gray-400 text-gray-700 cursor-not-allowed"
+          }`}
+        >
+          <Wallet size={18} />
+          Pay with Wallet ({walletBalance.toFixed(0)} EGP)
+        </button>
+      </div>
+    )}
+
+    {/* INSUFFICIENT BALANCE MESSAGE */}
+    {walletBalance < price && !alreadyPaid && (
+      <p className="text-xs text-red-600 mt-3">
+        You need {(price - walletBalance).toFixed(0)} EGP more in your wallet
+      </p>
+    )}
+  </div>
+)}
 
           {/* VIEW DETAILS BUTTON */}
           <div className="event-actions mt-4">

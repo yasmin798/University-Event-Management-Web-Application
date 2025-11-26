@@ -24,6 +24,7 @@ import bazaarPlaceholder from "../images/bazaar.jpeg";
 import conferencePlaceholder from "../images/conference.jpg";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 import SearchableDropdown from "../components/SearchableDropdown";
+import { Wallet } from "lucide-react";
 
 const API_BASE = "http://localhost:3000"; // Your working backend
 
@@ -412,11 +413,22 @@ const StaffDashboard = () => {
             Polls Voting
           </button>
           <button
+  onClick={() => {
+    navigate("/wallet");
+    
+  }}
+  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+>
+  <Wallet size={20} className="text-white" />
+  <span>Wallet</span>
+</button>
+          <button
             onClick={() => window.confirm("Logout?") && navigate("/")}
             className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg"
           >
             <LogOut size={18} /> Logout
           </button>
+          
         </div>
       </div>
 

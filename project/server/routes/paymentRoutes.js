@@ -221,29 +221,61 @@ router.post("/pay-event", protect, async (req, res) => {
     }
 
     // WALLET PAYMENT
-    if (method === "wallet") {
-      const user = await User.findById(userId);
-      if ((user.walletBalance || 0) < priceEGP) {
-        return res.status(400).json({ error: "Insufficient wallet balance" });
-      }
+    // WALLET PAYMENT — FINAL BULLETPROOF VERSION
+// WALLET PAYMENT — COMPLETE & BULLETPROOF
+if (method === "wallet") {
+  // RECALCULATE PRICE HERE (IN CASE IT WAS LOST)
+  let priceInEGP;
+  if (eventType.toLowerCase() === "workshop") {
+    const budget = Number(event.requiredBudget || 0);
+    const capacity = Number(event.capacity || 1);
+    if (capacity <= 0) return res.status(400).json({ error: "Invalid capacity" });
+    priceInEGP = Math.round((budget / capacity) + 100);
+  } else {
+    priceInEGP = Number(event.price || 0);
+  }
 
-      user.walletBalance -= priceEGP;
-      await user.save();
+  const user = await User.findById(userId);
+  if ((user.walletBalance || 0) < priceInEGP) {
+    return res.status(400).json({ error: "Insufficient wallet balance" });
+  }
 
-      await WalletTransaction.create({
-        user: userId,
-        type: "payment",
-        amount: priceEGP,
-        relatedApp: eventId,
-        appModel: eventType === "workshop" ? "Workshop" : "Trip",
-      });
+  // Deduct from wallet
+  user.walletBalance -= priceInEGP;
+  await user.save();
 
-      event.paidUsers = event.paidUsers || [];
-      event.paidUsers.push(userId);
-      await event.save();
+  // CREATE TRANSACTION — NOW APPEARS IN HISTORY
+  await WalletTransaction.create({
+    user: userId,
+    type: "payment",
+    amount: priceInEGP,
+    description: `Registration - ${event.title || event.workshopName || "Event"}`,
+    relatedApp: eventId,
+    appModel: eventType === "workshop" ? "Workshop" : "Trip",
+  });
 
-      return res.json({ success: true, method: "wallet" });
-    }
+  // MARK AS PAID — BULLETPROOF
+  if (!event.paidUsers) event.paidUsers = [];
+  if (!event.paidUsers.some(id => id.toString() === userId.toString())) {
+    event.paidUsers.push(userId);
+    event.markModified("paidUsers"); // FORCES SAVE
+  }
+  await event.save();
+if (user?.email) {
+  const sendReceiptEmail = require("../utils/sendReceiptEmail");
+  await sendReceiptEmail({
+    to: user.email,
+    userName: user.name || "Student",
+    eventTitle: event.title || event.workshopName || "Event",
+    amount: priceInEGP,
+    eventType: eventType.toLowerCase(),
+    paymentMethod: "wallet",
+    isRefund: false
+  });
+}
+
+  return res.json({ success: true, method: "wallet" });
+}
 
     // STRIPE PAYMENT — NOW 100% SAFE
     if (method === "stripe") {
@@ -365,6 +397,147 @@ router.post("/confirm", async (req, res) => {
   } catch (err) {
     console.error("Payment confirm error:", err);
     res.status(500).json({ error: "Server error confirming payment" });
+  }
+});
+/* =============================================
+   REFUND EVENT (TRIP / WORKSHOP) → WALLET
+   Conditions:
+   • User has paid
+   • Event starts in 14+ days
+   • Money goes back to wallet
+   ============================================= */
+   // ADD THIS ROUTE — RIGHT AFTER YOUR OTHER ROUTES
+router.post("/confirm-event-payment-and-email", protect, async (req, res) => {
+  const { sessionId, eventId, eventType } = req.body;
+
+  if (!sessionId || !eventId || !eventType) {
+    return res.status(400).json({ error: "Missing data" });
+  }
+
+  try {
+    // 1. Verify Stripe payment
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.payment_status !== "paid") {
+      return res.status(400).json({ error: "Payment not completed" });
+    }
+
+    const userId = req.user._id;
+    const Model = eventType.toLowerCase() === "workshop" ? Workshop : Trip;
+
+    const event = await Model.findById(eventId);
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    // 2. Mark as paid (if not already)
+    if (!event.paidUsers?.some(id => id.toString() === userId.toString())) {
+      event.paidUsers.push(userId);
+      await event.save();
+    }
+
+    // 3. SEND RECEIPT EMAIL
+    const user = await User.findById(userId);
+    if (user?.email) {
+      const sendReceiptEmail = require("../utils/sendReceiptEmail");
+      await sendReceiptEmail({
+        to: user.email,
+        userName: user.name || "Student",
+        eventTitle: event.title || event.workshopName || "Event",
+        amount: session.amount_total / 100, // Stripe gives in halalas
+        eventType: eventType.toLowerCase(),
+        paymentMethod: "card",
+        isRefund: false
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Card payment confirm + email error:", err);
+    res.status(500).json({ error: "Failed" });
+  }
+});
+router.post("/refund-event", protect, async (req, res) => {
+  const { eventId, eventType } = req.body;
+  const userId = req.user._id;
+
+  if (!eventId || !eventType || !["trip", "workshop"].includes(eventType.toLowerCase())) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const Model = eventType.toLowerCase() === "workshop" ? Workshop : Trip;
+    const event = await Model.findById(eventId);
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    // 1. Must be paid
+    const userPaid = event.paidUsers?.some(id => id.toString() === userId.toString());
+    if (!userPaid) {
+      return res.status(400).json({ error: "You have not paid for this event" });
+    }
+
+    // 2. Event must start 14+ days from now
+    const startDate = new Date(event.startDateTime || event.startDate);
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+
+    if (startDate <= twoWeeksFromNow) {
+      return res.status(400).json({ error: "Refund not allowed: event starts in less than 14 days" });
+    }
+
+    // 3. Calculate exact refund amount (same logic as payment)
+    let refundAmount = 0;
+    if (eventType.toLowerCase() === "workshop") {
+      const budget = Number(event.requiredBudget || 0);
+      const capacity = Number(event.capacity || 1);
+      refundAmount = Math.round((budget / capacity) + 100);
+    } else {
+      refundAmount = Number(event.price || 0);
+    }
+
+    if (refundAmount <= 0) {
+      return res.status(400).json({ error: "No refundable amount" });
+    }
+
+    // 4. Refund to wallet
+    const user = await User.findById(userId);
+    user.walletBalance += refundAmount;
+    await user.save();
+
+    // 5. Record refund transaction
+    await WalletTransaction.create({
+      user: userId,
+      type: "refund",
+      amount: refundAmount,
+      description: `Refund – ${event.title || event.workshopName || "Event"}`,
+      relatedApp: eventId,
+      appModel: eventType === "workshop" ? "Workshop" : "Trip",
+    });
+
+    // 6. Remove from paidUsers AND registeredUsers
+event.paidUsers = event.paidUsers.filter(id => id.toString() !== userId.toString());
+event.registeredUsers = event.registeredUsers.filter(id => id.toString() !== userId.toString());
+await event.save();
+// After WalletTransaction.create(...) and before return res.json(...)
+if (user?.email) {
+  const sendReceiptEmail = require("../utils/sendReceiptEmail");
+  await sendReceiptEmail({
+    to: user.email,
+    userName: user.name || "Student",
+    eventTitle: event.title || event.workshopName || "Event",
+    amount: refundAmount,
+    eventType: eventType.toLowerCase(),
+    paymentMethod: "wallet",
+    isRefund: true
+  });
+}
+    return res.json({
+      success: true,
+      message: "Refund successful",
+      refundedAmount: refundAmount,
+    });
+
+  } catch (err) {
+    console.error("Refund error:", err);
+    return res.status(500).json({ error: "Refund failed" });
   }
 });
 module.exports = router;

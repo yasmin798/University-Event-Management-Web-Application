@@ -103,36 +103,46 @@ export default function WalletPage() {
           ) : (
             <div className="space-y-4">
               {transactions.map((tx) => (
-                <div
-                  key={tx._id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition"
-                >
-                  <div className="flex items-center gap-4">
-                    {tx.type === "topup" ? (
-                      <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <ArrowUpRight className="text-emerald-600" />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                        <ArrowDownRight className="text-red-600" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium text-gray-800 capitalize">{tx.type}</p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(tx.createdAt).toLocaleDateString("en-GB")}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-xl font-bold ${
-                      tx.type === "topup" ? "text-emerald-600" : "text-red-600"
-                    }`}
-                  >
-                    {tx.type === "topup" ? "+" : "-"}{tx.amount.toFixed(2)} EGP
-                  </span>
-                </div>
-              ))}
+  <div
+    key={tx._id}
+    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition"
+  >
+    <div className="flex items-center gap-4">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center">
+  {tx.type === "topup" || tx.type === "refund" ? (
+    <div className="bg-emerald-100">
+      <ArrowUpRight className="text-emerald-600" />
+    </div>
+  ) : (
+    <div className="bg-red-100">
+      <ArrowDownRight className="text-red-600" />
+    </div>
+  )}
+</div>
+      <div>
+        <p className="font-medium text-gray-800">
+          {tx.type === "topup" 
+            ? "Wallet Top-Up" 
+            : tx.description || "Event Registration"}
+        </p>
+        <p className="text-sm text-gray-500">
+          {new Date(tx.createdAt).toLocaleDateString("en-GB")} 
+          {tx.description && " • Event Payment"}
+        </p>
+      </div>
+    </div>
+    <span
+  className={`text-xl font-bold ${
+    tx.type === "topup" || tx.type === "refund" 
+      ? "text-emerald-600" 
+      : "text-red-600"
+  }`}
+>
+  {tx.type === "topup" || tx.type === "refund" ? "+" : "-"}
+  {tx.amount.toFixed(2)} EGP
+</span>
+  </div>
+))}
             </div>
           )}
         </div>

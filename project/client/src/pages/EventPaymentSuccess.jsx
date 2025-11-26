@@ -24,15 +24,15 @@ export default function EventPaymentSuccess() {
     const confirmPayment = async () => {
       try {
         await axios.post(
-          "http://localhost:3001/api/payments/confirm-event-payment",
-          { sessionId, eventId, eventType },
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+  "http://localhost:3001/api/payments/confirm-event-payment-and-email",
+  { sessionId, eventId, eventType },
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      "Content-Type": "application/json",
+    },
+  }
+);
         console.log("Payment confirmed & user marked as paid");
       } catch (err) {
         console.error("Confirmation failed (still redirecting):", err);
