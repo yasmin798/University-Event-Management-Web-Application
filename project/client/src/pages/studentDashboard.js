@@ -71,7 +71,15 @@ const StudentDashboard = () => {
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
         const res = await fetch(`${API}/api/events/all?${params}`);
         const data = await res.json();
-        setAllEvents(res.ok ? data : []);
+        if (res.ok) {
+  const cleanData = data.filter(
+    (e) => e.status?.toLowerCase() !== "archived"
+  );
+  setAllEvents(cleanData);
+} else {
+  setAllEvents([]);
+}
+
       } catch (err) {
         console.error(err);
         setAllEvents([]);
