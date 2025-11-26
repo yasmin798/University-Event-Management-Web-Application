@@ -261,11 +261,17 @@ const ProfessorDashboard = () => {
   // });
 
   const filteredEvents = allEvents
-    .filter((e) => {
-      if (e.type === "BOOTH") return true; // always show booths
-      const eventDate = new Date(e.startDateTime || e.startDate || e.date);
-      return eventDate > now; // Only future events
-    })
+  .filter((e) => {
+    // Hide archived events
+    if (e.status === "archived") return false;
+
+    // Always show booths
+    if (e.type === "BOOTH") return true;
+
+    // Show all non-archived events (past + future)
+    return true;
+  })
+
     .filter((e) => {
       const name = e.title || e.name || e.workshopName || e.bazaarName;
       const matchesSearch =
