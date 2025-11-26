@@ -28,6 +28,7 @@ import StudentDashboard from "./pages/studentDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import TaDashboard from "./pages/TaDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import EventPaymentSuccess from "./pages/EventPaymentSuccess.jsx";
 
 // Events pages
 import EventsHome from "./pages/EventsHome";
@@ -189,6 +190,7 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/event-payment-success" element={<EventPaymentSuccess />} />
         {/* Courts */}
         <Route
           path="/courts-availability"

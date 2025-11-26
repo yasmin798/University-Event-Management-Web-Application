@@ -8,6 +8,8 @@ const BoothApplication = require("../models/BoothApplication");
 const { protect } = require("../middleware/auth");
 const Trip = require("../models/Trips");     // <-- ADD THIS LINE
 const Workshop = require("../models/Workshop");
+const User = require("../models/User");
+const WalletTransaction = require("../models/WalletTransaction"); // ← you probably already have this
 
 /* --------------------------------------------
    PRICE LOGIC (MIRROR OF FRONTEND LOGIC)
@@ -48,6 +50,7 @@ function calculatePrice(app, type) {
 /* --------------------------------------------
    CREATE STRIPE CHECKOUT SESSION
 ---------------------------------------------*/
+
 router.post("/create-session", async (req, res) => {
   const { applicationId, type } = req.body;
 
@@ -132,7 +135,36 @@ router.post("/create-session", async (req, res) => {
    CONFIRM STRIPE PAYMENT
 ---------------------------------------------*/
 // server/routes/paymentRoutes.js – ADD THIS
+/* CONFIRM EVENT PAYMENT — ONLY FOR TRIPS & WORKSHOPS */
+router.post("/confirm-event-payment", protect, async (req, res) => {
+  const { sessionId, eventId, eventType } = req.body;
 
+  if (!sessionId || !eventId || !eventType) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.payment_status !== "paid") {
+      return res.status(400).json({ error: "Payment not completed" });
+    }
+
+    const userId = req.user._id;
+    const Model = eventType.toLowerCase() === "workshop" ? Workshop : Trip;
+
+    await Model.findByIdAndUpdate(
+      eventId,
+      { $addToSet: { paidUsers: userId } },
+      { new: true }
+    );
+
+    console.log(`EVENT PAID: ${eventType} ${eventId} by user ${userId}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Event payment confirm error:", err);
+    res.status(500).json({ error: "Confirmation failed" });
+  }
+});
 /* --------------------------------------------
    PAY EVENT (TRIPS + WORKSHOPS) — FIXED & SAFE
 ---------------------------------------------*/
@@ -228,7 +260,7 @@ router.post("/pay-event", protect, async (req, res) => {
           quantity: 1,
         }],
         mode: "payment",
-        success_url: `${process.env.CLIENT_URL}/registered-events?paid=success`,
+        success_url: `${process.env.CLIENT_URL}/event-payment-success?session_id={CHECKOUT_SESSION_ID}&eventId=${eventId}&eventType=${eventType}`,
         cancel_url: `${process.env.CLIENT_URL}/registered-events?paid=cancel`,
         metadata: {
           userId: userId.toString(),
