@@ -60,6 +60,8 @@ import AdminAttendeesReport from "./pages/AdminAttendeesReport";
 import SalesReport from "./pages/SalesReport";
 import AdminSalesReport from "./pages/AdminSalesReport";
 import AdminAllEvents from "./pages/AdminAllEvents";
+import AdminVendorBooths from "./pages/AdminVendorBooths";
+
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
 import ReserveCourt from "./pages/ReserveCourt";
@@ -116,6 +118,8 @@ function App() {
         />
         <Route path="/admin/events" element={<AdminAllEvents />} />
         <Route path="/admin/vendor-requests" element={<AdminVendor />} />
+        <Route path="/admin/vendor-requests-booths" element={<AdminVendorBooths />} />
+
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
