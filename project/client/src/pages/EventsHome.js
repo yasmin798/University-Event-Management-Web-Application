@@ -1,8 +1,16 @@
 // client/src/pages/EventsHome.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Calendar } from "lucide-react";
+import {
+  Search,
+  Calendar,
+  MapPin,
+  Users,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import NotificationsDropdown from "../components/NotificationsDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
@@ -80,6 +88,8 @@ export default function EventsHome() {
   const bellRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [filter, setFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -490,7 +500,8 @@ export default function EventsHome() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        const errorMsg = errorData.error || errorData.message || "Export failed";
+        const errorMsg =
+          errorData.error || errorData.message || "Export failed";
         setToast({ open: true, text: errorMsg });
         return;
       }
@@ -500,9 +511,9 @@ export default function EventsHome() {
       if (contentType && contentType.includes("application/json")) {
         const data = await res.json();
         if (data.attendees && data.attendees.length === 0) {
-          setToast({ 
-            open: true, 
-            text: "📋 No registrations found for this event yet" 
+          setToast({
+            open: true,
+            text: "📋 No registrations found for this event yet",
           });
           return;
         }
@@ -687,6 +698,23 @@ export default function EventsHome() {
   };
 
   /* ----------------------------------------------------
+   EXTRACT UNIQUE LOCATIONS AND PROFESSORS
+  ---------------------------------------------------- */
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
+
+  /* ----------------------------------------------------
    1) FIRST: FILTER EVENTS
   ---------------------------------------------------- */
   const filteredEvents = allEvents
@@ -703,6 +731,16 @@ export default function EventsHome() {
         professors.includes(term) ||
         location.includes(term);
 
+      // Exact match for location filter
+      const matchLocation =
+        !searchLocation || (ev.location || "") === searchLocation;
+
+      // Exact match for professor filter
+      const matchProfessor =
+        !professorFilter ||
+        (ev.professorsParticipating || "") === professorFilter ||
+        (ev.facultyResponsible || "") === professorFilter;
+
       const matchType = filter === "All" || ev.type === filter;
       const startDate = ev.startDateTime || ev.startDate || ev.date;
       const matchDate =
@@ -710,7 +748,9 @@ export default function EventsHome() {
         (startDate &&
           new Date(startDate).toISOString().slice(0, 10) === debouncedDate);
 
-      return matchSearch && matchType && matchDate;
+      return (
+        matchSearch && matchLocation && matchProfessor && matchType && matchDate
+      );
     })
     .sort((a, b) => {
       const dateA = new Date(a.startDateTime || a.startDate || a.date);
@@ -806,7 +846,7 @@ export default function EventsHome() {
               />
               <input
                 type="text"
-                placeholder="Title, professor, location"
+                placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -818,6 +858,29 @@ export default function EventsHome() {
                 }}
               />
             </div>
+
+            <div style={{ width: "160px" }}>
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={searchLocation}
+                onChange={setSearchLocation}
+                placeholder="All Locations"
+                label="Location"
+                icon={MapPin}
+              />
+            </div>
+
+            <div style={{ width: "160px" }}>
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="All Professors"
+                label="Professor"
+                icon={Users}
+              />
+            </div>
+
             <input
               type="date"
               value={dateFilter}
@@ -838,14 +901,23 @@ export default function EventsHome() {
               style={{
                 padding: "6px 10px",
                 borderRadius: "10px",
-                border: "1px solid rgba(47,65,86,0.2)",
-                background: "white",
+                border: "none",
+                background: "#567c8d",
+                color: "white",
                 fontSize: "13px",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
-              Sort {sortOrder === "asc" ? "Oldest" : "Newest"}
+              {sortOrder === "asc" ? (
+                <ArrowUp size={16} />
+              ) : (
+                <ArrowDown size={16} />
+              )}
+              {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
 
@@ -1359,14 +1431,14 @@ export default function EventsHome() {
 
                         {/* Export Excel — only for published workshops and NOT archived */}
                         {ev.status === "published" && (
-                            <button
-                              className="btn"
-                              style={{ background: "#c88585", color: "white" }}
-                              onClick={() => exportAttendees(id, "workshops")}
-                            >
-                              Export Excel
-                            </button>
-                          )}
+                          <button
+                            className="btn"
+                            style={{ background: "#c88585", color: "white" }}
+                            onClick={() => exportAttendees(id, "workshops")}
+                          >
+                            Export Excel
+                          </button>
+                        )}
 
                         {/* ARCHIVED badge */}
                         {ev.status === "archived" && (
