@@ -185,6 +185,28 @@ const RegisteredEvents = () => {
   useEffect(() => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
   }, [activeEventType]); */
+
+  // Combine all events for filter options
+  const allEventsArray = React.useMemo(() => {
+    return [...events.upcoming, ...events.past];
+  }, [events]);
+
+  // Extract unique locations
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEventsArray
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEventsArray]);
+
+  // Extract unique professors
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEventsArray
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEventsArray]);
+
   if (error) return <p className="my-events-error">{error}</p>;
   const getEventDate = (event) => {
     return event.startDateTime || event.startDate || event.date || new Date();
@@ -236,27 +258,6 @@ const RegisteredEvents = () => {
     navigate(`/events/${event._id}`);
   };
 
-  // Combine all events for filter options
-  const allEventsArray = React.useMemo(() => {
-    return [...events.upcoming, ...events.past];
-  }, [events]);
-
-  // Extract unique locations
-  const uniqueLocations = React.useMemo(() => {
-    const locations = allEventsArray
-      .map((e) => e.location)
-      .filter((loc) => loc && loc.trim() !== "");
-    return [...new Set(locations)].sort();
-  }, [allEventsArray]);
-
-  // Extract unique professors
-  const uniqueProfessors = React.useMemo(() => {
-    const professors = allEventsArray
-      .map((e) => e.professorsParticipating || e.facultyResponsible)
-      .filter((prof) => prof && prof.trim() !== "");
-    return [...new Set(professors)].sort();
-  }, [allEventsArray]);
-
   const filterEvents = (eventList) => {
     return eventList.filter((event) => {
       // Unified search across name, location, and professor
@@ -273,7 +274,8 @@ const RegisteredEvents = () => {
           .includes(searchTerm.toLowerCase());
 
       // Exact match for location filter
-      const matchesLocation = !searchLocation || (event.location || "") === searchLocation;
+      const matchesLocation =
+        !searchLocation || (event.location || "") === searchLocation;
 
       // Exact match for professor filter
       const matchesProfessor =
@@ -297,7 +299,13 @@ const RegisteredEvents = () => {
           return eventDate.toDateString() === filterDate.toDateString();
         })();
 
-      return matchesSearch && matchesLocation && matchesProfessor && matchesCategory && matchesDate;
+      return (
+        matchesSearch &&
+        matchesLocation &&
+        matchesProfessor &&
+        matchesCategory &&
+        matchesDate
+      );
     });
   };
 
@@ -313,187 +321,194 @@ const RegisteredEvents = () => {
   const filteredPast = sortEvents(filterEvents(events.past));
 
   const EventCard = ({ event, isPast = false }) => {
-  const [paying, setPaying] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const navigate = useNavigate();
+    const [paying, setPaying] = useState(false);
+    const [walletBalance, setWalletBalance] = useState(0);
+    const navigate = useNavigate();
 
-  // === GET CURRENT USER ID FROM JWT (safe & reliable) ===
-  const getCurrentUserId = () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return null;
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      return payload.id || payload._id || null;
-    } catch {
-      return null;
-    }
-  };
-  const currentUserId = getCurrentUserId();
-
-  // === NORMALIZE EVENT TYPE & PRICE ===
-  const eventType = (event.type || "").toString().trim().toLowerCase();
-  const isWorkshopOrTrip = eventType === "workshop" || eventType === "trip";
-
-  const price = Number(event.price || 0);           // "150" → 150, null → 0
-  const hasPrice = price > 0;
-
-  const alreadyPaid = currentUserId
-    ? event.paidUsers?.some((id) => id.toString() === currentUserId)
-    : false;
-
-  // === FETCH WALLET BALANCE ONCE ===
-  useEffect(() => {
-    const fetchBalance = async () => {
+    // === GET CURRENT USER ID FROM JWT (safe & reliable) ===
+    const getCurrentUserId = () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:3001/api/wallet/balance", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setWalletBalance(data.walletBalance || 0);
-        }
-      } catch (err) {
-        console.log("Wallet balance fetch failed");
+        if (!token) return null;
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.id || payload._id || null;
+      } catch {
+        return null;
       }
     };
-    fetchBalance();
-  }, []);
+    const currentUserId = getCurrentUserId();
 
-  // === PAYMENT HANDLER ===
-  const handlePay = async (method) => {
-    if (paying || alreadyPaid || !hasPrice) return;
-    setPaying(true);
+    // === NORMALIZE EVENT TYPE & PRICE ===
+    const eventType = (event.type || "").toString().trim().toLowerCase();
+    const isWorkshopOrTrip = eventType === "workshop" || eventType === "trip";
 
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3001/api/payments/pay-event", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          eventId: event._id,
-          eventType: eventType, // already lowercase
-          method, // "stripe" or "wallet"
-        }),
-      });
+    const price = Number(event.price || 0); // "150" → 150, null → 0
+    const hasPrice = price > 0;
 
-      const data = await res.json();
+    const alreadyPaid = currentUserId
+      ? event.paidUsers?.some((id) => id.toString() === currentUserId)
+      : false;
 
-      if (method === "stripe" && data.url) {
-        window.location.href = data.url;
-      } else if (data.success) {
-        alert(`Paid ${price} EGP from wallet!`);
-        window.location.reload();
-      } else {
-        alert(data.error || "Payment failed");
+    // === FETCH WALLET BALANCE ONCE ===
+    useEffect(() => {
+      const fetchBalance = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch("http://localhost:3001/api/wallet/balance", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setWalletBalance(data.walletBalance || 0);
+          }
+        } catch (err) {
+          console.log("Wallet balance fetch failed");
+        }
+      };
+      fetchBalance();
+    }, []);
+
+    // === PAYMENT HANDLER ===
+    const handlePay = async (method) => {
+      if (paying || alreadyPaid || !hasPrice) return;
+      setPaying(true);
+
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          "http://localhost:3001/api/payments/pay-event",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              eventId: event._id,
+              eventType: eventType, // already lowercase
+              method, // "stripe" or "wallet"
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (method === "stripe" && data.url) {
+          window.location.href = data.url;
+        } else if (data.success) {
+          alert(`Paid ${price} EGP from wallet!`);
+          window.location.reload();
+        } else {
+          alert(data.error || "Payment failed");
+        }
+      } catch (err) {
+        alert("Network error. Try again.");
+      } finally {
+        setPaying(false);
       }
-    } catch (err) {
-      alert("Network error. Try again.");
-    } finally {
-      setPaying(false);
-    }
-  };
+    };
 
-  return (
-    <div className="event-card">
-      {/* IMAGE & OVERLAYS */}
-      <div
-        className="event-image"
-        style={{ backgroundImage: `url(${getEventImage(event.type)})` }}
-      >
-        <div className="event-category">{event.type || "Event"}</div>
-        <div className="event-date">
-          {new Date(getEventDate(event)).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          })}
-        </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleFavorite(event._id);
-          }}
-          className="favorite-btn"
+    return (
+      <div className="event-card">
+        {/* IMAGE & OVERLAYS */}
+        <div
+          className="event-image"
+          style={{ backgroundImage: `url(${getEventImage(event.type)})` }}
         >
-          <Heart
-            size={20}
-            fill={favorites.includes(event._id) ? "#ef4444" : "none"}
-            color={favorites.includes(event._id) ? "#ef4444" : "#666"}
-          />
-        </button>
-      </div>
-
-      {/* CONTENT */}
-      <div className="event-content">
-        <h3 className="event-title">{getEventTitle(event)}</h3>
-        <p className="event-organizer text-sm text-gray-600">
-          by {event.professorsParticipating || event.facultyResponsible || "GUC Events"}
-        </p>
-
-        {/* PAYMENT SECTION – ONLY FOR WORKSHOPS & TRIPS WITH PRICE */}
-        {hasPrice && isWorkshopOrTrip && !isPast && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-lg font-bold text-emerald-700 mb-4">
-              Registration Fee: {price} EGP
-            </p>
-
-            {alreadyPaid ? (
-              <div className="text-green-600 font-bold flex items-center gap-2">
-                Paid
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-3">
-                {/* STRIPE BUTTON */}
-                <button
-                  onClick={() => handlePay("stripe")}
-                  disabled={paying}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70"
-                >
-                  <CreditCard size={18} />
-                  Pay with Card
-                </button>
-
-                {/* WALLET BUTTON */}
-                <button
-                  onClick={() => handlePay("wallet")}
-                  disabled={paying || walletBalance < price}
-                  className={`font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 ${
-                    walletBalance >= price
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                      : "bg-gray-400 text-gray-700 cursor-not-allowed"
-                  }`}
-                >
-                  <Wallet size={18} />
-                  Pay with Wallet ({walletBalance.toFixed(0)} EGP)
-                </button>
-              </div>
-            )}
-
-            {/* INSUFFICIENT BALANCE MESSAGE */}
-            {walletBalance < price && !alreadyPaid && (
-              <p className="text-xs text-red-600 mt-3">
-                You need {(price - walletBalance).toFixed(0)} EGP more in your wallet
-              </p>
-            )}
+          <div className="event-category">{event.type || "Event"}</div>
+          <div className="event-date">
+            {new Date(getEventDate(event)).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
           </div>
-        )}
-
-        {/* VIEW DETAILS BUTTON */}
-        <div className="event-actions mt-4">
           <button
-            className="btn-primary w-full"
-            onClick={() => handleViewDetails(event)}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavorite(event._id);
+            }}
+            className="favorite-btn"
           >
-            View Details
+            <Heart
+              size={20}
+              fill={favorites.includes(event._id) ? "#ef4444" : "none"}
+              color={favorites.includes(event._id) ? "#ef4444" : "#666"}
+            />
           </button>
         </div>
+
+        {/* CONTENT */}
+        <div className="event-content">
+          <h3 className="event-title">{getEventTitle(event)}</h3>
+          <p className="event-organizer text-sm text-gray-600">
+            by{" "}
+            {event.professorsParticipating ||
+              event.facultyResponsible ||
+              "GUC Events"}
+          </p>
+
+          {/* PAYMENT SECTION – ONLY FOR WORKSHOPS & TRIPS WITH PRICE */}
+          {hasPrice && isWorkshopOrTrip && !isPast && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-lg font-bold text-emerald-700 mb-4">
+                Registration Fee: {price} EGP
+              </p>
+
+              {alreadyPaid ? (
+                <div className="text-green-600 font-bold flex items-center gap-2">
+                  Paid
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* STRIPE BUTTON */}
+                  <button
+                    onClick={() => handlePay("stripe")}
+                    disabled={paying}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70"
+                  >
+                    <CreditCard size={18} />
+                    Pay with Card
+                  </button>
+
+                  {/* WALLET BUTTON */}
+                  <button
+                    onClick={() => handlePay("wallet")}
+                    disabled={paying || walletBalance < price}
+                    className={`font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 ${
+                      walletBalance >= price
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : "bg-gray-400 text-gray-700 cursor-not-allowed"
+                    }`}
+                  >
+                    <Wallet size={18} />
+                    Pay with Wallet ({walletBalance.toFixed(0)} EGP)
+                  </button>
+                </div>
+              )}
+
+              {/* INSUFFICIENT BALANCE MESSAGE */}
+              {walletBalance < price && !alreadyPaid && (
+                <p className="text-xs text-red-600 mt-3">
+                  You need {(price - walletBalance).toFixed(0)} EGP more in your
+                  wallet
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* VIEW DETAILS BUTTON */}
+          <div className="event-actions mt-4">
+            <button
+              className="btn-primary w-full"
+              onClick={() => handleViewDetails(event)}
+            >
+              View Details
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
   return (
     <div className="flex h-screen bg-[#f5efeb]">
       {userRole === "student" ? (
@@ -543,16 +558,16 @@ const RegisteredEvents = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Search by name, location, or professor..."
+                    placeholder="Search events..."
                     className="search-input"
-                    style={{ paddingLeft: "40px", minWidth: "350px" }}
+                    style={{ paddingLeft: "40px" }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
                 {/* Location Dropdown Filter */}
-                <div style={{ width: "200px" }}>
+                <div style={{ width: "160px", flexShrink: 0 }}>
                   <SearchableDropdown
                     options={uniqueLocations}
                     value={searchLocation}
@@ -564,7 +579,7 @@ const RegisteredEvents = () => {
                 </div>
 
                 {/* Professor Dropdown Filter */}
-                <div style={{ width: "200px" }}>
+                <div style={{ width: "160px", flexShrink: 0 }}>
                   <SearchableDropdown
                     options={uniqueProfessors}
                     value={professorFilter}
@@ -576,7 +591,14 @@ const RegisteredEvents = () => {
                 </div>
 
                 {/* Filter by Date */}
-                <div className="search-box" style={{ position: "relative" }}>
+                <div
+                  className="search-box"
+                  style={{
+                    position: "relative",
+                    width: "160px",
+                    flexShrink: 0,
+                  }}
+                >
                   <Calendar
                     size={18}
                     style={{
@@ -621,7 +643,11 @@ const RegisteredEvents = () => {
                 </button>
 
                 {/* Clear All Filters Button */}
-                {(searchTerm || searchLocation || professorFilter || dateFilter || activeEventType !== "all") && (
+                {(searchTerm ||
+                  searchLocation ||
+                  professorFilter ||
+                  dateFilter ||
+                  activeEventType !== "all") && (
                   <button
                     className="search-btn"
                     onClick={() => {
