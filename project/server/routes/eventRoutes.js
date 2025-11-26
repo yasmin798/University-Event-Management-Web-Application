@@ -478,6 +478,7 @@ router.get("/all", async (req, res) => {
       search,
       type,
       location,
+      professor,
       date,
       sort = "startDateTime",
       order = "asc",
@@ -490,18 +491,38 @@ router.get("/all", async (req, res) => {
     // don't store a `type` field. Instead use `type` to decide which
     // models to query.
     const typeUpper = type ? type.toUpperCase() : null;
-    if (location) query.location = new RegExp(location, "i");
+    if (location)
+      query.location = new RegExp(
+        `^${location.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        "i"
+      );
+    if (professor) {
+      query.$or = query.$or || [];
+      query.$or.push(
+        { professorsParticipating: new RegExp(professor, "i") },
+        { facultyResponsible: new RegExp(professor, "i") }
+      );
+    }
 
     if (search) {
       const regex = new RegExp(search, "i");
-      query.$or = [
+      const searchConditions = [
         { title: regex },
         { name: regex },
         { workshopName: regex },
         { professorsParticipating: regex },
+        { facultyResponsible: regex },
         { description: regex },
         { shortDescription: regex },
       ];
+
+      if (query.$or) {
+        // If professor filter exists, combine with AND logic
+        query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+        delete query.$or;
+      } else {
+        query.$or = searchConditions;
+      }
     }
 
     if (date) {
