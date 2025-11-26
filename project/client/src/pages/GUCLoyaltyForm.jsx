@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import {
@@ -29,6 +29,8 @@ const GUCLoyaltyForm = () => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+const [existingParticipation, setExistingParticipation] = useState(null);
+const [loadingParticipation, setLoadingParticipation] = useState(true);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,6 +81,37 @@ const GUCLoyaltyForm = () => {
       setIsLoading(false);
     }
   };
+useEffect(() => {
+  const loadParticipation = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get("http://localhost:3001/api/loyalty/my", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setExistingParticipation(res.data[0] || null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingParticipation(false);
+    }
+  };
+
+  loadParticipation();
+}, []);
+
+
+const handleCancelParticipation = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    await axios.delete("http://localhost:3001/api/loyalty/cancel", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setExistingParticipation(null); // reset to show the form again
+  } catch (err) {
+    setError("Could not cancel participation.");
+  }
+};
+
 
   const handleCancel = () => navigate("/vendors");
 
@@ -148,7 +181,29 @@ const GUCLoyaltyForm = () => {
               </p>
             </div>
           </div>
+{loadingParticipation ? (
+  <p>Loading...</p>
+) : existingParticipation ? (
+  // ===== SHOW PARTICIPATION DETAILS =====
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <h2 className="text-2xl font-bold mb-4">Your Loyalty Program Participation</h2>
 
+    <p><strong>Company:</strong> {existingParticipation.companyName}</p>
+    <p><strong>Discount:</strong> {existingParticipation.discountRate}%</p>
+    <p><strong>Promo Code:</strong> {existingParticipation.promoCode}</p>
+    <p><strong>Terms:</strong></p>
+    <pre className="bg-gray-100 p-3 rounded">{existingParticipation.termsAndConditions}</pre>
+
+    <button
+      onClick={handleCancelParticipation}
+      className="mt-6 py-3 px-6 bg-red-500 text-white rounded-xl"
+    >
+      Cancel Participation
+    </button>
+  </div>
+) : (
+  // ===== SHOW THE ORIGINAL FORM =====
+  <form className="p-6 lg:p-8" onSubmit={handleSubmit}>
           {/* Application Form */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-6 py-4">
@@ -158,7 +213,7 @@ const GUCLoyaltyForm = () => {
               </p>
             </div>
 
-            <form className="p-6 lg:p-8" onSubmit={handleSubmit}>
+            
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Company Name */}
                 <div className="lg:col-span-2">
@@ -314,17 +369,21 @@ const GUCLoyaltyForm = () => {
                   )}
                 </button>
               </div>
-            </form>
+            
           </div>
-
+   </form>
+               )}
           {/* Additional Info */}
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">
               Application review typically takes 2-3 business days. You will be
               notified via email once approved.
             </p>
+            
           </div>
+
         </div>
+        
       </main>
     </div>
   );
