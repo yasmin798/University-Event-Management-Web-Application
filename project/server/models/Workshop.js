@@ -45,7 +45,10 @@ const workshopSchema = new mongoose.Schema(
 
     // ADD THIS: Reviews array
     reviews: [reviewSchema],
-
+    paidUsers: [{
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+}],
     // ADD THIS: Allowed roles for registration (empty array = open to all)
     allowedRoles: {
       type: [String],

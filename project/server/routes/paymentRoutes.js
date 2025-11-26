@@ -5,6 +5,9 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require("nodemailer");
 const BazaarApplication = require("../models/BazaarApplication");
 const BoothApplication = require("../models/BoothApplication");
+const { protect } = require("../middleware/auth");
+const Trip = require("../models/Trips");     // <-- ADD THIS LINE
+const Workshop = require("../models/Workshop");
 
 /* --------------------------------------------
    PRICE LOGIC (MIRROR OF FRONTEND LOGIC)
@@ -89,33 +92,42 @@ router.post("/create-session", async (req, res) => {
     const amount = priceEGP * 100; // Stripe requires cents
 
     // CREATE STRIPE SESSION
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+    // SAFELY calculate price in cents (handles workshops + trips)
+let priceInEGP;
 
-      line_items: [
-        {
-          price_data: {
-            currency: "egp",
-            product_data: {
-              name: title,
-              description: `Application ID: ${applicationId}`,
-            },
-            unit_amount: amount,
-          },
-          quantity: 1,
-        },
-      ],
+if (eventType.toLowerCase() === "workshop") {
+  const budget = Number(event.requiredBudget || 0);
+  const capacity = Number(event.capacity || 1);
+  priceInEGP = capacity > 0 ? Math.round((budget / capacity) + 100) : 0;
+} else {
+  priceInEGP = Number(event.price || 0);
+}
 
-      mode: "payment",
+if (priceInEGP <= 0) {
+  return res.status(400).json({ error: "Event has no price or price is zero" });
+}
 
-      success_url: `${process.env.CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}&appId=${applicationId}&type=${type}`,
-      cancel_url: `${process.env.CLIENT_URL}/payment/cancel`,
-
-      metadata: {
-        applicationId,
-        type,
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["card"],
+  line_items: [{
+    price_data: {
+      currency: "egp",
+      product_data: { 
+        name: `${event.title || event.workshopName || "Event"} – Registration Fee` 
       },
-    });
+      unit_amount: Math.round(priceInEGP * 100),   // NOW 100% SAFE
+    },
+    quantity: 1,
+  }],
+  mode: "payment",
+  success_url: `${process.env.CLIENT_URL}/registered-events?paid=success`,
+  cancel_url: `${process.env.CLIENT_URL}/registered-events?paid=cancel`,
+  metadata: {
+    userId: userId.toString(),
+    eventId,
+    eventType,
+  },
+});
 
     return res.json({ url: session.url });
 
@@ -128,6 +140,108 @@ router.post("/create-session", async (req, res) => {
 /* --------------------------------------------
    CONFIRM STRIPE PAYMENT
 ---------------------------------------------*/
+// server/routes/paymentRoutes.js – ADD THIS
+
+router.post("/pay-event", protect, async (req, res) => {
+  const { eventId, eventType, method } = req.body;
+
+  if (!eventId || !eventType || !method) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  try {
+    let event;
+    if (eventType.toLowerCase() === "workshop") {
+      // CRITICAL: include requiredBudget and capacity
+      event = await Workshop.findById(eventId).select("+requiredBudget +capacity +paidUsers +title");
+    } else if (eventType.toLowerCase() === "trip") {
+      event = await Trip.findById(eventId).select("+price +paidUsers +title");
+    } else {
+      return res.status(400).json({ error: "Only workshop and trip supported" });
+    }
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    // === CALCULATE PRICE SAFELY ===
+    let priceInEGP;
+
+    if (eventType.toLowerCase() === "workshop") {
+      const budget = Number(event.requiredBudget || 0);
+      const capacity = Number(event.capacity || 1);
+      if (capacity <= 0) return res.status(400).json({ error: "Invalid workshop capacity" });
+      priceInEGP = Math.round((budget / capacity) + 100);
+    } else {
+      priceInEGP = Number(event.price || 0);
+    }
+
+    if (priceInEGP <= 0) {
+      return res.status(400).json({ error: "Event has no price" });
+    }
+
+    const userId = req.user._id;
+
+    // Check if already paid
+    if (event.paidUsers?.includes(userId)) {
+      return res.status(400).json({ error: "Already paid" });
+    }
+
+    // === WALLET PAYMENT ===
+    if (method === "wallet") {
+      const user = await User.findById(userId);
+      if ((user.walletBalance || 0) < priceInEGP) {
+        return res.status(400).json({ error: "Insufficient wallet balance" });
+      }
+
+      user.walletBalance -= priceInEGP;
+      await user.save();
+
+      await WalletTransaction.create({
+        user: userId,
+        type: "payment",
+        amount: priceInEGP,
+        relatedApp: eventId,
+        appModel: eventType === "workshop" ? "Workshop" : "Trip",
+      });
+
+      event.paidUsers = event.paidUsers || [];
+      event.paidUsers.push(userId);
+      await event.save();
+
+      return res.json({ success: true, method: "wallet" });
+    }
+
+    // === STRIPE PAYMENT ===
+    if (method === "stripe") {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "egp",
+            product_data: {
+              name: `${event.title || event.workshopName || "Event"} – Registration Fee`,
+            },
+            unit_amount: Math.round(priceInEGP * 100), // NOW GUARANTEED TO BE A NUMBER
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${process.env.CLIENT_URL}/registered-events?paid=success`,
+        cancel_url: `${process.env.CLIENT_URL}/registered-events?paid=cancel`,
+        metadata: {
+          userId: userId.toString(),
+          eventId,
+          eventType,
+        },
+      });
+
+      return res.json({ url: session.url });
+    }
+
+  } catch (err) {
+    console.error("Event payment error:", err);
+    res.status(500).json({ error: "Payment failed" });
+  }
+});
 router.post("/confirm", async (req, res) => {
   const { sessionId, appId, type } = req.body;
 

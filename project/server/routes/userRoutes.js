@@ -95,6 +95,7 @@ router.get("/me/registered-events", protect, async (req, res) => {
         ],
       }),
       Workshop.find({ registeredUsers: userId }),
+      
       // Conferences also use `registrations` to record signups
       Conference.find({
         $or: [
@@ -125,7 +126,17 @@ router.get("/me/registered-events", protect, async (req, res) => {
         doc.createdAt ||
         new Date().toISOString();
       const fallbackEnd = doc.endDateTime || doc.endDate || fallbackStart;
+      let calculatedPrice = 0;
 
+  // SPECIAL CASE: WORKSHOPS — price is calculated
+  if (type === "workshop") {
+    const budget = Number(doc.requiredBudget || 0);
+    const capacity = Number(doc.capacity || 1); // avoid division by zero
+    calculatedPrice = capacity > 0 ? Math.round((budget / capacity) + 100) : 0;
+  } else {
+    // All other events (trips, bazaars, etc.) use normal price field
+    calculatedPrice = Number(doc.price || 0);
+  }
       // Prefer attendee names for booths when available
       let title =
         doc.title ||
@@ -158,6 +169,9 @@ router.get("/me/registered-events", protect, async (req, res) => {
         location: doc.location || doc.venue || "TBD",
         startDateTime: fallbackStart,
         endDateTime: fallbackEnd,
+        price: calculatedPrice,           // ← forces price to be a number
+    paidUsers: doc.paidUsers || [],          // ← includes paid users array
+    professorsParticipating: doc.professorsParticipating || doc.facultyResponsible || "",
       };
     };
 
