@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 import {
   Search,
   Menu,
@@ -38,7 +39,7 @@ const ProfessorDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Fixed sidebar is rendered via ProfessorSidebar component
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
@@ -411,8 +412,8 @@ const ProfessorDashboard = () => {
     setFilteredWorkshops(results);
   }, [debouncedSearch, workshops]);
 
-  const closeSidebar = () => setIsSidebarOpen(false);
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => {};
+  const toggleSidebar = () => {};
   const closeModal = () => setSelectedWorkshop(null);
 
   // 🔔 Notifications state
@@ -484,14 +485,8 @@ const ProfessorDashboard = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {/* Overlay for Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeSidebar}
-        ></div>
-      )}
+    <div className="events-theme flex min-h-screen bg-[#f5efeb] ml-[260px]">
+      <ProfessorSidebar />
 
       {/* Workshop Details Modal */}
       {selectedWorkshop && (
@@ -674,120 +669,14 @@ const ProfessorDashboard = () => {
         </div>
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`
-        fixed inset-y-0 left-0 z-50
-        w-64 bg-[#2f4156] text-white flex flex-col
-        transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 hover:bg-[#567c8d] rounded-lg transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4">
-          <button
-            onClick={() => {
-              navigate("/professor/dashboard");
-              closeSidebar();
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-[#567c8d] text-white mb-2"
-          >
-            <Menu size={20} />
-            <span>Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => {
-              navigate("/professor/workshops");
-              closeSidebar();
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
-          >
-            <Calendar size={20} />
-            <span>Workshops</span>
-          </button>
-
-          <button
-            onClick={handleRegisteredEvents}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
-          >
-            <Users size={20} />
-            <span>Registered Events</span>
-          </button>
-
-          <button
-            onClick={handleFavorites}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
-          >
-            <Heart size={20} />
-            <span>Favorites</span>
-          </button>
-          
-
-          <button
-            onClick={handleGymSessions}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
-          >
-            <Calendar size={20} />
-            <span>Gym Sessions</span>
-          </button>
-
-          <button
-            onClick={() => {
-              navigate("/professor/workshops/create");
-              closeSidebar();
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
-          >
-            <FileText size={20} />
-            <span>Create Workshop</span>
-          </button>
-          <button
-  onClick={() => {
-    navigate("/wallet");
-    closeSidebar();
-  }}
-  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#567c8d] mb-2 transition-colors"
->
-  <Wallet size={20} className="text-white" />
-  <span>Wallet</span>
-</button>
-        </nav>
-
-        <div className="p-4 m-4 border-t border-[#567c8d]">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
+      {/* Fixed sidebar injected; content area continues below */}
 
       {/* Main Section */}
       <div className="flex-1 overflow-auto">
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1">
-              <button
-                onClick={toggleSidebar}
-                className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-              >
-                <Menu size={24} className="text-[#2f4156]" />
-              </button>
+              {/* Sidebar is fixed; menu button removed */}
 
               <div className="relative flex-1 max-w-md">
                 <Search

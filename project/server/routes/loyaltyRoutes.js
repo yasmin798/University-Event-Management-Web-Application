@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const LoyaltyApplication = require("../models/LoyaltyApplication");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 const { protect, adminOnly } = require("../middleware/auth");
 
 // Vendor submits a new loyalty application
@@ -19,7 +21,25 @@ router.post("/apply", protect, async (req, res) => {
       discountRate,
       promoCode,
       termsAndConditions,
+      status: "accepted", // Auto-approve vendor applications
     });
+
+    // Create notifications for all verified, active students and professors about the new partner
+    try {
+      const recipients = await User.find({ role: { $in: ["student", "professor"] }, status: "active", isVerified: true }).select("_id");
+      if (recipients.length) {
+        const message = `New GUC Loyalty Partner: ${companyName} — ${discountRate}% off. Promo: ${promoCode}`;
+        const payloads = recipients.map((u) => ({
+          userId: u._id,
+          message,
+          type: "loyalty",
+          unread: true,
+        }));
+        await Notification.insertMany(payloads);
+      }
+    } catch (nerr) {
+      console.error("Failed to notify students about new loyalty partner:", nerr);
+    }
 
     res.status(201).json(app);
   } catch (err) {
@@ -69,19 +89,33 @@ router.get("/my", protect, async (req, res) => {
 });
 
 
-// // Public: list all approved vendors
-// router.get("/approved", async (_req, res) => {
-//   try {
-//     const apps = await LoyaltyApplication.find({ status: "accepted" }).populate(
-//       "vendor",
-//       "companyName"
-//     );
-//     res.json(apps);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: "Server error fetching approved vendors" });
-//   }
-// });
+// Public: list all approved vendors for students
+router.get("/approved", async (req, res) => {
+  try {
+    const { status } = req.query; // optional: 'accepted' | 'pending' | 'all'
+    
+    // One-time migration: update any pending applications to accepted
+    await LoyaltyApplication.updateMany(
+      { status: { $in: ["pending", null, undefined] } },
+      { $set: { status: "accepted" } }
+    );
+    
+    const filter =
+      status === "all"
+        ? { status: { $in: ["accepted", "pending"] } }
+        : status === "pending"
+        ? { status: "pending" }
+        : { status: "accepted" };
+
+    const apps = await LoyaltyApplication.find(filter)
+      .select("companyName discountRate promoCode termsAndConditions status")
+      .lean();
+    res.json(apps);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error fetching approved vendors" });
+  }
+});
 // Vendor: cancel participation
 router.delete("/cancel", protect, async (req, res) => {
   try {

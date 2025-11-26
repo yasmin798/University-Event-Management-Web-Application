@@ -62,6 +62,10 @@ export default function StudentSidebar() {
           navigate("/poll-voting")
         )}
 
+        {navBtn("Loyalty Partners", <Store size={18} />, () =>
+          navigate("/student/loyalty-vendors")
+        )}
+
         {navBtn("Wallet", <User size={18} />, () => navigate("/wallet"))}
       </nav>
 

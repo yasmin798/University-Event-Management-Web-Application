@@ -66,7 +66,7 @@ const [loadingParticipation, setLoadingParticipation] = useState(true);
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        "http://localhost:3001/api/loyalty/apply",
+        "/api/loyalty/apply",
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -85,7 +85,7 @@ useEffect(() => {
   const loadParticipation = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:3001/api/loyalty/my", {
+      const res = await axios.get("/api/loyalty/my", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setExistingParticipation(res.data[0] || null);
@@ -103,7 +103,7 @@ useEffect(() => {
 const handleCancelParticipation = async () => {
   try {
     const token = localStorage.getItem("token");
-    await axios.delete("http://localhost:3001/api/loyalty/cancel", {
+    await axios.delete("/api/loyalty/cancel", {
       headers: { Authorization: `Bearer ${token}` },
     });
     setExistingParticipation(null); // reset to show the form again

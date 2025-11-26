@@ -117,6 +117,19 @@ export default function FixedSidebarAdmin() {
         </button>
 
         <button
+          onClick={() => navigate("/admin/loyalty-vendors")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+            ${
+              isActive("/admin/loyalty-vendors")
+                ? "bg-white/15"
+                : "hover:bg-white/5"
+            }`}
+        >
+          <Store size={18} />
+          <span>GUC Loyalty Partners</span>
+        </button>
+
+        <button
   onClick={() => navigate("/admin/vendor-requests-booths")}
   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
     ${isActive("/admin/vendor-requests-booths") ? "bg-white/15" : "hover:bg-white/5"}`}

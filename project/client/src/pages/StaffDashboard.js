@@ -16,6 +16,7 @@ import {
   Users,
   ArrowUp,
   ArrowDown,
+  Store,
 } from "lucide-react";
 
 import workshopPlaceholder from "../images/workshop.png";
@@ -411,6 +412,16 @@ const StaffDashboard = () => {
           >
             <CheckCircle size={18} />
             Polls Voting
+          </button>
+          <button
+            onClick={() => {
+              navigate("/staff/loyalty-vendors");
+              setIsSidebarOpen(false);
+            }}
+            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+          >
+            <Store size={18} />
+            Loyalty Partners
           </button>
           <button
   onClick={() => {

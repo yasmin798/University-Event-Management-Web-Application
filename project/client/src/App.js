@@ -61,6 +61,9 @@ import SalesReport from "./pages/SalesReport";
 import AdminSalesReport from "./pages/AdminSalesReport";
 import AdminAllEvents from "./pages/AdminAllEvents";
 import AdminVendorBooths from "./pages/AdminVendorBooths";
+import StudentLoyaltyVendors from "./pages/StudentLoyaltyVendors";
+import ProfessorLoyaltyVendors from "./pages/ProfessorLoyaltyVendors";
+import AdminLoyaltyVendors from "./pages/AdminLoyaltyVendors";
 
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
@@ -121,12 +124,15 @@ function App() {
         <Route path="/admin/vendor-requests-booths" element={<AdminVendorBooths />} />
 
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/student/loyalty-vendors" element={<StudentLoyaltyVendors />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/ta/dashboard" element={<TaDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/loyalty-vendors" element={<AdminLoyaltyVendors />} />
         {/* 👨‍🏫 Professor & Workshop */}
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
+        <Route path="/professor/loyalty-vendors" element={<ProfessorLoyaltyVendors />} />
         <Route path="/professor/workshops" element={<WorkshopsListPage />} />
         <Route
           path="/professor/workshops/create"
