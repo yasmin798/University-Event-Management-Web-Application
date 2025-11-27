@@ -91,7 +91,7 @@ import AdminVendor from "./pages/AdminVendor";
 import WorkshopParticipants from "./pages/WorkshopParticipants";
 import WorkshopEditsPage from "./pages/WorkshopEditsPage";
 import WalletPage from "./pages/WalletPage";
-
+import WorkshopAttendance from './pages/WorkshopAttendance'; 
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -231,6 +231,8 @@ function App() {
           element={<WorkshopEditsPage />}
         />{" "}
         <Route path="/create-poll" element={<CreatePoll />} />
+                <Route path="/professor/workshops/attendance/:workshopId" element={<WorkshopAttendance />} />
+
         <Route path="/poll-voting" element={<PollVoting />} />{" "}
         <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}

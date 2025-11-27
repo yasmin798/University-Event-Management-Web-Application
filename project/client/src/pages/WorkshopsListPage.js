@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo for dynamic locations
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Calendar, MapPin, Users, Clock, UserCheck } from 'lucide-react'; // Added UserCheck for participants btn
+import { ArrowLeft, Plus, Edit, Trash2, Calendar, MapPin, Users, Clock, UserCheck, CheckCircle } from 'lucide-react'; // Added CheckCircle for attendance btn
 import { workshopAPI } from '../api/workshopApi';
 import ProfessorSidebar from '../components/ProfessorSidebar';
 
@@ -237,10 +237,18 @@ const WorkshopsListPage = () => {
           <div className="grid gap-6">
             {filteredWorkshops.map((workshop) => {
               const registeredCount = workshop.registeredUsers?.length || 0; // Added: For spots calc
+              const attendedCount = workshop.attendedUsers?.length || 0; // NEW: Attended count
               const remainingSpots = (workshop.capacity || 0) - registeredCount;
               const isMyWorkshop = workshop.createdBy === currentProfessorId; // Renamed for clarity
               const wsId = workshop._id.toString();
               const hasEdits = editRequests[wsId] && editRequests[wsId].length > 0; // New: Check for edits
+
+              // NEW: Date computations for attendance eligibility
+              const currentDate = new Date();
+              const startDate = new Date(workshop.startDateTime);
+              const endDate = new Date(workshop.endDateTime);
+              const isPast = currentDate > endDate;
+              const isOngoing = currentDate >= startDate && currentDate < endDate;
 
               return (
                 <div
@@ -263,6 +271,25 @@ const WorkshopsListPage = () => {
                           title={`View ${registeredCount} registered students`}
                         >
                           <UserCheck size={18} />
+                        </button>
+                      )}
+                      {/* NEW: Attendance/Certificate button - only for my past/ongoing published workshops */}
+                      {isMyWorkshop && workshop.status === "published" && (isPast || isOngoing) && (
+                        <button
+                          onClick={() => navigate(`/professor/workshops/attendance/${workshop._id}`)}
+                          className={`p-2 rounded-lg transition-colors text-xs flex items-center gap-1 ${
+                            isPast && attendedCount === 0 ? 'bg-yellow-500 hover:bg-yellow-600 text-white' :
+                            isPast && attendedCount > 0 ? 'bg-green-500 hover:bg-green-600 text-white' :
+                            isOngoing ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+                          }`}
+                          title={
+                            isPast && attendedCount === 0 ? "Mark attendance & send certificates" :
+                            isPast && attendedCount > 0 ? `View ${attendedCount} certificates sent` :
+                            isOngoing ? "Edit attendance list" : "Not available yet"
+                          }
+                        >
+                          <CheckCircle size={16} />
+                          {isPast && attendedCount > 0 && <span className="text-xs">{attendedCount}</span>}
                         </button>
                       )}
                       {/* UPDATED: Edits button for EVERY workshop tab/card (my workshops only; always visible, with conditional styling) */}
@@ -314,10 +341,12 @@ const WorkshopsListPage = () => {
                       <Clock size={16} />
                       <span>{formatTime(workshop.startDateTime)} - {formatTime(workshop.endDateTime)}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm font-medium"> {/* Updated: Dynamic spots */}
+                    <div className="flex items-center gap-2 text-sm font-medium"> {/* Updated: Dynamic spots with attended */}
                       <Users size={16} className={remainingSpots <= 5 ? "text-red-500" : "text-[#567c8d]"} />
                       <span className={remainingSpots <= 5 ? "text-red-600" : "text-[#567c8d]"}>
-                        {registeredCount}/{workshop.capacity} ({remainingSpots} left)
+                        {registeredCount}/{workshop.capacity} registered 
+                        {attendedCount > 0 && ` | ${attendedCount} attended`}
+                        ({remainingSpots} left)
                       </span>
                     </div>
                   </div>
