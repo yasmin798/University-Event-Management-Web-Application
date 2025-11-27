@@ -104,8 +104,8 @@ exports.getWorkshopById = async (req, res) => {
   try {
     console.log('Fetching workshop by ID:', req.params.id);
     const workshop = await Workshop.findById(req.params.id)
-      .populate('registeredUsers', 'name email role') // UPDATED: Populate registeredUsers with name, email, role
-      .populate('createdBy', 'name'); // Optional: for ownership check
+      .populate('registeredUsers', 'name email role') // FIXED: Use 'name' (based on logs showing email/role but no name/fullName)
+      .populate('createdBy', 'name'); // FIXED: Use 'name'
     if (!workshop) {
       console.log('Workshop not found');
       return res.status(404).json({ error: "Workshop not found" });
@@ -164,9 +164,9 @@ exports.updateWorkshop = async (req, res) => {
             // If array of ObjectIds
             additionalProfs = updated.professorsParticipating.filter(id => id.toString() !== originalWorkshop.createdBy.toString());
           } else if (typeof updated.professorsParticipating === 'string') {
-            // If comma-separated names, lookup by fullName in User
+            // If comma-separated names, lookup by name in User
             const profNames = updated.professorsParticipating.split(',').map(name => name.trim()).filter(name => name);
-            const users = await User.find({ fullName: { $in: profNames }, role: "professor" }, '_id');
+            const users = await User.find({ name: { $in: profNames }, role: "professor" }, '_id'); // FIXED: Use 'name' for lookup
             additionalProfs = users.map(u => u._id);
           }
           professorIds = [...new Set([...professorIds, ...additionalProfs])];  // Dedupe
@@ -253,9 +253,9 @@ exports.getOtherWorkshops = async (req, res) => {
 exports.getParticipants = async (req, res) => {
   try {
     const workshop = await Workshop.findById(req.params.id)
-      .populate('registeredUsers', 'name email role')
-      .populate('attendedUsers', 'name email role')
-      .populate('createdBy', 'name'); // For ownership check
+      .populate('registeredUsers', 'name email role') // FIXED: Use 'name'
+      .populate('attendedUsers', 'name email role') // FIXED: Use 'name'
+      .populate('createdBy', 'name'); // FIXED: Use 'name'
 
     if (!workshop) {
       return res.status(404).json({ message: 'Workshop not found' });
@@ -285,7 +285,7 @@ exports.sendCertificates = async (req, res) => {
       return res.status(400).json({ message: 'No users selected' });
     }
 
-    const workshop = await Workshop.findById(req.params.id).populate('createdBy', 'name');
+    const workshop = await Workshop.findById(req.params.id).populate('createdBy', 'name'); // FIXED: Use 'name'
 
     if (!workshop) {
       return res.status(404).json({ message: 'Workshop not found' });
@@ -316,7 +316,7 @@ exports.sendCertificates = async (req, res) => {
     const attendedObjs = []; // To push to attendedUsers
 
     for (const userIdStr of attendedUserIds) {
-      const user = await User.findById(userIdStr).select('name email role');
+      const user = await User.findById(userIdStr).select('name email role'); // FIXED: Use 'name'
       if (!user) continue; // Skip invalid
 
       // Generate PDF certificate
@@ -331,9 +331,9 @@ exports.sendCertificates = async (req, res) => {
           from: process.env.EMAIL_USER,
           to: user.email,
           subject: `Certificate of Attendance: ${workshop.workshopName}`,
-          text: `Dear ${user.name},\n\nYou have successfully completed the workshop "${workshop.workshopName}" on ${new Date(workshop.startDateTime).toLocaleDateString()}.\n\nPlease find your certificate attached.\n\nBest regards,\nWorkshop Team`,
+          text: `Dear ${user.name},\n\nYou have successfully completed the workshop "${workshop.workshopName}" on ${new Date(workshop.startDateTime).toLocaleDateString()}.\n\nPlease find your certificate attached.\n\nBest regards,\nWorkshop Team`, // FIXED: Use 'name'
           attachments: [{
-            filename: `Certificate_${workshop.workshopName}_${user.name.replace(/\s+/g, '_')}.pdf`,
+            filename: `Certificate_${workshop.workshopName}_${user.name.replace(/\s+/g, '_')}.pdf`, // FIXED: Use 'name'
             content: pdfBuffer,
           }],
         });
@@ -342,7 +342,7 @@ exports.sendCertificates = async (req, res) => {
       // Build PDF content (simple template)
       doc.fontSize(20).text('Certificate of Attendance', 100, 100);
       doc.fontSize(12).text(`This certifies that`, 100, 150);
-      doc.fontSize(16).text(user.name, 100, 170);
+      doc.fontSize(16).text(user.name, 100, 170); // FIXED: Use 'name'
       doc.text(`${user.role.toUpperCase()}`, 100, 190);
       doc.text(`has attended and completed the workshop`, 100, 220);
       doc.fontSize(18).text(workshop.workshopName, 100, 240);
@@ -363,7 +363,7 @@ exports.sendCertificates = async (req, res) => {
     await workshop.save();
 
     // Repopulate for response
-    await workshop.populate('attendedUsers', 'name email role');
+    await workshop.populate('attendedUsers', 'name email role'); // FIXED: Use 'name'
 
     res.json({
       message: `Certificates sent to ${attendedUserIds.length} users`,
@@ -397,11 +397,11 @@ exports.requestEdits = async (req, res) => {
     const professorId = new mongoose.Types.ObjectId(createdByStr); // Convert string to ObjectId
 
     // Find the professor using the ObjectId
-    const professor = await User.findById(professorId);
+    const professor = await User.findById(professorId).select('name email'); // FIXED: Use 'name'
     if (!professor) {
       console.warn(`Professor not found for ID: ${createdByStr}`);
       // Optional: Fallback to admin
-      const admin = await User.findOne({ role: "admin" });
+      const admin = await User.findOne({ role: "admin" }).select('email'); // FIXED: Select email
       if (!admin) {
         return res.status(500).json({ error: "No professor or admin found to receive edit request" });
       }

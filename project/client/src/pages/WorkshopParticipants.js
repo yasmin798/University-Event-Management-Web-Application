@@ -24,6 +24,8 @@ export default function WorkshopParticipants() {
         }
 
         const data = await res.json();
+        console.log('Fetched workshop data:', data); // NEW: Debug log to check populated fields
+        console.log('Registered users:', data.registeredUsers); // NEW: Log the users array
         setWorkshop(data);
         setParticipants(data.registeredUsers || []); // Retrieved & populated from model
       } catch (err) {
@@ -129,19 +131,22 @@ export default function WorkshopParticipants() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#c8d9e6]">
-                  {participants.map((student, index) => (
-                    <tr key={student._id || index} className="hover:bg-[#f5efeb]">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2f4156]">
-                        {student.fullName || "Unknown Student"} {/* UPDATED: Use fullName instead of name */}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#567c8d]">
-                        {student.email || "No email"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#567c8d]">
-                        {formatDate(student.createdAt || new Date())} {/* Fallback if no reg date */}
-                      </td>
-                    </tr>
-                  ))}
+                  {participants.map((student, index) => {
+                    console.log('Student data:', student); // NEW: Log each student to check fields
+                    return (
+                      <tr key={student._id || index} className="hover:bg-[#f5efeb]">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2f4156]">
+                          {student.fullName || student.name || "Unknown Student"} {/* UPDATED: Fallback to name if fullName missing */}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#567c8d]">
+                          {student.email || "No email"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#567c8d]">
+                          {formatDate(student.createdAt || new Date())} {/* Fallback if no reg date */}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
