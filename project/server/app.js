@@ -39,6 +39,9 @@ const reviewsRouter = require("./routes/reviews"); // or whatever the file is ca
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 
+const { startEventReminderLoop } = require("./jobs/eventReminderLoop");
+
+
 // Models
 const User = require("./models/User");
 
@@ -151,7 +154,12 @@ app.post("/api/loyalty/apply", protect, async (req, res) => {
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
 mongoose
   .connect(MONGO)
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+
+    // 🔔 Start the event reminder background loop **after** DB is ready
+    startEventReminderLoop();
+  })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 /* ---------------- Helper: Send Verification Email ---------------- */
@@ -531,6 +539,9 @@ app.use((err, _req, res, _next) => {
 
 // app.js or server.js – put it with your other routes
 app.use("/api/polls", require("./routes/pollRoutes"));
+
+
+
 
 /* ---------------- Start ---------------- */
 const PORT = process.env.PORT || 3001;
