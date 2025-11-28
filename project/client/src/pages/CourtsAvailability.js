@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import StudentSidebar from "../components/StudentSidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
+import StaffSidebar from "../components/StaffSidebar";
 
 // Image imports (make sure these files exist in the correct path)
 import footballImg from "../images/football.webp";
@@ -63,6 +65,19 @@ const courtImages = {
 // Component
 export default function CourtsAvailability() {
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUserRole((payload.role || "student").toLowerCase());
+      } catch (e) {
+        setUserRole("student");
+      }
+    }
+  }, []);
 
   const handleBack = () => {
     navigate("/student/dashboard");
@@ -70,7 +85,13 @@ export default function CourtsAvailability() {
 
   return (
     <div className="flex min-h-screen bg-[#f5efeb]">
-      <StudentSidebar />
+      {!userRole ? null : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : userRole === "staff" ? (
+        <StaffSidebar />
+      ) : (
+        <StudentSidebar />
+      )}
       <div className="flex-1 p-8" style={{ marginLeft: "260px" }}>
         <div className="max-w-4xl mx-auto">
           <div

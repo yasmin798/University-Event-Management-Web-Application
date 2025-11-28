@@ -2,30 +2,29 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
-  Menu,
   Bell,
   User,
-  LogOut,
-  Calendar,
-  Map,
-  Heart,
   Star,
   MessageCircle,
-  CheckCircle,
   MapPin,
   Users,
   ArrowUp,
   ArrowDown,
-  Store,
+  Clock,
+  TrendingUp,
+  Calendar,
+  Heart,
 } from "lucide-react";
 
 import workshopPlaceholder from "../images/workshop.png";
-import tripPlaceholder from "../images/trip.jpeg";
-import bazaarPlaceholder from "../images/bazaar.jpeg";
-import conferencePlaceholder from "../images/conference.jpg";
+import boothPlaceholder from "../images/booth.jpg";
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 import SearchableDropdown from "../components/SearchableDropdown";
-import { Wallet } from "lucide-react";
+import StaffSidebar from "../components/StaffSidebar";
 
 const API_BASE = "http://localhost:3000"; // Your working backend
 
@@ -36,7 +35,7 @@ const StaffDashboard = () => {
   const [searchLocation, setSearchLocation] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState("");
   const [favorites, setFavorites] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
   const [serverLoading, setServerLoading] = useState(true);
@@ -120,6 +119,7 @@ const StaffDashboard = () => {
           params.append("professor", debouncedProfessorFilter);
         if (eventTypeFilter && eventTypeFilter !== "All")
           params.append("type", eventTypeFilter);
+        if (dateFilter) params.append("date", dateFilter);
         params.append("sort", "startDateTime");
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
@@ -143,6 +143,7 @@ const StaffDashboard = () => {
     eventTypeFilter,
     debouncedSearchLocation,
     debouncedProfessorFilter,
+    dateFilter,
     sortOrder,
   ]);
 
@@ -246,8 +247,7 @@ const StaffDashboard = () => {
   };
 
   const handleDetails = (event) => {
-    setSelectedEvent(event);
-    loadReviews(event._id);
+    navigate(`/events/${event._id}`);
   };
 
   useEffect(() => {
@@ -340,134 +340,31 @@ const StaffDashboard = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar & Header — unchanged (your existing code) */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Your existing sidebar */}
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
-        <div className="flex-1 px-4 mt-4 space-y-2">
-          <button
-            onClick={() => {
-              navigate("/events/registered");
-              setIsSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"
-          >
-            <Calendar size={18} /> Registered Events
-          </button>
-          <button
-            onClick={() => {
-              navigate("/favorites");
-              setIsSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"
-          >
-            <Heart size={18} /> Favorites
-          </button>
-          <button
-            onClick={() => {
-              navigate("/courts-availability");
-              setIsSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"
-          >
-            <Map size={18} /> Courts Availability
-          </button>
-          <button
-            onClick={() => {
-              navigate("/gym-sessions-register");
-              setIsSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg"
-          >
-            <Calendar size={18} /> Gym Sessions
-          </button>
-          <button
-            onClick={() => {
-              navigate("/poll-voting");
-              setIsSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
-          >
-            <CheckCircle size={18} />
-            Polls Voting
-          </button>
-          <button
-            onClick={() => {
-              navigate("/staff/loyalty-vendors");
-              setIsSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
-          >
-            <Store size={18} />
-            Loyalty Partners
-          </button>
-          <button
-  onClick={() => {
-    navigate("/wallet");
-    
-  }}
-  className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
->
-  <Wallet size={20} className="text-white" />
-  <span>Wallet</span>
-</button>
-          <button
-            onClick={() => window.confirm("Logout?") && navigate("/")}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg"
-          >
-            <LogOut size={18} /> Logout
-          </button>
-          
-        </div>
-      </div>
+    <div className="events-theme flex min-h-screen bg-[#f5efeb] ml-[260px]">
+      {/* ---- FIXED SIDEBAR ---- */}
+      <StaffSidebar />
 
-      <div className="flex-1 overflow-auto">
+      {/* ---- MAIN CONTENT ---- */}
+      <div className="flex-1 flex flex-col overflow-auto bg-[#f5efeb]">
         {/* Header */}
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 hover:bg-[#f5efeb] rounded-lg"
-          >
-            <Menu size={24} className="text-[#2f4156]" />
-          </button>
-          <div className="flex-1 flex items-center gap-4">
-            <div className="relative flex-[3]">
+          {/* Search + Filters */}
+          <div className="flex flex-col md:flex-row gap-2 flex-1 mx-4">
+            <div className="relative md:w-40">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
-                size={22}
+                size={18}
               />
               <input
                 type="text"
                 placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg focus:ring-2 focus:ring-[#567c8d]"
+                className="w-full pl-11 pr-4 py-2 text-base border border-[#c8d9e6] rounded-lg"
               />
             </div>
 
-            <div className="w-48">
+            <div className="md:w-40">
               <SearchableDropdown
                 options={uniqueLocations}
                 value={searchLocation}
@@ -478,7 +375,7 @@ const StaffDashboard = () => {
               />
             </div>
 
-            <div className="w-48">
+            <div className="md:w-40">
               <SearchableDropdown
                 options={uniqueProfessors}
                 value={professorFilter}
@@ -493,35 +390,39 @@ const StaffDashboard = () => {
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}
             />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-4 py-2 border border-[#c8d9e6] rounded-lg"
+            />
 
             <button
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
-              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg hover:bg-[#45687a] flex items-center gap-2"
+              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg whitespace-nowrap flex items-center gap-2"
             >
               {sortOrder === "asc" ? (
                 <ArrowUp size={18} />
               ) : (
                 <ArrowDown size={18} />
               )}
-              {sortOrder === "asc" ? "Newest" : "Oldest"}
+              {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
+
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
-                >
-                  <Bell size={20} className="text-[#567c8d]" />
-
-                  {notifications.some((n) => n.unread) && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
+              >
+                <Bell size={20} className="text-[#567c8d]" />
+                {notifications.some((n) => n.unread) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
+              </button>
             </div>
 
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
@@ -529,11 +430,11 @@ const StaffDashboard = () => {
             </div>
           </div>
         </header>
-        {/* Dropdown */}
+
+        {/* Notifications Dropdown */}
         {showNotifications && (
           <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
             <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
-
             {notifications.length === 0 ? (
               <p className="text-sm text-[#567c8d]">No notifications yet.</p>
             ) : (
@@ -553,70 +454,191 @@ const StaffDashboard = () => {
           </div>
         )}
 
+        {/* Main Content */}
         <main className="p-4 md:p-8">
-          <h1 className="text-3xl font-bold text-[#2f4156] mb-6">
-            Available Events
-          </h1>
-          {filteredEvents.length === 0 ? (
-            <p className="text-[#567c8d]">No upcoming events found.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredEvents.map((e) => (
-                <div
-                  key={e._id}
-                  className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  <div className="h-48 relative">
-                    <img
-                      src={
-                        e.image ||
-                        (e.type === "TRIP"
-                          ? tripPlaceholder
-                          : e.type === "BAZAAR"
-                          ? bazaarPlaceholder
-                          : e.type === "CONFERENCE"
-                          ? conferencePlaceholder
-                          : workshopPlaceholder)
-                      }
-                      alt={e.title || "Event"}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        toggleFavorite(e._id);
-                      }}
-                      className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md"
-                    >
-                      <Heart
-                        size={18}
-                        className={
-                          favorites.includes(e._id)
-                            ? "fill-red-500 text-red-500"
-                            : "text-gray-600"
-                        }
-                      />
-                    </button>
+          {/* Header Section with Stats */}
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-[#2f4156] mb-2">
+                  Discover Events
+                </h1>
+                <p className="text-[#567c8d]">
+                  Explore and review campus events
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate("/favorites")}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-[#c8d9e6] rounded-xl hover:border-red-300 hover:bg-red-50 transition-all group shadow-sm"
+              >
+                <Heart
+                  size={20}
+                  className={
+                    favorites.length > 0
+                      ? "fill-red-500 text-red-500"
+                      : "text-[#567c8d] group-hover:text-red-500"
+                  }
+                />
+                <span className="font-medium text-[#2f4156]">My Favorites</span>
+                {favorites.length > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {favorites.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-600 font-medium mb-1">
+                      Total Events
+                    </p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      {filteredEvents.length}
+                    </p>
                   </div>
-                  <div className="p-5">
-                    <h3 className="font-bold text-lg text-[#2f4156]">
-                      {e.title || e.name || "Untitled Event"}
-                    </h3>
-                    <p className="text-sm text-[#567c8d] mt-1">
-                      Type: {e.type || "N/A"}
-                    </p>
-                    <p className="text-sm text-[#567c8d]">
-                      Date: {formatEventDate(e.startDateTime || e.startDate)}
-                    </p>
-                    <button
-                      onClick={() => handleDetails(e)}
-                      className="mt-4 w-full bg-[#567c8d] hover:bg-[#45687a] text-white py-3 rounded-lg font-medium transition-colors"
-                    >
-                      View Details & Review
-                    </button>
+                  <div className="bg-blue-200 p-3 rounded-lg">
+                    <Calendar size={24} className="text-blue-700" />
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-purple-600 font-medium mb-1">
+                      Favorites
+                    </p>
+                    <p className="text-2xl font-bold text-purple-900">
+                      {favorites.length}
+                    </p>
+                  </div>
+                  <div className="bg-purple-200 p-3 rounded-lg">
+                    <Heart size={24} className="text-purple-700" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-green-600 font-medium mb-1">
+                      Event Types
+                    </p>
+                    <p className="text-2xl font-bold text-green-900">
+                      {
+                        new Set(
+                          filteredEvents.map((e) => e.type).filter(Boolean)
+                        ).size
+                      }
+                    </p>
+                  </div>
+                  <div className="bg-green-200 p-3 rounded-lg">
+                    <TrendingUp size={24} className="text-green-700" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Events Grid */}
+          {filteredEvents.length === 0 ? (
+            <p className="text-center text-[#567c8d] text-lg py-12">
+              No events found matching your criteria.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredEvents.map((e) => {
+                let cardImage = workshopImg;
+                if (e.type === "TRIP") cardImage = tripImg;
+                if (e.type === "BAZAAR") cardImage = bazaarImg;
+                if (e.type === "CONFERENCE") cardImage = conferenceImg;
+                if (e.type === "WORKSHOP") cardImage = workshopImg;
+                if (e.type === "BOOTH") cardImage = boothPlaceholder;
+
+                const fallbackImage = cardImage;
+
+                // Format date
+                const eventDate = e.startDateTime
+                  ? new Date(e.startDateTime).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "";
+
+                return (
+                  <div
+                    key={e._id}
+                    className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group"
+                  >
+                    <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+                      <img
+                        src={e.image || fallbackImage}
+                        alt={e.title}
+                        className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                      />
+
+                      {/* Event Type Badge */}
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+                          {e.type}
+                        </span>
+                      </div>
+
+                      {/* Favorite Button */}
+                      <button
+                        onClick={() => toggleFavorite(e._id)}
+                        className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
+                      >
+                        <Heart
+                          size={18}
+                          className={
+                            favorites.includes(e._id)
+                              ? "fill-red-500 text-red-500"
+                              : "text-gray-600"
+                          }
+                        />
+                      </button>
+
+                      {/* Gradient Overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+                    </div>
+
+                    <div className="p-5">
+                      <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
+                        {e.title || e.name || "Untitled Event"}
+                      </h3>
+
+                      <div className="space-y-2 mb-4">
+                        {e.location && (
+                          <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                            <MapPin size={16} className="flex-shrink-0" />
+                            <span className="truncate">{e.location}</span>
+                          </div>
+                        )}
+
+                        {eventDate && (
+                          <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                            <Clock size={16} className="flex-shrink-0" />
+                            <span>{eventDate}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        className="mt-4 w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
+                        onClick={() => handleDetails(e)}
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </main>

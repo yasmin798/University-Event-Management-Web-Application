@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
+import StaffSidebar from "../components/StaffSidebar";
 
 import { Heart, Calendar, MapPin, Clock } from "lucide-react";
 
@@ -32,7 +33,7 @@ const FavoritesList = () => {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role);
+        setUserRole((payload.role || "student").toLowerCase());
       } catch (err) {
         console.error("Failed to decode token", err);
       }
@@ -119,7 +120,13 @@ const FavoritesList = () => {
 
   return (
     <div className="flex min-h-screen">
-      {userRole === "professor" ? <ProfessorSidebar /> : <StudentSidebar />}
+      {!userRole ? null : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : userRole === "staff" ? (
+        <StaffSidebar />
+      ) : (
+        <StudentSidebar />
+      )}
       <div
         className="flex-1 bg-[#f5efeb] p-4 md:p-8"
         style={{ marginLeft: "260px" }}
