@@ -9,12 +9,19 @@ import {
   Home,
   Search,
   Heart,
+  CreditCard,
+  Wallet,
+  MapPin,
+  Users,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
 import StudentSidebar from "../components/StudentSidebar";
 import Sidebar from "../components/Sidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 import "./RegisteredEvents.css";
 import workshopImage from "../images/workshop.png";
@@ -31,6 +38,16 @@ const http = axios.create({
   baseURL: API,
   withCredentials: true, // <-- enables cookie/session auth
 });
+const getCurrentUserId = () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.id || payload._id;
+  } catch (e) {
+    return null;
+  }
+};
 
 // attach JWT if you have one
 http.interceptors.request.use((cfg) => {
@@ -44,11 +61,14 @@ const RegisteredEvents = () => {
   const [events, setEvents] = useState({ upcoming: [], past: [] });
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [activeEventType, setActiveEventType] = useState("all");
   const [viewEvent, setViewEvent] = useState(null);
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const [userRole, setUserRole] = useState("");
   useEffect(() => {
@@ -165,6 +185,28 @@ const RegisteredEvents = () => {
   useEffect(() => {
     setSelectedCategory(activeEventType === "all" ? "" : activeEventType);
   }, [activeEventType]); */
+
+  // Combine all events for filter options
+  const allEventsArray = React.useMemo(() => {
+    return [...events.upcoming, ...events.past];
+  }, [events]);
+
+  // Extract unique locations
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEventsArray
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEventsArray]);
+
+  // Extract unique professors
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEventsArray
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEventsArray]);
+
   if (error) return <p className="my-events-error">{error}</p>;
   const getEventDate = (event) => {
     return event.startDateTime || event.startDate || event.date || new Date();
@@ -231,6 +273,16 @@ const RegisteredEvents = () => {
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
 
+      // Exact match for location filter
+      const matchesLocation =
+        !searchLocation || (event.location || "") === searchLocation;
+
+      // Exact match for professor filter
+      const matchesProfessor =
+        !professorFilter ||
+        (event.professorsParticipating || "") === professorFilter ||
+        (event.facultyResponsible || "") === professorFilter;
+
       // Filter by event type
       const matchesCategory =
         activeEventType === "all" ||
@@ -247,32 +299,154 @@ const RegisteredEvents = () => {
           return eventDate.toDateString() === filterDate.toDateString();
         })();
 
-      return matchesSearch && matchesCategory && matchesDate;
+      return (
+        matchesSearch &&
+        matchesLocation &&
+        matchesProfessor &&
+        matchesCategory &&
+        matchesDate
+      );
     });
   };
-  const filteredUpcoming = filterEvents(events.upcoming);
-  const filteredPast = filterEvents(events.past);
+
+  const sortEvents = (eventList) => {
+    return [...eventList].sort((a, b) => {
+      const dateA = new Date(a.startDateTime || a.startDate || a.date);
+      const dateB = new Date(b.startDateTime || b.startDate || b.date);
+      return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
+    });
+  };
+
+  const filteredUpcoming = sortEvents(filterEvents(events.upcoming));
+  const filteredPast = sortEvents(filterEvents(events.past));
 
   const EventCard = ({ event, isPast = false }) => {
-    const eventImage = getEventImage(event.type);
-    const eventDate = getEventDate(event);
-    console.log(
-      "Event:",
-      event.title,
-      "Type:",
-      event.type,
-      "Image URL:",
-      eventImage
-    );
+    const [paying, setPaying] = useState(false);
+    const [walletBalance, setWalletBalance] = useState(0);
+    const navigate = useNavigate();
+
+    // === GET CURRENT USER ID FROM JWT (safe & reliable) ===
+    const getCurrentUserId = () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return null;
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.id || payload._id || null;
+      } catch {
+        return null;
+      }
+    };
+    const currentUserId = getCurrentUserId();
+
+    // === NORMALIZE EVENT TYPE & PRICE ===
+    const eventType = (event.type || "").toString().trim().toLowerCase();
+    const isWorkshopOrTrip = eventType === "workshop" || eventType === "trip";
+
+    const price = Number(event.price || 0); // "150" → 150, null → 0
+    const hasPrice = price > 0;
+
+    const alreadyPaid = currentUserId
+      ? event.paidUsers?.some((id) => id.toString() === currentUserId)
+      : false;
+
+    // === FETCH WALLET BALANCE ONCE ===
+    useEffect(() => {
+      const fetchBalance = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch("http://localhost:3001/api/wallet/balance", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setWalletBalance(data.walletBalance || 0);
+          }
+        } catch (err) {
+          console.log("Wallet balance fetch failed");
+        }
+      };
+      fetchBalance();
+    }, []);
+    
+    // === PAYMENT HANDLER ===
+    const handlePay = async (method) => {
+      if (paying || alreadyPaid || !hasPrice) return;
+      setPaying(true);
+
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          "http://localhost:3001/api/payments/pay-event",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              eventId: event._id,
+              eventType: eventType, // already lowercase
+              method, // "stripe" or "wallet"
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (method === "stripe" && data.url) {
+          window.location.href = data.url;
+        } else if (data.success) {
+          alert(`Paid ${price} EGP from wallet!`);
+          window.location.reload();
+        } else {
+          alert(data.error || "Payment failed");
+        }
+      } catch (err) {
+        alert("Network error. Try again.");
+      } finally {
+        setPaying(false);
+      }
+    };
+    const handleRefund = async (eventId, eventType) => {
+  if (!window.confirm("Are you sure you want to request a refund? This cannot be undone.")) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:3001/api/payments/refund-event", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        eventId,
+        eventType: eventType.toLowerCase(),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert(`Refund successful! ${data.refundedAmount} EGP returned to your wallet.`);
+      window.location.reload();
+    } else {
+      alert(data.error || "Refund failed");
+    }
+  } catch (err) {
+    alert("Network error. Please try again.");
+  }
+};
+
     return (
       <div className="event-card">
+        {/* IMAGE & OVERLAYS */}
         <div
           className="event-image"
-          style={{ backgroundImage: `url(${eventImage})` }}
+          style={{ backgroundImage: `url(${getEventImage(event.type)})` }}
         >
           <div className="event-category">{event.type || "Event"}</div>
           <div className="event-date">
-            {new Date(eventDate).toLocaleDateString("en-US", {
+            {new Date(getEventDate(event)).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })}
@@ -282,78 +456,97 @@ const RegisteredEvents = () => {
               e.stopPropagation();
               toggleFavorite(event._id);
             }}
-            style={{
-              position: "absolute",
-              bottom: "10px",
-              left: "10px",
-              background: "white",
-              border: "none",
-              borderRadius: "50%",
-              width: "36px",
-              height: "36px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-              transition: "transform 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.transform = "scale(1.1)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            className="favorite-btn"
           >
             <Heart
               size={20}
-              className={
-                favorites.includes(event._id)
-                  ? "fill-red-500 text-red-500"
-                  : "text-gray-600"
-              }
-              style={{
-                fill: favorites.includes(event._id) ? "#ef4444" : "none",
-                stroke: favorites.includes(event._id) ? "#ef4444" : "#4b5563",
-              }}
+              fill={favorites.includes(event._id) ? "#ef4444" : "none"}
+              color={favorites.includes(event._id) ? "#ef4444" : "#666"}
             />
           </button>
         </div>
 
+        {/* CONTENT */}
         <div className="event-content">
           <h3 className="event-title">{getEventTitle(event)}</h3>
-          <p className="event-organizer">
-            Organized by{" "}
+          <p className="event-organizer text-sm text-gray-600">
+            by{" "}
             {event.professorsParticipating ||
               event.facultyResponsible ||
-              event.organizer ||
-              event.createdBy?.name ||
               "GUC Events"}
           </p>
 
-          <div className="event-details">
-            <div className="event-detail-item">
-              <span className="detail-label">Date & Time:</span>
-              <span className="detail-value">
-                {new Date(eventDate).toLocaleString("en-US", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </span>
-            </div>
+          {/* PAYMENT SECTION – ONLY FOR WORKSHOPS & TRIPS WITH PRICE */}
+          {hasPrice && isWorkshopOrTrip && !isPast && (
+  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <p className="text-lg font-bold text-emerald-700 mb-4">
+      Registration Fee: {price} EGP
+    </p>
 
-            <div className="event-detail-item">
-              <span className="detail-label">Location:</span>
-              <span className="detail-value">{event.location || "TBD"}</span>
-            </div>
+    {alreadyPaid ? (
+      <div className="flex items-center gap-3">
+        <div className="text-green-600 font-bold flex items-center gap-2">
+          Paid
+        </div>
 
-            <div className="event-detail-item">
-              <span className="detail-label">Type:</span>
-              <span className="detail-value">{event.type || "Event"}</span>
-            </div>
-          </div>
+        {/* REFUND BUTTON — ONLY IF 14+ DAYS AWAY */}
+        {(() => {
+          const startDate = new Date(event.startDateTime || event.startDate);
+          const twoWeeksFromNow = new Date();
+          twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+          const canRefund = startDate > twoWeeksFromNow;
 
-          <div className="event-actions">
+          return canRefund ? (
             <button
-              className="btn-primary"
+              onClick={() => handleRefund(event._id, eventType)}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition shadow-sm"
+            >
+              Request Refund
+            </button>
+          ) : null;
+        })()}
+      </div>
+    ) : (
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* STRIPE BUTTON */}
+        <button
+          onClick={() => handlePay("stripe")}
+          disabled={paying}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70"
+        >
+          <CreditCard size={18} />
+          Pay with Card
+        </button>
+
+        {/* WALLET BUTTON */}
+        <button
+          onClick={() => handlePay("wallet")}
+          disabled={paying || walletBalance < price}
+          className={`font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 ${
+            walletBalance >= price
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+              : "bg-gray-400 text-gray-700 cursor-not-allowed"
+          }`}
+        >
+          <Wallet size={18} />
+          Pay with Wallet ({walletBalance.toFixed(0)} EGP)
+        </button>
+      </div>
+    )}
+
+    {/* INSUFFICIENT BALANCE MESSAGE */}
+    {walletBalance < price && !alreadyPaid && (
+      <p className="text-xs text-red-600 mt-3">
+        You need {(price - walletBalance).toFixed(0)} EGP more in your wallet
+      </p>
+    )}
+  </div>
+)}
+
+          {/* VIEW DETAILS BUTTON */}
+          <div className="event-actions mt-4">
+            <button
+              className="btn-primary w-full"
               onClick={() => handleViewDetails(event)}
             >
               View Details
@@ -412,16 +605,47 @@ const RegisteredEvents = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Search by name, location, or professor..."
+                    placeholder="Search events..."
                     className="search-input"
-                    style={{ paddingLeft: "40px", minWidth: "350px" }}
+                    style={{ paddingLeft: "40px" }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
+                {/* Location Dropdown Filter */}
+                <div style={{ width: "160px", flexShrink: 0 }}>
+                  <SearchableDropdown
+                    options={uniqueLocations}
+                    value={searchLocation}
+                    onChange={setSearchLocation}
+                    placeholder="All Locations"
+                    label="Location"
+                    icon={MapPin}
+                  />
+                </div>
+
+                {/* Professor Dropdown Filter */}
+                <div style={{ width: "160px", flexShrink: 0 }}>
+                  <SearchableDropdown
+                    options={uniqueProfessors}
+                    value={professorFilter}
+                    onChange={setProfessorFilter}
+                    placeholder="All Professors"
+                    label="Professor"
+                    icon={Users}
+                  />
+                </div>
+
                 {/* Filter by Date */}
-                <div className="search-box" style={{ position: "relative" }}>
+                <div
+                  className="search-box"
+                  style={{
+                    position: "relative",
+                    width: "160px",
+                    flexShrink: 0,
+                  }}
+                >
                   <Calendar
                     size={18}
                     style={{
@@ -443,12 +667,40 @@ const RegisteredEvents = () => {
                   />
                 </div>
 
+                {/* Sort Button */}
+                <button
+                  onClick={() =>
+                    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                  }
+                  className="search-btn"
+                  style={{
+                    backgroundColor: "#567c8d",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {sortOrder === "asc" ? (
+                    <ArrowUp size={18} />
+                  ) : (
+                    <ArrowDown size={18} />
+                  )}
+                  {sortOrder === "asc" ? "Oldest" : "Newest"}
+                </button>
+
                 {/* Clear All Filters Button */}
-                {(searchTerm || dateFilter || activeEventType !== "all") && (
+                {(searchTerm ||
+                  searchLocation ||
+                  professorFilter ||
+                  dateFilter ||
+                  activeEventType !== "all") && (
                   <button
                     className="search-btn"
                     onClick={() => {
                       setSearchTerm("");
+                      setSearchLocation("");
+                      setProfessorFilter("");
                       setDateFilter("");
                       setActiveEventType("all");
                       setSelectedCategory("");

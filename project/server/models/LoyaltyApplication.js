@@ -8,7 +8,9 @@ const loyaltyApplicationSchema = new mongoose.Schema(
     promoCode: { type: String, required: true, unique: true },
     termsAndConditions: { type: String, required: true },
     status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
-    approvalDate: { type: Date }, // optional
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    approvalDate: { type: Date },
+  
   },
   { timestamps: true }
 );

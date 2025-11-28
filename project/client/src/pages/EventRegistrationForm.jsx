@@ -28,7 +28,7 @@ const EventRegistrationForm = () => {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
+          const payload = JSON.parse(atob(token.split(".")[1]));
           return payload.role || "student";
         }
       } catch (error) {
@@ -81,12 +81,21 @@ const EventRegistrationForm = () => {
     // Retrieve the token from localStorage (or wherever you store it)
     const token = localStorage.getItem("token");
     const apiUrl = `/api/events/${eventId}/register`;
+
     // --- Start of Debugging Logs ---
-    console.log("Attempting registration...");
-    console.log("Event ID:", eventId);
-    console.log("Auth Token:", token ? "Token found" : "No token found!");
-    console.log("API URL:", apiUrl);
+    console.log("📋 FORM SUBMISSION:");
+    console.log("  Event ID:", eventId);
+    console.log("  Form Data:", {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      roleSpecificId: formData.roleSpecificId,
+      role: formData.role,
+    });
+    console.log("  Auth Token:", token ? "Token found" : "No token found!");
+    console.log("  API URL:", apiUrl);
     // --- End of Debugging Logs ---
+
     if (!token) {
       setError("You must be logged in to register.");
       setIsLoading(false);
@@ -97,7 +106,13 @@ const EventRegistrationForm = () => {
       // The backend expects a POST request to this specific endpoint
       const response = await axios.post(
         apiUrl,
-        {}, // No body is needed, user info comes from the token
+        {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          roleSpecificId: formData.roleSpecificId,
+          role: formData.role,
+        },
         {
           headers: {
             // The 'protect' middleware requires this header format
@@ -202,7 +217,7 @@ const EventRegistrationForm = () => {
   if (isLoading && !eventDetails)
     return <p style={{ textAlign: "center" }}>Loading event details...</p>;
 
-   return (
+  return (
     <div className="flex h-screen bg-[#f5efeb]">
       {/* Sidebar */}
       {isSidebarOpen && (
@@ -228,7 +243,7 @@ const EventRegistrationForm = () => {
             <Menu size={20} />
           </button>
         </div>
-        
+
         {/* Navigation Links */}
         <div className="flex-1 px-4 mt-4 space-y-2">
           {/* Dashboard Button */}
@@ -237,7 +252,11 @@ const EventRegistrationForm = () => {
             className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
           >
             <Home size={18} />
-            {userRole ? `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} Dashboard` : 'Dashboard'}
+            {userRole
+              ? `${
+                  userRole.charAt(0).toUpperCase() + userRole.slice(1)
+                } Dashboard`
+              : "Dashboard"}
           </button>
 
           {/* Registered Events Button */}
@@ -279,15 +298,15 @@ const EventRegistrationForm = () => {
             </div>
           </div>
         </header>
-<div className="flex items-center gap-2 mb-4">
-  <button
-    onClick={() => navigate(-1)}
-    className="flex items-center gap-2 text-[#2f4156] hover:text-[#45687a] font-medium"
-  >
-    <ArrowLeft size={18} />
-    Back
-  </button>
-</div>
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-[#2f4156] hover:text-[#45687a] font-medium"
+          >
+            <ArrowLeft size={18} />
+            Back
+          </button>
+        </div>
 
         {/* Registration Form Content */}
         <div className="event-reg-page">
@@ -352,7 +371,9 @@ const EventRegistrationForm = () => {
                   </label>
                   <input
                     id="email"
-                    className={`event-reg-input ${formErrors.email ? "error" : ""}`}
+                    className={`event-reg-input ${
+                      formErrors.email ? "error" : ""
+                    }`}
                     name="email"
                     type="email"
                     placeholder="Enter your email address"
@@ -360,7 +381,9 @@ const EventRegistrationForm = () => {
                     onChange={handleChange}
                     required
                   />
-                  <small className="input-hint">Use your GUC email address</small>
+                  <small className="input-hint">
+                    Use your GUC email address
+                  </small>
                   {formErrors.email && (
                     <span className="error-text">{formErrors.email}</span>
                   )}
@@ -400,7 +423,9 @@ const EventRegistrationForm = () => {
                     required
                   />
                   {formErrors.roleSpecificId && (
-                    <span className="error-text">{formErrors.roleSpecificId}</span>
+                    <span className="error-text">
+                      {formErrors.roleSpecificId}
+                    </span>
                   )}
                 </div>
 

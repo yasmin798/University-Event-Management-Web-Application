@@ -28,6 +28,7 @@ import StudentDashboard from "./pages/studentDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import TaDashboard from "./pages/TaDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import EventPaymentSuccess from "./pages/EventPaymentSuccess.jsx";
 
 // Events pages
 import EventsHome from "./pages/EventsHome";
@@ -59,6 +60,12 @@ import AdminAttendeesReport from "./pages/AdminAttendeesReport";
 import SalesReport from "./pages/SalesReport";
 import AdminSalesReport from "./pages/AdminSalesReport";
 import AdminAllEvents from "./pages/AdminAllEvents";
+import AdminVendorBooths from "./pages/AdminVendorBooths";
+import StudentLoyaltyVendors from "./pages/StudentLoyaltyVendors";
+import TaLoyaltyVendors from "./pages/TaLoyaltyVendors";
+import ProfessorLoyaltyVendors from "./pages/ProfessorLoyaltyVendors";
+import AdminLoyaltyVendors from "./pages/AdminLoyaltyVendors";
+
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
 import ReserveCourt from "./pages/ReserveCourt";
@@ -80,12 +87,13 @@ import PollVoting from "./pages/PollVoting";
 import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
 import PendingVerificationPage from "./pages/PendingVerification";
 import AdminVendor from "./pages/AdminVendor";
-
+//FavoriteList
+import TaFavoriteList from "./pages/TaFavoriteList";
 //workshops
 import WorkshopParticipants from "./pages/WorkshopParticipants";
 import WorkshopEditsPage from "./pages/WorkshopEditsPage";
 import WalletPage from "./pages/WalletPage";
-
+import WorkshopAttendance from './pages/WorkshopAttendance'; 
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -115,13 +123,21 @@ function App() {
         />
         <Route path="/admin/events" element={<AdminAllEvents />} />
         <Route path="/admin/vendor-requests" element={<AdminVendor />} />
+        <Route path="/admin/vendor-requests-booths" element={<AdminVendorBooths />} />
+
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/student/loyalty-vendors" element={<StudentLoyaltyVendors />} />
+         <Route path="/ta/loyalty-vendors" element={<TaLoyaltyVendors />} />
+        {/*favorite*/}
+        <Route path="/ta/favorite" element={<TaFavoriteList />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/ta/dashboard" element={<TaDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/loyalty-vendors" element={<AdminLoyaltyVendors />} />
         {/* 👨‍🏫 Professor & Workshop */}
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
+        <Route path="/professor/loyalty-vendors" element={<ProfessorLoyaltyVendors />} />
         <Route path="/professor/workshops" element={<WorkshopsListPage />} />
         <Route
           path="/professor/workshops/create"
@@ -189,6 +205,7 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/event-payment-success" element={<EventPaymentSuccess />} />
         {/* Courts */}
         <Route
           path="/courts-availability"
@@ -219,6 +236,8 @@ function App() {
           element={<WorkshopEditsPage />}
         />{" "}
         <Route path="/create-poll" element={<CreatePoll />} />
+                <Route path="/professor/workshops/attendance/:workshopId" element={<WorkshopAttendance />} />
+
         <Route path="/poll-voting" element={<PollVoting />} />{" "}
         <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         {/* 404 */}

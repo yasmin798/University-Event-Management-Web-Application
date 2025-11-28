@@ -100,6 +100,8 @@ app.use("/api/booths", require("./routes/booths"));
 // Events routes (keep generic last)
 app.use("/api/events", eventRoutes);
 app.use("/api", eventRoutes);
+//loyalty
+app.use("/api/loyalty", loyaltyRoutes);
 
 app.use("/api/events", require("./routes/reviews"));
 
@@ -126,30 +128,8 @@ if (stripeWebhook) {
 // Reviews router is not present in this version — keep events routes mounted above.
 
 // loyalty program
-app.use("/api/loyalty", loyaltyRoutes);
-// Example in Express.js
-app.post("/api/loyalty/apply", protect, async (req, res) => {
-  const { companyName, discountRate, promoCode, termsAndConditions } = req.body;
 
-  if (!companyName || !discountRate || !promoCode || !termsAndConditions) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
 
-  try {
-    const application = await LoyaltyApplication.create({
-      companyName,
-      discountRate,
-      promoCode,
-      termsAndConditions,
-      vendor: req.user.id, // req.user comes from protect middleware
-    });
-
-    res.status(201).json(application);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
 /* ---------------- Database ---------------- */
 const MONGO = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventity";
 mongoose

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 import {
   Search,
   Menu,
@@ -15,8 +16,8 @@ import {
   MapPin,
   Bell,
   Heart,
-  VoteIcon,
-  CheckCircle,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import workshopPlaceholder from "../images/workshop.png";
 import tripPlaceholder from "../images/trip.jpeg";
@@ -25,9 +26,10 @@ import conferencePlaceholder from "../images/conference.jpg";
 import boothPlaceholder from "../images/booth.jpg";
 import { workshopAPI } from "../api/workshopApi";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 import { useServerEvents } from "../hooks/useServerEvents";
-import { boothAPI } from "../api/boothApi";
-import ProfessorSidebar from "../components/ProfessorSidebar";
+import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
+import { Wallet } from "lucide-react";
 const now = new Date();
 const ProfessorDashboard = () => {
   const navigate = useNavigate();
@@ -35,6 +37,9 @@ const ProfessorDashboard = () => {
   const [workshops, setWorkshops] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
+  // Fixed sidebar is rendered via ProfessorSidebar component
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
@@ -88,7 +93,7 @@ const ProfessorDashboard = () => {
       const data = await workshopAPI.getAllWorkshops();
 
       const normalizedWorkshops = data
-        .filter((w) => w.status !== "archived")
+        .filter((w) => w.status === "published")
         .map((w) => ({
           ...w,
           type: "WORKSHOP",
@@ -162,10 +167,25 @@ const ProfessorDashboard = () => {
 
   // Combine events like EventsHome
   const allEvents = [
-    ...otherEvents.filter((e) => e.status !== "archived"),
+    ...otherEvents.filter((e) => !e.status || e.status === "published"),
     ...workshops,
     ...booths,
   ];
+
+  // Extract unique filter options
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -203,6 +223,22 @@ const ProfessorDashboard = () => {
     };
   }, [isNotificationsOpen]);
 
+  // Navigate to registered events (used in sidebar)
+  const handleRegisteredEvents = () => {
+    navigate("/events/registered");
+    closeSidebar(); // close the sidebar after navigation
+  };
+
+  const handleFavorites = () => {
+    navigate("/favorites");
+    closeSidebar();
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      navigate("/");
+    }
+  };
   // const allEvents = workshops
   // .filter(w => w.status === 'published') // only published for professors too if needed
   // .map((w) => {
@@ -226,13 +262,17 @@ const ProfessorDashboard = () => {
   // });
 
   const filteredEvents = allEvents
-    .filter((e) => {
-      if (e.type === "BOOTH") return true; // always show booths
-      // ❗ NEW: only hide archived events, show past & future events
-      if (e.status === "archived") return false;
+  .filter((e) => {
+    // Hide archived events
+    if (e.status === "archived") return false;
 
-      return true; // keep all other events
-    })
+    // Always show booths
+    if (e.type === "BOOTH") return true;
+
+    // Show all non-archived events (past + future)
+    return true;
+  })
+
     .filter((e) => {
       const name = e.title || e.name || e.workshopName || e.bazaarName;
       const matchesSearch =
@@ -241,6 +281,14 @@ const ProfessorDashboard = () => {
           ?.toLowerCase()
           .includes(searchTerm.toLowerCase()) ??
           false);
+
+      const matchesLocation = !searchLocation || e.location === searchLocation;
+
+      const matchesProfessor =
+        !professorFilter ||
+        e.professorsParticipating === professorFilter ||
+        e.facultyResponsible === professorFilter;
+
       const matchesType =
         eventTypeFilter === "All" || e.type === eventTypeFilter;
 
@@ -252,13 +300,24 @@ const ProfessorDashboard = () => {
           eventDate.toDateString() === selectedCalendarDate.toDateString();
       }
 
-      return matchesSearch && matchesType && matchesCalendarDate;
+      return (
+        matchesSearch &&
+        matchesLocation &&
+        matchesProfessor &&
+        matchesType &&
+        matchesCalendarDate
+      );
     })
     .sort((a, b) => {
       const dateA = new Date(a.startDateTime || a.startDate || a.date);
       const dateB = new Date(b.startDateTime || b.startDate || b.date);
       return sortOrder === "asc" ? dateB - dateA : dateA - dateB;
     });
+
+  const handleGymSessions = () => {
+    navigate("/gym-sessions");
+    closeSidebar(); // Close sidebar after navigation
+  };
 
   const handleDetails = (event) => {
     navigate(`/events/${event._id}`);
@@ -353,6 +412,8 @@ const ProfessorDashboard = () => {
     setFilteredWorkshops(results);
   }, [debouncedSearch, workshops]);
 
+  const closeSidebar = () => {};
+  const toggleSidebar = () => {};
   const closeModal = () => setSelectedWorkshop(null);
 
   // 🔔 Notifications state
@@ -424,7 +485,7 @@ const ProfessorDashboard = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
+    <div className="events-theme flex min-h-screen bg-[#f5efeb] ml-[260px]">
       <ProfessorSidebar />
 
       {/* Workshop Details Modal */}
@@ -453,6 +514,16 @@ const ProfessorDashboard = () => {
               {/* Date and Time */}
               <div className="mb-6">
                 <div className="flex items-start gap-3 mb-3">
+                  <button
+                    onClick={() => {
+                      navigate("/favorites");
+                      closeSidebar();
+                    }}
+                    className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
+                  >
+                    <Heart size={18} />
+                    Favorites
+                  </button>
                   <Calendar
                     size={20}
                     className="text-[#567c8d] mt-1 flex-shrink-0"
@@ -598,25 +669,51 @@ const ProfessorDashboard = () => {
         </div>
       )}
 
+      {/* Fixed sidebar injected; content area continues below */}
+
       {/* Main Section */}
-      <div className="flex-1 overflow-auto ml-64">
+      <div className="flex-1 overflow-auto">
         <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1">
+              {/* Sidebar is fixed; menu button removed */}
 
               <div className="relative flex-1 max-w-md">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
-                  size={20}
+                  size={22}
                 />
                 <input
                   type="text"
-                  placeholder="Search by workshop or professor or location..."
+                  placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+                  className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
                 />
               </div>
+
+              <div className="w-48">
+                <SearchableDropdown
+                  options={uniqueLocations}
+                  value={searchLocation}
+                  onChange={setSearchLocation}
+                  placeholder="All Locations"
+                  label="Location"
+                  icon={MapPin}
+                />
+              </div>
+
+              <div className="w-48">
+                <SearchableDropdown
+                  options={uniqueProfessors}
+                  value={professorFilter}
+                  onChange={setProfessorFilter}
+                  placeholder="All Professors"
+                  label="Professor"
+                  icon={Users}
+                />
+              </div>
+
               <EventTypeDropdown
                 selected={eventTypeFilter}
                 onChange={setEventTypeFilter}
@@ -625,9 +722,14 @@ const ProfessorDashboard = () => {
                 onClick={() =>
                   setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
                 }
-                className="px-3 py-2 border border-[#c8d9e6] bg-white rounded-lg hover:bg-[#f5efeb] transition-colors"
+                className="px-4 py-2 bg-[#567c8d] text-white rounded-lg whitespace-nowrap flex items-center gap-2"
               >
-                Sort {sortOrder === "asc" ? "Oldest" : "Newest"} First
+                {sortOrder === "asc" ? (
+                  <ArrowUp size={18} />
+                ) : (
+                  <ArrowDown size={18} />
+                )}
+                {sortOrder === "asc" ? "Oldest" : "Newest"}
               </button>
             </div>
 

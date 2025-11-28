@@ -1,32 +1,52 @@
 const express = require("express");
 const router = express.Router();
 const LoyaltyApplication = require("../models/LoyaltyApplication");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 const { protect, adminOnly } = require("../middleware/auth");
 
 // Vendor submits a new loyalty application
+// APPLY for loyalty (vendor)
 router.post("/apply", protect, async (req, res) => {
-  const { companyName, discountRate, promoCode, termsAndConditions } = req.body;
-
-  if (!companyName || !discountRate || !promoCode || !termsAndConditions) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-
   try {
-    const application = await LoyaltyApplication.create({
+    const { companyName, discountRate, promoCode, termsAndConditions } = req.body;
+
+    if (!companyName || !discountRate || !promoCode || !termsAndConditions) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const app = await LoyaltyApplication.create({
+      vendor: req.user._id,
       companyName,
       discountRate,
       promoCode,
       termsAndConditions,
-      vendor: req.user.id, // assuming your token gives user id
+      status: "accepted", // Auto-approve vendor applications
     });
 
-    res.status(201).json(application);
+    // Create notifications for all verified, active students and professors about the new partner
+    try {
+      const recipients = await User.find({ role: { $in: ["student", "professor"] }, status: "active", isVerified: true }).select("_id");
+      if (recipients.length) {
+        const message = `New GUC Loyalty Partner: ${companyName} — ${discountRate}% off. Promo: ${promoCode}`;
+        const payloads = recipients.map((u) => ({
+          userId: u._id,
+          message,
+          type: "loyalty",
+          unread: true,
+        }));
+        await Notification.insertMany(payloads);
+      }
+    } catch (nerr) {
+      console.error("Failed to notify students about new loyalty partner:", nerr);
+    }
+
+    res.status(201).json(app);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server Error" });
   }
 });
-
 
 // Admin views all applications
 router.get("/", protect, adminOnly, async (req, res) => {
@@ -60,19 +80,52 @@ router.patch("/:id", protect, adminOnly, async (req, res) => {
     res.status(500).json({ error: "Server error updating application" });
   }
 });
+// Vendor: get my participation
 
-// Public: list all approved vendors
-router.get("/approved", async (_req, res) => {
+// GET my applications
+router.get("/my", protect, async (req, res) => {
+  const apps = await LoyaltyApplication.find({ vendor: req.user._id });
+  res.json(apps);
+});
+
+
+// Public: list all approved vendors for students
+router.get("/approved", async (req, res) => {
   try {
-    const apps = await LoyaltyApplication.find({ status: "accepted" }).populate(
-      "vendor",
-      "companyName"
+    const { status } = req.query; // optional: 'accepted' | 'pending' | 'all'
+    
+    // One-time migration: update any pending applications to accepted
+    await LoyaltyApplication.updateMany(
+      { status: { $in: ["pending", null, undefined] } },
+      { $set: { status: "accepted" } }
     );
+    
+    const filter =
+      status === "all"
+        ? { status: { $in: ["accepted", "pending"] } }
+        : status === "pending"
+        ? { status: "pending" }
+        : { status: "accepted" };
+
+    const apps = await LoyaltyApplication.find(filter)
+      .select("companyName discountRate promoCode termsAndConditions status")
+      .lean();
     res.json(apps);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error fetching approved vendors" });
   }
 });
+// Vendor: cancel participation
+router.delete("/cancel", protect, async (req, res) => {
+  try {
+    const deleted = await LoyaltyApplication.findOneAndDelete({ vendor: req.user.id });
+    if (!deleted) return res.status(404).json({ error: "You are not participating" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 module.exports = router;

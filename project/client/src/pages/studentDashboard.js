@@ -1,6 +1,6 @@
 // client/src/pages/StudentDashboard.js
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import conferencePlaceholder from "../images/Conferenceroommeetingconcept.jpeg";
 import tripPlaceholder from "../images/Womanlookingatmapplanningtrip.jpeg";
@@ -12,21 +12,21 @@ import {
   Menu,
   Bell,
   User,
-  LogOut,
   Calendar,
-  Map,
   Heart,
-  CheckCircle,
   MapPin,
   Clock,
   TrendingUp,
+  Users,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 import StudentSidebar from "../components/StudentSidebar";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 const API_BASE = "http://localhost:3000"; // Your working backend
-
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -37,6 +37,7 @@ const StudentDashboard = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -48,12 +49,9 @@ const StudentDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
-const [showNotifications, setShowNotifications] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const [userId, setUserId] = useState(null);
-
-
-
 
   /* ---------------------- Fetch Events ---------------------- */
 
@@ -63,20 +61,25 @@ const [showNotifications, setShowNotifications] = useState(false);
       try {
         const params = new URLSearchParams();
 
-        const combinedSearch = [searchTerm, searchLocation]
-          .filter(Boolean)
-          .join(" ");
-
-        if (combinedSearch) params.append("search", combinedSearch);
+        if (searchTerm) params.append("search", searchTerm);
+        if (searchLocation) params.append("location", searchLocation);
+        if (professorFilter) params.append("professor", professorFilter);
         if (eventTypeFilter !== "All") params.append("type", eventTypeFilter);
         if (dateFilter) params.append("date", dateFilter);
 
         params.append("sort", "startDateTime");
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
-
         const res = await fetch(`${API}/api/events/all?${params}`);
         const data = await res.json();
-        setAllEvents(res.ok ? data : []);
+        if (res.ok) {
+  const cleanData = data.filter(
+    (e) => e.status?.toLowerCase() !== "archived"
+  );
+  setAllEvents(cleanData);
+} else {
+  setAllEvents([]);
+}
+
       } catch (err) {
         console.error(err);
         setAllEvents([]);
@@ -86,23 +89,45 @@ const [showNotifications, setShowNotifications] = useState(false);
     };
 
     fetchEvents();
-  }, [searchTerm, searchLocation, eventTypeFilter, dateFilter, sortOrder]);
+  }, [
+    searchTerm,
+    searchLocation,
+    professorFilter,
+    eventTypeFilter,
+    dateFilter,
+    sortOrder,
+    API,
+  ]);
+
+  /* ---------------------- Extract Unique Filter Options ---------------------- */
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
 
   /* ---------------------- Fetch Favorites ---------------------- */
 
-
   // Get user ID from token
-    useEffect(() => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
-          setUserId(payload.id || payload.userId || payload._id);
-        } catch (e) {
-          console.error("Invalid token");
-        }
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUserId(payload.id || payload.userId || payload._id);
+      } catch (e) {
+        console.error("Invalid token");
       }
-    }, []);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -170,28 +195,27 @@ const [showNotifications, setShowNotifications] = useState(false);
     }
   };
 
-
   useEffect(() => {
-  if (!userId) return;
+    if (!userId) return;
 
-  const fetchNotifications = async () => {
-    try {
-      // No token needed anymore
-      const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
+    const fetchNotifications = async () => {
+      try {
+        // No token needed anymore
+        const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
 
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
-      } else {
-        console.error("Failed to fetch notifications");
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data);
+        } else {
+          console.error("Failed to fetch notifications");
+        }
+      } catch (err) {
+        console.error("Failed to load notifications", err);
       }
-    } catch (err) {
-      console.error("Failed to load notifications", err);
-    }
-  };
+    };
 
-  fetchNotifications();
-}, [userId]);
+    fetchNotifications();
+  }, [userId]);
   /* ---------------------- UI ---------------------- */
 
   if (loading) {
@@ -219,18 +243,40 @@ const [showNotifications, setShowNotifications] = useState(false);
           </button>
 
           {/* Search + Filters */}
-          <div className="flex flex-col md:flex-row gap-2 flex-1 max-w-4xl mx-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col md:flex-row gap-2 flex-1 mx-4">
+            <div className="relative flex-[3]">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
-                size={20}
+                size={22}
               />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-[#c8d9e6] rounded-lg"
+                className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg"
+              />
+            </div>
+
+            <div className="md:w-48">
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={searchLocation}
+                onChange={setSearchLocation}
+                placeholder="All Locations"
+                label="Location"
+                icon={MapPin}
+              />
+            </div>
+
+            <div className="md:w-48">
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="All Professors"
+                label="Professor"
+                icon={Users}
               />
             </div>
 
@@ -250,25 +296,29 @@ const [showNotifications, setShowNotifications] = useState(false);
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
-              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg whitespace-nowrap"
+              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg whitespace-nowrap flex items-center gap-2"
             >
-              Sort {sortOrder === "asc" ? "Oldest" : "Newest"}
+              {sortOrder === "asc" ? (
+                <ArrowUp size={18} />
+              ) : (
+                <ArrowDown size={18} />
+              )}
+              {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
 
           {/* User + Notifications */}
           <div className="flex items-center gap-4">
             <button
-  onClick={() => setShowNotifications(!showNotifications)}
-  className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
->
-  <Bell size={20} className="text-[#567c8d]" />
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
+            >
+              <Bell size={20} className="text-[#567c8d]" />
 
-  {notifications.some((n) => n.unread) && (
-    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-  )}
-</button>
-
+              {notifications.some((n) => n.unread) && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
+            </button>
 
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
@@ -277,28 +327,27 @@ const [showNotifications, setShowNotifications] = useState(false);
         </header>
 
         {showNotifications && (
-  <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
-    <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
+          <div className="absolute right-6 top-20 bg-white shadow-xl rounded-xl w-80 border border-[#c8d9e6] z-50 p-4 max-h-96 overflow-auto">
+            <h3 className="font-bold text-[#2f4156] mb-3">Notifications</h3>
 
-    {notifications.length === 0 ? (
-      <p className="text-sm text-[#567c8d]">No notifications yet.</p>
-    ) : (
-      notifications.map((n) => (
-        <div
-          key={n._id}
-          className={`p-3 mb-2 rounded-lg border ${
-            n.unread
-              ? "bg-blue-50 border-blue-200"
-              : "bg-gray-50 border-gray-200"
-          }`}
-        >
-          <p className="text-sm text-[#2f4156]">{n.message}</p>
-        </div>
-      ))
-    )}
-  </div>
-)}
-
+            {notifications.length === 0 ? (
+              <p className="text-sm text-[#567c8d]">No notifications yet.</p>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n._id}
+                  className={`p-3 mb-2 rounded-lg border ${
+                    n.unread
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <p className="text-sm text-[#2f4156]">{n.message}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* ---- PAGE CONTENT ---- */}
         <main className="p-4 md:p-8">

@@ -76,9 +76,22 @@ exports.register = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const userEmail = user.email;
-    const userName =
-      `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Guest";
+    // Use form data from request body if provided, otherwise fall back to user profile
+    const userEmail = req.body.email || user.email;
+    const firstName = req.body.firstName || user.firstName || "";
+    const lastName = req.body.lastName || user.lastName || "";
+    const userName = `${firstName} ${lastName}`.trim() || "Guest";
+
+    // Debug logging
+    console.log("📝 Registration Data:");
+    console.log("  Request body:", req.body);
+    console.log("  User profile:", {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    });
+    console.log("  Final name:", userName);
+    console.log("  Final email:", userEmail);
 
     // Check 5: Role restriction (if defined)
     if (event.allowedRoles && event.allowedRoles.length > 0) {
@@ -142,23 +155,30 @@ exports.register = async (req, res) => {
     if (!event.registeredUsers) event.registeredUsers = [];
     if (!event.registrations) event.registrations = [];
 
-    // Add user to the event and save
-    event.registeredUsers.push(userId);
-    await event.save();
-    // Push to `registrations` (with name/email)
+    // Push to `registrations` (with name/email from form data)
     event.registrations.push({
       userId: userId.toString(),
       name: userName,
       email: userEmail,
       registeredAt: new Date(),
     });
-    // Also keep `registeredUsers` for backward compatibility
-    if (!event.registeredUsers.includes(userId)) {
-      event.registeredUsers.push(userId);
-    }
 
+    console.log("✅ Added to registrations array:", {
+      userId: userId.toString(),
+      name: userName,
+      email: userEmail,
+    });
+
+    // Also keep `registeredUsers` for backward compatibility
+    event.registeredUsers.push(userId);
+
+    // Save once with both arrays updated
     await event.save();
 
+    console.log(
+      "💾 Event saved. Registration count:",
+      event.registrations.length
+    );
     res.status(200).json({ message: "Registered successfully" });
   } catch (err) {
     // Catch any errors during the process (like validation errors)

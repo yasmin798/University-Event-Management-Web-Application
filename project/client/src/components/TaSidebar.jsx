@@ -1,20 +1,20 @@
-// client/src/components/StudentSidebar.jsx
+// client/src/components/TaSidebar.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Heart,
   Map,
-  CheckCircle,
   User,
   LogOut,
   Users,
   Dumbbell,
   Store,
   Home,
+  CheckCircle, 
 } from "lucide-react";
 
-export default function StudentSidebar() {
+export default function TaSidebar() {
   const navigate = useNavigate();
 
   const navBtn = (label, icon, onClick) => (
@@ -34,21 +34,23 @@ export default function StudentSidebar() {
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-teal-500" />
-          <h2 style={{ fontSize: "22px", fontWeight: 800 }}>Student</h2>
+          <h2 style={{ fontSize: "22px", fontWeight: 800 }}>TA</h2>
         </div>
       </div>
 
       {/* MENU */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {navBtn("Home", <Home size={18} />, () =>
-          navigate("/student/dashboard")
+          navigate("/ta/dashboard")
         )}
 
         {navBtn("Registered Events", <Calendar size={18} />, () =>
           navigate("/events/registered")
         )}
 
-        {navBtn("Favorites", <Heart size={18} />, () => navigate("/favorites"))}
+        {navBtn("Favorites", <Heart size={18} />, () =>
+          navigate("/ta/favorite")
+        )}
 
         {navBtn("Courts Availability", <Map size={18} />, () =>
           navigate("/courts-availability")
@@ -63,10 +65,12 @@ export default function StudentSidebar() {
         )}
 
         {navBtn("Loyalty Partners", <Store size={18} />, () =>
-          navigate("/student/loyalty-vendors")
+          navigate("/ta/loyalty-vendors")
         )}
 
-        {navBtn("Wallet", <User size={18} />, () => navigate("/wallet"))}
+        {navBtn("Wallet", <User size={18} />, () =>
+          navigate("/wallet")
+        )}
       </nav>
 
       {/* LOGOUT */}

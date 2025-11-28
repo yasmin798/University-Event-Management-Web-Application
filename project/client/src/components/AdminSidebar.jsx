@@ -1,6 +1,6 @@
 // client/src/components/AdminSidebar.js
 import React from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Store } from "lucide-react";
 import NotificationsDropdown from "./NotificationsDropdown";
 import { useNavigate } from "react-router-dom";
 
@@ -11,6 +11,10 @@ export default function AdminSidebar() {
     if (window.confirm("Are you sure you want to logout?")) {
       navigate("/");
     }
+  };
+
+  const goToLoyalty = () => {
+    navigate("/admin/loyalty-vendors");
   };
 
   return (
@@ -43,6 +47,27 @@ export default function AdminSidebar() {
       {/* Notifications bell for admin (shows unread count and dropdown) */}
       <div style={{ marginBottom: 18 }}>
         <NotificationsDropdown />
+      </div>
+
+      {/* Navigation */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        <button
+          onClick={goToLoyalty}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "#355c7d",
+            padding: "10px 16px",
+            borderRadius: "10px",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+            border: "none",
+          }}
+        >
+          <Store size={18} /> GUC Loyalty Partners
+        </button>
       </div>
 
       <div style={{ flex: 1 }} />
