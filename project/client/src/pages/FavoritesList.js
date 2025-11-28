@@ -6,9 +6,10 @@ import { useNavigate } from "react-router-dom";
 
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
+import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
 
-import { Heart, Calendar, MapPin, Clock } from "lucide-react";
+import { Heart, Calendar, MapPin } from "lucide-react";
 
 import tripPlaceholder from "../images/trip.jpeg";
 
@@ -124,6 +125,8 @@ const FavoritesList = () => {
         <ProfessorSidebar />
       ) : userRole === "staff" ? (
         <StaffSidebar />
+      ) : userRole === "ta" ? (
+        <TaSidebar />
       ) : (
         <StudentSidebar />
       )}
