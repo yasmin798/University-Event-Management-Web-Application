@@ -9,6 +9,10 @@ const BazaarApplication = require("../models/BazaarApplication");
 const Bazaar = require("../models/Bazaar");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const QRCode = require('qrcode');
+const PDFDocument = require('pdfkit');
+const nodemailer = require('nodemailer');
+const archiver = require('archiver');
 
 // Ensure uploads directory exists
 const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "ids");
@@ -31,6 +35,9 @@ const upload = multer({ storage });
 
 // CREATE BAZAAR APPLICATION
 // Expects multipart/form-data with `attendees` (JSON string) and `idFiles` array of files
+// Add this route to your boothApplications.js file, preferably after the existing routes
+
+
 router.post("/", upload.array("idFiles", 5), async (req, res) => {
   try {
     // attendees may be sent as JSON string in multipart requests
@@ -385,6 +392,153 @@ Eventity Team`;
   } catch (err) {
     console.error("Error updating vendor request:", err);
     res.status(500).json({ error: "Server error updating vendor request" });
+  }
+});
+router.post("/admin/send-qr-codes", async (req, res) => {
+  let pdfPath;
+
+  try {
+    const { boothId, vendorEmail, vendorName } = req.body;
+
+    if (!boothId || !vendorEmail) {
+      return res.status(400).json({ error: "Missing required fields: boothId and vendorEmail" });
+    }
+
+    // Use BazaarApplication instead of BoothApplication
+    const bazaarApplication = await BazaarApplication.findById(boothId);
+    if (!bazaarApplication) {
+      return res.status(404).json({ error: "Bazaar application not found" });
+    }
+
+    if (bazaarApplication.status !== "accepted") {
+      return res.status(400).json({ error: "QR codes can only be sent for accepted bazaar applications" });
+    }
+
+    const attendees = bazaarApplication.attendees || [];
+    if (attendees.length === 0) {
+      return res.status(400).json({ error: "No attendees found for this bazaar application" });
+    }
+
+    // Create temporary directory
+    const tempDir = path.join(__dirname, '..', 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Generate PDF with QR codes
+    pdfPath = path.join(tempDir, `qr-codes-${boothId}.pdf`);
+    
+    const doc = new PDFDocument({ margin: 50 });
+    const writeStream = fs.createWriteStream(pdfPath);
+    doc.pipe(writeStream);
+
+    const pageWidth = doc.page.width - 100;
+    const qrSize = 140;
+    const itemsPerRow = 2;
+    const rowHeight = qrSize + 60;
+
+    let currentY = 30;
+    let currentX = 30;
+
+    for (let i = 0; i < attendees.length; i++) {
+      const attendee = attendees[i];
+      
+      if (currentY + rowHeight > doc.page.height - 80) {
+        doc.addPage();
+        currentY = 30;
+        currentX = 30;
+      }
+
+      const qrData = `attendee:${attendee.email}|id:${attendee._id}`;
+      const qrDataUrl = await QRCode.toDataURL(qrData, { width: qrSize });
+
+      doc.image(qrDataUrl, currentX, currentY, { width: qrSize, height: qrSize });
+      doc.fontSize(12).fillColor('#1F2937').text(`Email: ${attendee.email}`, currentX + qrSize + 20, currentY);
+      doc.fontSize(10).fillColor('#6B7280').text(`Name: ${attendee.name}`, currentX + qrSize + 20, currentY + 25);
+
+      currentX += qrSize + 180;
+      if ((i + 1) % itemsPerRow === 0 || currentX + qrSize > pageWidth) {
+        currentY += rowHeight;
+        currentX = 30;
+      }
+    }
+
+    // Add instructions page
+    doc.addPage();
+    doc.fontSize(12).fillColor('#374151').text('QR Code Instructions:', 30, 30);
+    doc.fontSize(10).text('Each QR code is associated with a specific attendee and contains their unique identification information.', 30, 55);
+    doc.text('Present the appropriate QR code at check-in stations to verify attendee presence.', 30, 70);
+    doc.text(`This document contains QR codes for ${attendees.length} attendees associated with bazaar application ${boothId}.`, 30, 90);
+
+    doc.end();
+
+    await new Promise((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+    });
+
+    // Create nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: vendorEmail,
+      subject: `QR Codes for Your Bazaar Vendor Application ${boothId}`,
+      text: `Dear ${vendorName},
+
+Please find attached a PDF containing QR codes for all attendees associated with your bazaar vendor application.
+
+This document contains ${attendees.length} individual QR codes, one for each registered attendee. Each QR code is accompanied by the corresponding attendee's name and email address.
+
+These QR codes are required for attendee check-in and verification during the event. Please ensure that each attendee has access to their respective QR code.
+
+If you have any questions regarding the QR codes or attendee management, please contact the event administration team.
+
+Thank you,
+Event Administration Team`,
+      attachments: [
+        {
+          filename: `QR_Codes_Bazaar_${boothId}.pdf`,
+          path: pdfPath,
+        },
+      ],
+    };
+
+    const emailResult = await transporter.sendMail(mailOptions);
+
+    // Clean up the temporary PDF file
+    if (fs.existsSync(pdfPath)) {
+      fs.unlinkSync(pdfPath);
+    }
+
+    console.log(`QR codes email successfully sent to ${vendorEmail} for bazaar application ${boothId}, Message ID: ${emailResult.messageId}`);
+
+    res.json({
+      success: true,
+      message: `QR codes have been successfully sent to ${vendorEmail}`,
+      attendeeCount: attendees.length,
+      messageId: emailResult.messageId
+    });
+
+  } catch (error) {
+    console.error("Error in send-qr-codes endpoint:", error);
+    
+    // Clean up temporary file if it exists
+    if (pdfPath && fs.existsSync(pdfPath)) {
+      try {
+        fs.unlinkSync(pdfPath);
+      } catch (cleanupError) {
+        console.error("Error cleaning up temporary PDF file:", cleanupError);
+      }
+    }
+
+    res.status(500).json({ error: error.message });
   }
 });
 
