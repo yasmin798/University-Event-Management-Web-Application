@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import footballImg from "../images/football.webp";
 import basketballImg from "../images/basketball.webp";
 import tennisImg from "../images/tennis.webp";
+import StudentSidebar from "../components/StudentSidebar";
 
 const courtsData = [
   {
@@ -65,6 +66,8 @@ export default function CourtsAvailabilityWrapper() {
   };
 
   return (
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+          <StudentSidebar />
     <div
   style={{
     padding: "40px",
@@ -235,5 +238,6 @@ export default function CourtsAvailabilityWrapper() {
         </div>
       ))}
     </div>
+     </div>
   );
 }
