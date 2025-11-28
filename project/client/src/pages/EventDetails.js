@@ -1,8 +1,9 @@
 // client/src/pages/EventDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import StudentSidebar from "../components/StudentSidebar"; // or StudentSidebar / VendorSidebar etc
-
+import ProfessorSidebar from "../components/ProfessorSidebar";
+import StudentSidebar from "../components/StudentSidebar";
+import TaSidebar from "../components/TaSidebar";
 import {
   Menu,
   Bell,
@@ -533,8 +534,16 @@ const EventDetails = () => {
   );
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
+    
+    {/* Sidebar */}
+    {userRole === "student" ? (
       <StudentSidebar />
+    ) : userRole === "professor" ? (
+      <ProfessorSidebar />
+    ) : userRole === "ta" ? (
+      <TaSidebar />
+    ) : null}
       <div className="flex-1 ml-[250px]">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
