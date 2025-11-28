@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, ArrowDownRight, Wallet, History } from "lucide-react";
 import StudentSidebar from "../components/StudentSidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
+import TaSidebar from "../components/TaSidebar";
 
 export default function WalletPage() {
   const navigate = useNavigate();
@@ -9,6 +11,7 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState([]);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(true);
+   const [userRole, setUserRole] = useState("");
 
   const fetchWallet = async () => {
     try {
@@ -31,6 +34,16 @@ export default function WalletPage() {
   };
 
   useEffect(() => {
+    // get role from token
+  const token = localStorage.getItem("token");
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      setUserRole(payload.role || "");
+    } catch (e) {
+      console.error("Invalid token:", e);
+    }
+  }
     fetchWallet();
 
     // Auto-refresh when page gets focus (after top-up success)
@@ -49,8 +62,17 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
+     <div className="flex h-screen bg-[#f5efeb]">
+          {userRole === "student" ? (
       <StudentSidebar />
+    ) : userRole === "professor" ? (
+      <ProfessorSidebar />
+    ) : userRole === "ta" ? (
+      <TaSidebar />
+    ) : (
+      <StudentSidebar /> // fallback
+    )}
+    
       <div
         className="flex-1 bg-gradient-to-br from-emerald-50 to-teal-50 py-8 px-4"
         style={{ marginLeft: "260px" }}

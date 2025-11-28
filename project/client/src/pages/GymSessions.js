@@ -6,7 +6,7 @@ import Sidebar from "../components/Sidebar";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import GymSessionsForRegister from "./GymSessionsForRegister";
-
+import TaSidebar from "../components/TaSidebar";
 export default function GymManager() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
@@ -24,6 +24,7 @@ export default function GymManager() {
       setUserRole("student");
     }
   }, []);
+
 
   const fetchSessions = async () => {
     try {
@@ -127,16 +128,20 @@ export default function GymManager() {
   if (userRole === "professor") {
     return <GymSessionsForRegister SidebarComponent={ProfessorSidebar} />;
   }
-
+if (userRole === "ta") {
+    return <GymSessionsForRegister SidebarComponent={TaSidebar} />;
+  }
   return (
     <div
       className="events-theme"
       style={{ display: "flex", minHeight: "100vh" }}
     >
       {userRole === "student" ? (
-        <StudentSidebar />
-      ) : userRole === "professor" ? (
-        <ProfessorSidebar />
+  <StudentSidebar />
+) : userRole === "professor" ? (
+  <ProfessorSidebar />
+) : userRole === "ta" ? (
+  <TaSidebar />
       ) : (
         <Sidebar filter={filter} setFilter={setFilter} />
       )}

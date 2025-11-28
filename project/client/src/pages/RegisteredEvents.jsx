@@ -22,6 +22,7 @@ import StudentSidebar from "../components/StudentSidebar";
 import Sidebar from "../components/Sidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import SearchableDropdown from "../components/SearchableDropdown";
+import TaSidebar from "../components/TaSidebar";
 
 import "./RegisteredEvents.css";
 import workshopImage from "../images/workshop.png";
@@ -559,12 +560,14 @@ const RegisteredEvents = () => {
   return (
     <div className="flex h-screen bg-[#f5efeb]">
       {userRole === "student" ? (
-        <StudentSidebar />
-      ) : userRole === "professor" ? (
-        <ProfessorSidebar />
-      ) : (
-        <Sidebar />
-      )}
+  <StudentSidebar />
+) : userRole === "professor" ? (
+  <ProfessorSidebar />
+) : userRole === "ta" ? (
+  <TaSidebar />
+) : (
+  <StudentSidebar /> // fallback
+)}
 
       {/* Main content */}
       <div className="flex-1 overflow-auto ml-64">
