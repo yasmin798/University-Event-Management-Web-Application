@@ -393,7 +393,9 @@ export default function EventsHome() {
   }, []);
 
   const allEvents = [
-    ...otherEvents.filter((e) => !["CONFERENCE", "BOOTH", "WORKSHOP"].includes(e.type)),
+    ...otherEvents.filter(
+      (e) => !["CONFERENCE", "BOOTH", "WORKSHOP"].includes(e.type)
+    ),
     ...conferences,
     ...workshops,
     ...booths,

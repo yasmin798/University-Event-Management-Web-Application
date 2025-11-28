@@ -56,29 +56,30 @@ exports.getSalesReport = async (req, res) => {
       const pipeline = [];
       const m = buildMatch("title", "startDateTime");
       if (m) pipeline.push({ $match: m });
-      
+
       pipeline.push({
         $project: {
           title: 1,
           startDateTime: 1,
         },
       });
-      
+
       const bazaars = await Bazaar.aggregate(pipeline);
-      
+
       for (const bazaar of bazaars) {
         // Get all paid booth applications for this bazaar
         const paidBooths = await BazaarApplication.find({
           bazaar: bazaar._id,
           paid: true,
         });
-        
+
         // Calculate TOTAL revenue from all booth payments
         const revenue = paidBooths.reduce((sum, booth) => {
-          const price = BAZAAR_PRICE_TABLE[booth.boothSize] || BAZAAR_PRICE_TABLE.default;
+          const price =
+            BAZAAR_PRICE_TABLE[booth.boothSize] || BAZAAR_PRICE_TABLE.default;
           return sum + price;
         }, 0);
-        
+
         breakdown.push({
           eventType: "bazaar",
           id: bazaar._id,
@@ -93,42 +94,45 @@ exports.getSalesReport = async (req, res) => {
     // Platform Booths - Revenue = sum of all paid platform booth applications
     if (!eventType || eventType === "booth") {
       const matchQuery = { paid: true };
-      
+
       if (start || end) {
         const range = {};
         if (start) range.$gte = start;
         if (end) range.$lte = end;
         matchQuery.createdAt = range;
       }
-      
+
       const paidBooths = await BoothApplication.find(matchQuery);
-      
+
       // Group by location and calculate total revenue
       const boothsByLocation = {};
-      
+
       paidBooths.forEach((booth) => {
         const location = booth.platformSlot || booth.location || "default";
         const weeks = booth.durationWeeks || 1;
-        const basePrice = BOOTH_PRICE_TABLE[location] || BOOTH_PRICE_TABLE.default;
+        const basePrice =
+          BOOTH_PRICE_TABLE[location] || BOOTH_PRICE_TABLE.default;
         const revenue = basePrice * weeks;
-        
+
         const key = `${location}-${weeks}`;
         if (!boothsByLocation[key]) {
           boothsByLocation[key] = {
             eventType: "booth",
             id: booth._id,
-            title: `Platform Booth - ${location} (${weeks} week${weeks > 1 ? 's' : ''})`,
+            title: `Platform Booth - ${location} (${weeks} week${
+              weeks > 1 ? "s" : ""
+            })`,
             attendees: 0,
             price: 0,
             revenue: 0,
           };
         }
-        
+
         boothsByLocation[key].attendees += 1;
         boothsByLocation[key].revenue += revenue;
       });
-      
-      Object.values(boothsByLocation).forEach(b => breakdown.push(b));
+
+      Object.values(boothsByLocation).forEach((b) => breakdown.push(b));
     }
 
     // Trips - Revenue = price × number of PAID users
@@ -175,10 +179,11 @@ exports.getSalesReport = async (req, res) => {
         // Calculate price per person (matching payment logic)
         const budget = Number(w.requiredBudget || 0);
         const capacity = Number(w.capacity || 1);
-        const pricePerPerson = capacity > 0 ? Math.round((budget / capacity) + 100) : 0;
+        const pricePerPerson =
+          capacity > 0 ? Math.round(budget / capacity + 100) : 0;
         const paidCount = w.paidUsersCount || 0;
         const revenue = pricePerPerson * paidCount;
-        
+
         breakdown.push({
           eventType: "workshop",
           id: w._id,

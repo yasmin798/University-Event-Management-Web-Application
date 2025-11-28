@@ -16,7 +16,7 @@ router.patch("/:id", async (req, res) => {
   console.log("=== ADMIN BAZAAR REQUESTS PATCH ROUTE HIT ===");
   console.log("ID:", req.params.id);
   console.log("Body:", req.body);
-  
+
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -29,7 +29,9 @@ router.patch("/:id", async (req, res) => {
     if (!validStatuses.includes(status.toLowerCase())) {
       return res
         .status(400)
-        .json({ error: "Invalid status. Must be pending, accepted, or rejected." });
+        .json({
+          error: "Invalid status. Must be pending, accepted, or rejected.",
+        });
     }
 
     const request = await BazaarApplication.findById(id).populate("bazaar");
@@ -42,7 +44,7 @@ router.patch("/:id", async (req, res) => {
     const updateFields = {
       status: status.toLowerCase(),
     };
-    
+
     // Set payment deadline if accepted (14 days from now)
     if (status.toLowerCase() === "accepted") {
       const deadline = new Date();
@@ -50,7 +52,7 @@ router.patch("/:id", async (req, res) => {
       updateFields.paymentDeadline = deadline;
       paymentDeadline = deadline;
     }
-    
+
     // Use updateOne to bypass all validation
     await BazaarApplication.collection.updateOne(
       { _id: request._id },
@@ -78,7 +80,9 @@ router.patch("/:id", async (req, res) => {
           if (status.toLowerCase() === "accepted") {
             const boothPrice = BAZAAR_PRICE_TABLE[request.boothSize] || 0;
             const bazaarTitle = request.bazaar?.title || "Bazaar Event";
-            const deadlineStr = paymentDeadline ? paymentDeadline.toLocaleDateString() : "within 14 days";
+            const deadlineStr = paymentDeadline
+              ? paymentDeadline.toLocaleDateString()
+              : "within 14 days";
 
             emailSubject = `Bazaar Vendor Application Accepted – ${bazaarTitle}`;
             emailBody = `Dear ${vendorName},
@@ -125,7 +129,7 @@ Eventity Team`;
             to: vendorEmail,
             vendorName,
             boothSize: request.boothSize,
-            bazaarTitle: request.bazaar?.title
+            bazaarTitle: request.bazaar?.title,
           });
           // Don't fail the request if email fails
         }

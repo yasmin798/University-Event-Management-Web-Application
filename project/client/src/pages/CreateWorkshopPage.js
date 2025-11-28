@@ -93,7 +93,7 @@ const CreateWorkshopPage = () => {
         // Get professor ID from localStorage (or your auth context)
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         const token = localStorage.getItem("token");
-        
+
         console.log("Token from localStorage:", token);
         console.log("User from localStorage:", user);
 
@@ -109,7 +109,7 @@ const CreateWorkshopPage = () => {
           createdBy: user.id || user._id || "unknown-professor",
           status: "pending",
         };
-        
+
         console.log("Workshop data being sent:", workshopData);
 
         const createdWorkshop = await workshopAPI.createWorkshop(workshopData);
@@ -120,7 +120,11 @@ const CreateWorkshopPage = () => {
       } catch (error) {
         console.error("Error creating workshop:", error);
         console.error("Error response:", error.response?.data);
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to create workshop. Please try again.";
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to create workshop. Please try again.";
         alert(errorMessage);
       }
     }
@@ -133,323 +137,328 @@ const CreateWorkshopPage = () => {
   return (
     <div className="flex h-screen bg-[#f5efeb]">
       <ProfessorSidebar />
-      
+
       <div className="flex-1 overflow-auto ml-64">
         <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-[#2f4156]">
-              Create Workshop
-            </h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-[#2f4156]">
+                Create Workshop
+              </h1>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="bg-white rounded-xl p-8 border border-[#c8d9e6]">
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Workshop Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="workshopName"
-              value={formData.workshopName}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.workshopName ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-              placeholder="Enter workshop name"
-            />
-            {errors.workshopName && (
-              <p className="text-red-500 text-sm mt-1">{errors.workshopName}</p>
-            )}
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Location <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.location ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-            >
-              <option value="">Select location</option>
-              <option value="GUC Cairo">GUC Cairo</option>
-              <option value="GUC Berlin">GUC Berlin</option>
-            </select>
-            {errors.location && (
-              <p className="text-red-500 text-sm mt-1">{errors.location}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
+        <div className="max-w-4xl mx-auto p-8">
+          <div className="bg-white rounded-xl p-8 border border-[#c8d9e6]">
+            <div className="mb-6">
               <label className="block text-[#2f4156] font-semibold mb-2">
-                Start Date & Time <span className="text-red-500">*</span>
+                Workshop Name <span className="text-red-500">*</span>
               </label>
               <input
-                type="datetime-local"
-                name="startDateTime"
-                value={formData.startDateTime}
+                type="text"
+                name="workshopName"
+                value={formData.workshopName}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.startDateTime ? "border-red-500" : "border-[#c8d9e6]"
+                  errors.workshopName ? "border-red-500" : "border-[#c8d9e6]"
                 }`}
+                placeholder="Enter workshop name"
               />
-              {errors.startDateTime && (
+              {errors.workshopName && (
                 <p className="text-red-500 text-sm mt-1">
-                  {errors.startDateTime}
+                  {errors.workshopName}
                 </p>
               )}
             </div>
-            <div>
+
+            <div className="mb-6">
               <label className="block text-[#2f4156] font-semibold mb-2">
-                End Date & Time <span className="text-red-500">*</span>
+                Location <span className="text-red-500">*</span>
               </label>
-              <input
-                type="datetime-local"
-                name="endDateTime"
-                value={formData.endDateTime}
+              <select
+                name="location"
+                value={formData.location}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                  errors.endDateTime ? "border-red-500" : "border-[#c8d9e6]"
+                  errors.location ? "border-red-500" : "border-[#c8d9e6]"
                 }`}
+              >
+                <option value="">Select location</option>
+                <option value="GUC Cairo">GUC Cairo</option>
+                <option value="GUC Berlin">GUC Berlin</option>
+              </select>
+              {errors.location && (
+                <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-[#2f4156] font-semibold mb-2">
+                  Start Date & Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  name="startDateTime"
+                  value={formData.startDateTime}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                    errors.startDateTime ? "border-red-500" : "border-[#c8d9e6]"
+                  }`}
+                />
+                {errors.startDateTime && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.startDateTime}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#2f4156] font-semibold mb-2">
+                  End Date & Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  name="endDateTime"
+                  value={formData.endDateTime}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                    errors.endDateTime ? "border-red-500" : "border-[#c8d9e6]"
+                  }`}
+                />
+                {errors.endDateTime && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.endDateTime}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Short Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="shortDescription"
+                value={formData.shortDescription}
+                onChange={handleChange}
+                rows="3"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.shortDescription
+                    ? "border-red-500"
+                    : "border-[#c8d9e6]"
+                }`}
+                placeholder="Brief overview of the workshop"
               />
-              {errors.endDateTime && (
+              {errors.shortDescription && (
                 <p className="text-red-500 text-sm mt-1">
-                  {errors.endDateTime}
+                  {errors.shortDescription}
                 </p>
               )}
             </div>
-          </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Short Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="shortDescription"
-              value={formData.shortDescription}
-              onChange={handleChange}
-              rows="3"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.shortDescription ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-              placeholder="Brief overview of the workshop"
-            />
-            {errors.shortDescription && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.shortDescription}
-              </p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Full Agenda <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="fullAgenda"
+                value={formData.fullAgenda}
+                onChange={handleChange}
+                rows="6"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.fullAgenda ? "border-red-500" : "border-[#c8d9e6]"
+                }`}
+                placeholder="Detailed agenda with schedule and topics"
+              />
+              {errors.fullAgenda && (
+                <p className="text-red-500 text-sm mt-1">{errors.fullAgenda}</p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Full Agenda <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="fullAgenda"
-              value={formData.fullAgenda}
-              onChange={handleChange}
-              rows="6"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.fullAgenda ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-              placeholder="Detailed agenda with schedule and topics"
-            />
-            {errors.fullAgenda && (
-              <p className="text-red-500 text-sm mt-1">{errors.fullAgenda}</p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Faculty Responsible <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="facultyResponsible"
+                value={formData.facultyResponsible}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.facultyResponsible
+                    ? "border-red-500"
+                    : "border-[#c8d9e6]"
+                }`}
+              >
+                <option value="">Select faculty</option>
+                <option value="MET">
+                  MET - Media Engineering and Technology
+                </option>
+                <option value="IET">
+                  IET - Information Engineering and Technology
+                </option>
+                <option value="PBT">PBT - Pharmacy and Biotechnology</option>
+                <option value="EMS">
+                  EMS - Engineering and Materials Science
+                </option>
+                <option value="MNGT">MNGT - Management Technology</option>
+                <option value="ASA">ASA - Applied Sciences and Arts</option>
+                <option value="DNT">DNT - Dentistry</option>
+                <option value="LAW">LAW - Law and Legal Studies</option>
+              </select>
+              {errors.facultyResponsible && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.facultyResponsible}
+                </p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Faculty Responsible <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="facultyResponsible"
-              value={formData.facultyResponsible}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.facultyResponsible
-                  ? "border-red-500"
-                  : "border-[#c8d9e6]"
-              }`}
-            >
-              <option value="">Select faculty</option>
-              <option value="MET">
-                MET - Media Engineering and Technology
-              </option>
-              <option value="IET">
-                IET - Information Engineering and Technology
-              </option>
-              <option value="PBT">PBT - Pharmacy and Biotechnology</option>
-              <option value="EMS">
-                EMS - Engineering and Materials Science
-              </option>
-              <option value="MNGT">MNGT - Management Technology</option>
-              <option value="ASA">ASA - Applied Sciences and Arts</option>
-              <option value="DNT">DNT - Dentistry</option>
-              <option value="LAW">LAW - Law and Legal Studies</option>
-            </select>
-            {errors.facultyResponsible && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.facultyResponsible}
-              </p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Professor(s) Participating{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="professorsParticipating"
+                value={formData.professorsParticipating}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.professorsParticipating
+                    ? "border-red-500"
+                    : "border-[#c8d9e6]"
+                }`}
+                placeholder="Enter professor names (comma-separated)"
+              />
+              {errors.professorsParticipating && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.professorsParticipating}
+                </p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Professor(s) Participating <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="professorsParticipating"
-              value={formData.professorsParticipating}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.professorsParticipating
-                  ? "border-red-500"
-                  : "border-[#c8d9e6]"
-              }`}
-              placeholder="Enter professor names (comma-separated)"
-            />
-            {errors.professorsParticipating && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.professorsParticipating}
-              </p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Required Budget (EGP) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="requiredBudget"
+                value={formData.requiredBudget}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.requiredBudget ? "border-red-500" : "border-[#c8d9e6]"
+                }`}
+                placeholder="Enter budget amount"
+                min="0"
+              />
+              {errors.requiredBudget && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.requiredBudget}
+                </p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Required Budget (EGP) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="requiredBudget"
-              value={formData.requiredBudget}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.requiredBudget ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-              placeholder="Enter budget amount"
-              min="0"
-            />
-            {errors.requiredBudget && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.requiredBudget}
-              </p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Funding Source <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="fundingSource"
+                value={formData.fundingSource}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.fundingSource ? "border-red-500" : "border-[#c8d9e6]"
+                }`}
+              >
+                <option value="">Select funding source</option>
+                <option value="GUC">GUC</option>
+                <option value="External">External</option>
+              </select>
+              {errors.fundingSource && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.fundingSource}
+                </p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Funding Source <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="fundingSource"
-              value={formData.fundingSource}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.fundingSource ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-            >
-              <option value="">Select funding source</option>
-              <option value="GUC">GUC</option>
-              <option value="External">External</option>
-            </select>
-            {errors.fundingSource && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.fundingSource}
-              </p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Extra Required Resources
+              </label>
+              <textarea
+                name="extraResources"
+                value={formData.extraResources}
+                onChange={handleChange}
+                rows="3"
+                className="w-full px-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
+                placeholder="List any additional resources needed (optional)"
+              />
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Extra Required Resources
-            </label>
-            <textarea
-              name="extraResources"
-              value={formData.extraResources}
-              onChange={handleChange}
-              rows="3"
-              className="w-full px-4 py-2 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d]"
-              placeholder="List any additional resources needed (optional)"
-            />
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Capacity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="capacity"
+                value={formData.capacity}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.capacity ? "border-red-500" : "border-[#c8d9e6]"
+                }`}
+                placeholder="Maximum number of participants"
+                min="1"
+              />
+              {errors.capacity && (
+                <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Capacity <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="capacity"
-              value={formData.capacity}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.capacity ? "border-red-500" : "border-[#c8d9e6]"
-              }`}
-              placeholder="Maximum number of participants"
-              min="1"
-            />
-            {errors.capacity && (
-              <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>
-            )}
-          </div>
+            <div className="mb-6">
+              <label className="block text-[#2f4156] font-semibold mb-2">
+                Registration Deadline <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                name="registrationDeadline"
+                value={formData.registrationDeadline}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
+                  errors.registrationDeadline
+                    ? "border-red-500"
+                    : "border-[#c8d9e6]"
+                }`}
+              />
+              {errors.registrationDeadline && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.registrationDeadline}
+                </p>
+              )}
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-[#2f4156] font-semibold mb-2">
-              Registration Deadline <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              name="registrationDeadline"
-              value={formData.registrationDeadline}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] ${
-                errors.registrationDeadline
-                  ? "border-red-500"
-                  : "border-[#c8d9e6]"
-              }`}
-            />
-            {errors.registrationDeadline && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.registrationDeadline}
-              </p>
-            )}
-          </div>
-
-          <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">
-            '
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex items-center gap-2 px-6 py-3 border border-[#c8d9e6] text-[#567c8d] rounded-lg hover:bg-[#f5efeb] transition-colors"
-            >
-              <X size={18} />
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="flex items-center gap-2 px-6 py-3 bg-[#567c8d] text-white rounded-lg hover:bg-[#2f4156] transition-colors"
-            >
-              <Save size={18} />
-              Create Workshop
-            </button>
+            <div className="flex gap-4 justify-end pt-4 border-t border-[#c8d9e6]">
+              '
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="flex items-center gap-2 px-6 py-3 border border-[#c8d9e6] text-[#567c8d] rounded-lg hover:bg-[#f5efeb] transition-colors"
+              >
+                <X size={18} />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex items-center gap-2 px-6 py-3 bg-[#567c8d] text-white rounded-lg hover:bg-[#2f4156] transition-colors"
+              >
+                <Save size={18} />
+                Create Workshop
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

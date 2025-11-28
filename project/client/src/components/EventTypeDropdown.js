@@ -12,13 +12,19 @@ const EventTypeDropdown = ({ selected, onChange }) => {
       >
         {selected}
         <svg
-          className={`w-4 h-4 ml-2 transform transition-transform ${isOpen ? "rotate-180" : ""
-            }`}
+          className={`w-4 h-4 ml-2 transform transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
 
@@ -31,8 +37,9 @@ const EventTypeDropdown = ({ selected, onChange }) => {
                 onChange(type);
                 setIsOpen(false);
               }}
-              className={`px-3 py-2 hover:bg-[#f5efeb] cursor-pointer ${selected === type ? "bg-[#e2e8f0]" : ""
-                }`}
+              className={`px-3 py-2 hover:bg-[#f5efeb] cursor-pointer ${
+                selected === type ? "bg-[#e2e8f0]" : ""
+              }`}
             >
               {type}
             </li>

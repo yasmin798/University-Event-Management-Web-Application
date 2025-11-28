@@ -23,7 +23,7 @@ const FavoritesList = () => {
   const [favorites, setFavorites] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  
+
   const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
