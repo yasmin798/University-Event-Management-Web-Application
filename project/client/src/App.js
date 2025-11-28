@@ -62,6 +62,7 @@ import AdminSalesReport from "./pages/AdminSalesReport";
 import AdminAllEvents from "./pages/AdminAllEvents";
 import AdminVendorBooths from "./pages/AdminVendorBooths";
 import StudentLoyaltyVendors from "./pages/StudentLoyaltyVendors";
+import TaLoyaltyVendors from "./pages/TaLoyaltyVendors";
 import ProfessorLoyaltyVendors from "./pages/ProfessorLoyaltyVendors";
 import AdminLoyaltyVendors from "./pages/AdminLoyaltyVendors";
 
@@ -86,7 +87,8 @@ import PollVoting from "./pages/PollVoting";
 import EventReviewsPage from "./pages/EventReviewsPage"; // Adjust path if needed (e.g., "../pages/EventReviewsPage")
 import PendingVerificationPage from "./pages/PendingVerification";
 import AdminVendor from "./pages/AdminVendor";
-
+//FavoriteList
+import TaFavoriteList from "./pages/TaFavoriteList";
 //workshops
 import WorkshopParticipants from "./pages/WorkshopParticipants";
 import WorkshopEditsPage from "./pages/WorkshopEditsPage";
@@ -125,6 +127,9 @@ function App() {
 
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/student/loyalty-vendors" element={<StudentLoyaltyVendors />} />
+         <Route path="/ta/loyalty-vendors" element={<TaLoyaltyVendors />} />
+        {/*favorite*/}
+        <Route path="/ta/favorite" element={<TaFavoriteList />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/ta/dashboard" element={<TaDashboard />} />
