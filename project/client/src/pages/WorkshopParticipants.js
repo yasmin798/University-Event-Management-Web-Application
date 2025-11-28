@@ -136,7 +136,7 @@ export default function WorkshopParticipants() {
                     return (
                       <tr key={student._id || index} className="hover:bg-[#f5efeb]">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2f4156]">
-                          {student.fullName || student.name || "Unknown Student"} {/* UPDATED: Fallback to name if fullName missing */}
+                          {(student.firstName + " " + student.lastName) || "Unkown Student"} {/* UPDATED: Fallback to name if fullName missing */}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-[#567c8d]">
                           {student.email || "No email"}

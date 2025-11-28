@@ -9,6 +9,7 @@ import {
   LogOut,
   CheckCircle,
   Store,
+  Dumbbell,
 } from "lucide-react";
 
 export default function ProfessorSidebar() {
@@ -50,6 +51,10 @@ export default function ProfessorSidebar() {
 
         {navBtn("Polls Voting", <CheckCircle size={18} />, () =>
           navigate("/poll-voting")
+        )}
+
+        {navBtn("Gym Sessions", <Dumbbell size={18} />, () =>
+          navigate("/gym-sessions-register")
         )}
 
         {navBtn("Loyalty Partners", <Store size={18} />, () =>

@@ -1,7 +1,7 @@
 // client/src/pages/EventDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import StudentSidebar from "../components/StudentSidebar"; // or StudentSidebar / VendorSidebar etc
+import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
@@ -672,7 +672,9 @@ const EventDetails = () => {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      {event.registrations?.length || 0}
+                      {!isConference && !isBazaar && !isBooth
+                        ? event.registrations?.length || 0
+                        : "N/A"}
                     </p>
                     <p className="text-sm text-gray-600">Registered</p>
                   </div>
@@ -682,38 +684,42 @@ const EventDetails = () => {
 
             {/* Registration Section */}
             <div className="px-8 py-6">
-              {!isRegistered && !hasPassed && (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Ready to join?
-                    </h3>
-                    <p className="text-gray-600">
-                      Don't miss out on this amazing event
-                    </p>
+              {!isRegistered &&
+                !hasPassed &&
+                !isConference &&
+                !isBazaar &&
+                !isBooth && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Ready to join?
+                      </h3>
+                      <p className="text-gray-600">
+                        Don't miss out on this amazing event
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {canRegister ? (
+                        <button
+                          onClick={handleRegister}
+                          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                          disabled={!userIsAllowed}
+                        >
+                          Register Now
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
+                        >
+                          Registration Closed
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    {canRegister ? (
-                      <button
-                        onClick={handleRegister}
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                        disabled={!userIsAllowed}
-                      >
-                        Register Now
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
-                      >
-                        Registration Closed
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {isRegistered && (
+              {isRegistered && !isConference && !isBazaar && !isBooth && (
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -733,7 +739,10 @@ const EventDetails = () => {
               {/* Role Restriction Message */}
               {event?.allowedRoles?.length > 0 &&
                 !userIsAllowed &&
-                !isEventsOffice && (
+                !isEventsOffice &&
+                !isConference &&
+                !isBazaar &&
+                !isBooth && (
                   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -955,11 +964,6 @@ const EventDetails = () => {
                         label="Platform Slot"
                         value={event.platformSlot || "—"}
                       />
-                      <DetailCard
-                        icon={Users}
-                        label="Status"
-                        value={event.status || "—"}
-                      />
                     </>
                   )}
 
@@ -979,11 +983,6 @@ const EventDetails = () => {
                         icon={Clock}
                         label="Ends"
                         value={formatDate(event.endDateTime)}
-                      />
-                      <DetailCard
-                        icon={Calendar}
-                        label="Registration Deadline"
-                        value={formatDate(event.registrationDeadline)}
                       />
                     </>
                   )}
@@ -1127,7 +1126,11 @@ const EventDetails = () => {
                         isRegistered ? "text-green-600" : "text-gray-600"
                       }`}
                     >
-                      {isRegistered ? "Registered" : "Not Registered"}
+                      {!isConference && !isBazaar && !isBooth
+                        ? isRegistered
+                          ? "Registered"
+                          : "Not Registered"
+                        : "N/A"}
                     </span>
                   </div>
                 </div>
