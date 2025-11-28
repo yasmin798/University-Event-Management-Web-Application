@@ -37,7 +37,6 @@ export default function CourtsAvailabilityWrapper() {
   const navigate = useNavigate();
   const [bookedSlots, setBookedSlots] = useState({});
 
-  // Fetch booked reservations from backend
   useEffect(() => {
     const fetchReservations = async () => {
       try {
@@ -66,59 +65,160 @@ export default function CourtsAvailabilityWrapper() {
   };
 
   return (
-    <div style={{ padding: "30px", maxWidth: "900px", margin: "0 auto", fontFamily: "Poppins, Arial, sans-serif" }}>
-      <h1 style={{ textAlign: "center", marginBottom: "40px", fontWeight: 700 }}>Campus Courts Availability</h1>
+    <div
+  style={{
+    padding: "40px",
+    maxWidth: "1100px",
+    margin: "0 auto",
+    fontFamily: "Poppins, Arial, sans-serif",
+    backgroundColor: "#F3F4F6",     // ✅ MATCHES STUDENT DASHBOARD
+    minHeight: "100vh",
+    borderRadius: "12px"
+  }}
+>
 
-      {courtsData.map(court => (
+      <h1
+        style={{
+          textAlign: "center",
+          marginBottom: "50px",
+          fontWeight: 700,
+          fontSize: "34px",
+          color: "#1E3A8A",
+        }}
+      >
+        Campus Courts Availability
+      </h1>
+
+      {courtsData.map((court) => (
         <div
           key={court.id}
           style={{
-            border: "1px solid #E5E7EB",
-            borderRadius: "10px",
-            padding: "20px",
-            marginBottom: "30px",
+            borderRadius: "16px",
+            padding: "25px",
+            marginBottom: "35px",
             backgroundColor: "white",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            boxShadow: "0 5px 15px rgba(0,0,0,0.08)",
+            border: "1px solid #E2E8F0",
           }}
         >
-          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "25px",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+            }}
+          >
             <img
               src={courtImages[court.id]}
               alt={court.name}
-              style={{ width: "300px", height: "200px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+              style={{
+                width: "340px",
+                height: "230px",
+                borderRadius: "12px",
+                objectFit: "cover",
+                flexShrink: 0,
+                boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
+              }}
             />
-            <div style={{ flex: 1, minWidth: "250px" }}>
-              <h2 style={{ color: "#2563EB", marginBottom: "15px", fontWeight: 600 }}>{court.name}</h2>
 
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead style={{ backgroundColor: "#3B82F6", color: "white" }}>
+            <div style={{ flex: 1, minWidth: "280px" }}>
+              <h2
+                style={{
+                  color: "#1D4ED8",
+                  marginBottom: "18px",
+                  fontWeight: 700,
+                  fontSize: "22px",
+                  borderBottom: "2px solid #93C5FD",
+                  paddingBottom: "5px",
+                  width: "fit-content",
+                }}
+              >
+                {court.name}
+              </h2>
+
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "separate",
+                  borderSpacing: "0 8px",
+                }}
+              >
+                <thead>
                   <tr>
-                    <th style={{ padding: "12px", border: "1px solid #DBEAFE" }}>Date</th>
-                    <th style={{ padding: "12px", border: "1px solid #DBEAFE" }}>Available Times</th>
+                    <th
+                      style={{
+                        padding: "14px",
+                        backgroundColor: "#1E40AF",
+                        color: "white",
+                        fontWeight: 600,
+                        borderTopLeftRadius: "8px",
+                        borderBottomLeftRadius: "8px",
+                      }}
+                    >
+                      Date
+                    </th>
+                    <th
+                      style={{
+                        padding: "14px",
+                        backgroundColor: "#1E40AF",
+                        color: "white",
+                        fontWeight: 600,
+                        borderTopRightRadius: "8px",
+                        borderBottomRightRadius: "8px",
+                      }}
+                    >
+                      Available Times
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {court.availability.map(({ date, times }) => (
-                    <tr key={date} style={{ backgroundColor: "#EFF6FF" }}>
-                      <td style={{ padding: "12px", border: "1px solid #DBEAFE", textAlign: "center" }}>
+                    <tr key={date} style={{}}>
+                      <td
+                        style={{
+                          padding: "14px",
+                          backgroundColor: "white",
+                          border: "1px solid #D1D5DB",
+                          borderRight: "none",
+                          textAlign: "center",
+                          fontWeight: 500,
+                          borderRadius: "8px 0 0 8px",
+                        }}
+                      >
                         {new Date(date).toLocaleDateString()}
                       </td>
-                      <td style={{ padding: "12px", border: "1px solid #DBEAFE", textAlign: "center" }}>
-                        {times.map(time => {
+
+                      <td
+                        style={{
+                          padding: "14px",
+                          backgroundColor: "white",
+                          border: "1px solid #D1D5DB",
+                          borderLeft: "none",
+                          borderRadius: "0 8px 8px 0",
+                          textAlign: "center",
+                        }}
+                      >
+                        {times.map((time) => {
                           const isBooked = bookedSlots[court.id]?.[date]?.includes(time);
+
                           return (
                             <button
                               key={time}
                               disabled={isBooked}
                               onClick={() => handleReserve(court.id, date, time)}
                               style={{
-                                margin: "3px",
-                                padding: "6px 10px",
-                                borderRadius: "5px",
-                                border: "1px solid #ccc",
-                                backgroundColor: isBooked ? "#ccc" : "#2563EB",
-                                color: isBooked ? "#666" : "white",
+                                margin: "5px",
+                                padding: "8px 14px",
+                                borderRadius: "6px",
+                                border: "none",
+                                fontWeight: 600,
+                                backgroundColor: isBooked ? "#9CA3AF" : "#2563EB",
+                                color: "white",
                                 cursor: isBooked ? "not-allowed" : "pointer",
+                                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                                transition: "0.2s",
                               }}
                             >
                               {time} {isBooked ? "(Booked)" : ""}
@@ -130,7 +230,6 @@ export default function CourtsAvailabilityWrapper() {
                   ))}
                 </tbody>
               </table>
-
             </div>
           </div>
         </div>
