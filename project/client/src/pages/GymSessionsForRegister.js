@@ -8,6 +8,7 @@ import Sidebar from "../components/Sidebar";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
+import StaffSidebar from "../components/StaffSidebar";
 // Accept an optional SidebarComponent prop so other pages (professor)
 // can reuse the registration UI but render a different sidebar.
 export default function GymManager({ SidebarComponent = null }) {
@@ -44,6 +45,8 @@ export default function GymManager({ SidebarComponent = null }) {
         setUserRole(role);
         setDebugInfo(`Role loaded: ${role}`); // Debug
         console.log("User role:", role);
+        // Only events_office users should use the manager UI
+        // Staff, students, professors, and TAs can register for gym sessions
         if (
           role === "events_office" ||
           role === "events-office" ||
@@ -61,7 +64,7 @@ export default function GymManager({ SidebarComponent = null }) {
       setDebugInfo("No token found");
       console.warn("No token in localStorage");
     }
-  }, []);
+  }, [navigate]);
 
   // Week navigation
   const [weekStart, setWeekStart] = useState(() => {
@@ -295,6 +298,8 @@ export default function GymManager({ SidebarComponent = null }) {
     ? StudentSidebar
     : userRole === "ta"
     ? TaSidebar
+    : userRole === "staff"
+    ? StaffSidebar
     : Sidebar;
 
   return (
