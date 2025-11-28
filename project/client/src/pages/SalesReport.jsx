@@ -9,7 +9,6 @@ import {
   Calendar,
   DollarSign,
   Users,
-  BarChart3,
   RefreshCw,
 } from "lucide-react";
 
@@ -134,11 +133,10 @@ export default function SalesReport() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2f4156] focus:border-transparent"
             >
               <option value="">All Event Types</option>
-              <option value="workshop">Workshop</option>
-              <option value="bazaar">Bazaar</option>
-              <option value="trip">Trip</option>
-              <option value="conference">Conference</option>
-              <option value="gymsession">Gym Session</option>
+              <option value="bazaar">Bazaar (Booths)</option>
+              <option value="booth">Platform Booths</option>
+              <option value="trip">Trips</option>
+              <option value="workshop">Workshops</option>
             </select>
 
             {/* START DATE */}
@@ -236,7 +234,7 @@ export default function SalesReport() {
           {!loading && !error && (
             <>
               {/* SUMMARY CARDS */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-50 rounded-lg">
@@ -247,7 +245,7 @@ export default function SalesReport() {
                         Total Revenue
                       </p>
                       <p className="text-2xl font-bold text-gray-900">
-                        ${data.totalRevenue?.toFixed(2) || "0.00"}
+                        {data.totalRevenue?.toFixed(2) || "0.00"} EGP
                       </p>
                     </div>
                   </div>
@@ -264,25 +262,6 @@ export default function SalesReport() {
                       </p>
                       <p className="text-2xl font-bold text-gray-900">
                         {data.breakdown?.length || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-purple-50 rounded-lg">
-                      <BarChart3 size={24} className="text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        Total Attendees
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {data.breakdown?.reduce(
-                          (sum, item) => sum + (item.attendees || 0),
-                          0
-                        ) || 0}
                       </p>
                     </div>
                   </div>
@@ -305,19 +284,9 @@ export default function SalesReport() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Event Type
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Title
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Attendees
-                          </th>
-                          {data.breakdown.some(
-                            (x) => x.eventType !== "bazaar"
-                          ) && (
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Price
-                            </th>
-                          )}
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Revenue
                           </th>
@@ -334,21 +303,11 @@ export default function SalesReport() {
                                 {b.eventType}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
                               {b.title}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                              {b.attendees ?? 0}
-                            </td>
-                            {data.breakdown.some(
-                              (x) => x.eventType !== "bazaar"
-                            ) && (
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                                ${b.price?.toFixed(2) || "0.00"}
-                              </td>
-                            )}
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 text-right">
-                              ${b.revenue?.toFixed(2) || "0.00"}
+                              {b.revenue?.toFixed(2) || "0.00"} EGP
                             </td>
                           </tr>
                         ))}

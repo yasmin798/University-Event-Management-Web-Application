@@ -19,7 +19,10 @@ const storage = multer.diskStorage({
     cb(null, UPLOAD_DIR);
   },
   filename: function (_req, file, cb) {
-    const safe = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const safe = `${Date.now()}-${file.originalname.replace(
+      /[^a-zA-Z0-9.-]/g,
+      "_"
+    )}`;
     cb(null, safe);
   },
 });
@@ -51,13 +54,22 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
       return res.status(400).json({ error: "invalid bazaar id" });
     }
 
-    if (!Array.isArray(attendees) || attendees.length < 1 || attendees.length > 5) {
+    if (
+      !Array.isArray(attendees) ||
+      attendees.length < 1 ||
+      attendees.length > 5
+    ) {
       return res.status(400).json({ error: "attendees must be array of 1-5" });
     }
 
     // Require an ID file for each attendee (vendors must upload IDs for entire duration)
     if (files.length !== attendees.length) {
-      return res.status(400).json({ error: "An ID file must be uploaded for every attendee (field name 'idFiles')." });
+      return res
+        .status(400)
+        .json({
+          error:
+            "An ID file must be uploaded for every attendee (field name 'idFiles').",
+        });
     }
 
     if (!["2x2", "4x4"].includes(boothSize)) {
@@ -68,18 +80,26 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
     for (let i = 0; i < attendees.length; i++) {
       const a = attendees[i];
       if (!a.name || !a.name.trim()) {
-        return res.status(400).json({ error: `Attendee ${i + 1}: name is required` });
+        return res
+          .status(400)
+          .json({ error: `Attendee ${i + 1}: name is required` });
       }
       if (!a.email || !a.email.trim()) {
-        return res.status(400).json({ error: `Attendee ${i + 1}: email is required` });
+        return res
+          .status(400)
+          .json({ error: `Attendee ${i + 1}: email is required` });
       }
       if (!/^\S+@\S+\.\S+$/.test(a.email.trim())) {
-        return res.status(400).json({ error: `Attendee ${i + 1}: invalid email format` });
+        return res
+          .status(400)
+          .json({ error: `Attendee ${i + 1}: invalid email format` });
       }
       // Ensure corresponding file exists
       const file = files[i];
       if (!file) {
-        return res.status(400).json({ error: `Missing ID file for attendee ${i + 1}` });
+        return res
+          .status(400)
+          .json({ error: `Missing ID file for attendee ${i + 1}` });
       }
       // Attach file path to attendee object
       a.idDocument = `/uploads/ids/${path.basename(file.path)}`;
@@ -95,7 +115,7 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
     // === SAVE APPLICATION ===
     const appDoc = new BazaarApplication({
       bazaar,
-      attendees: attendees.map(a => ({
+      attendees: attendees.map((a) => ({
         userId: a.userId || null,
         name: a.name.trim(),
         email: a.email.trim(),
@@ -108,7 +128,7 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
 
     // === PUSH TO BAZAAR.REGISTRATIONS ===
     const now = new Date();
-    const newRegs = attendees.map(a => ({
+    const newRegs = attendees.map((a) => ({
       userId: a.userId || null,
       name: a.name.trim(),
       email: a.email.trim(),
@@ -116,11 +136,11 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
     }));
 
     const existingEmails = new Set(
-      (baz.registrations || []).map(r => String(r.email).toLowerCase())
+      (baz.registrations || []).map((r) => String(r.email).toLowerCase())
     );
 
-    const toPush = newRegs.filter(r => 
-      r.email && !existingEmails.has(String(r.email).toLowerCase())
+    const toPush = newRegs.filter(
+      (r) => r.email && !existingEmails.has(String(r.email).toLowerCase())
     );
 
     if (toPush.length > 0) {
@@ -137,12 +157,17 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
     // Notify Events Office users about new pending vendor application
     try {
       // notify both events office and admin users
-      const recipients = await User.find({ role: { $in: ["events_office", "admin"] }, status: "active" }).select("_id email role");
-      const notifPromises = recipients.map(u => {
+      const recipients = await User.find({
+        role: { $in: ["events_office", "admin"] },
+        status: "active",
+      }).select("_id email role");
+      const notifPromises = recipients.map((u) => {
         const n = new Notification({
           userId: u._id,
-          message: `New vendor application pending for bazaar '${baz.title || updatedBazaar.title || bazaar}'. Application ID: ${savedApp._id}`,
-          type: 'vendor_application'
+          message: `New vendor application pending for bazaar '${
+            baz.title || updatedBazaar.title || bazaar
+          }'. Application ID: ${savedApp._id}`,
+          type: "vendor_application",
         });
         return n.save();
       });
@@ -164,7 +189,10 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
 // GET ALL BAZAAR APPLICATIONS (Admin)
 router.get("/", async (req, res) => {
   try {
-    const list = await BazaarApplication.find().populate("bazaar", "title location startDateTime");
+    const list = await BazaarApplication.find().populate(
+      "bazaar",
+      "title location startDateTime"
+    );
     res.json(list);
   } catch (err) {
     console.error("GET /api/bazaar-applications error:", err);
@@ -188,7 +216,9 @@ router.get("/:bazaarId", async (req, res) => {
     res.status(200).json({ requests: applications });
   } catch (err) {
     console.error("Error fetching bazaar applications:", err);
-    res.status(500).json({ error: "Failed to fetch applications for this bazaar" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch applications for this bazaar" });
   }
 });
 router.delete("/:id", async (req, res) => {
@@ -206,7 +236,9 @@ router.delete("/:id", async (req, res) => {
 
     // Optional: prevent canceling paid applications
     if (app.paid) {
-      return res.status(400).json({ error: "Cannot cancel a paid application" });
+      return res
+        .status(400)
+        .json({ error: "Cannot cancel a paid application" });
     }
 
     await BazaarApplication.findByIdAndDelete(id);
@@ -217,4 +249,143 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: "Server error canceling application" });
   }
 });
+
+// PATCH: update application status (accept/reject) - for admin
+router.patch("/:id", async (req, res) => {
+  console.log("=== BAZAAR APPLICATIONS PATCH ROUTE HIT ===");
+  console.log("ID:", req.params.id);
+  console.log("Body:", req.body);
+
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: "Status is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid application ID" });
+    }
+
+    const validStatuses = ["pending", "accepted", "rejected"];
+    if (!validStatuses.includes(status.toLowerCase())) {
+      return res.status(400).json({
+        error: "Invalid status. Must be pending, accepted, or rejected.",
+      });
+    }
+
+    // Price table for bazaar booths
+    const BAZAAR_PRICE_TABLE = {
+      "2x2": 300,
+      "4x4": 1000,
+    };
+
+    const request = await BazaarApplication.findById(id).populate("bazaar");
+    if (!request) {
+      return res.status(404).json({ error: "Vendor request not found" });
+    }
+
+    // Update status and payment deadline using direct MongoDB update
+    let paymentDeadline = null;
+    const updateFields = {
+      status: status.toLowerCase(),
+    };
+
+    if (status.toLowerCase() === "accepted") {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 14);
+      updateFields.paymentDeadline = deadline;
+      paymentDeadline = deadline;
+    }
+
+    // Use direct MongoDB update to bypass Mongoose validation
+    await BazaarApplication.collection.updateOne(
+      { _id: new mongoose.Types.ObjectId(id) },
+      { $set: updateFields }
+    );
+
+    // Send email notification to vendor
+    if (request.attendees && request.attendees.length > 0) {
+      const vendorEmail = request.attendees[0].email;
+      const vendorName = request.attendees[0].name;
+
+      if (vendorEmail) {
+        try {
+          const nodemailer = require("nodemailer");
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+          });
+
+          let emailSubject = "";
+          let emailBody = "";
+
+          if (status.toLowerCase() === "accepted") {
+            const boothPrice = BAZAAR_PRICE_TABLE[request.boothSize] || 0;
+            const bazaarTitle = request.bazaar?.title || "Bazaar Event";
+            const deadlineStr = paymentDeadline
+              ? paymentDeadline.toLocaleDateString()
+              : "within 14 days";
+
+            emailSubject = `Bazaar Vendor Application Accepted – ${bazaarTitle}`;
+            emailBody = `Dear ${vendorName},
+
+Congratulations! Your application for a ${request.boothSize} booth at ${bazaarTitle} has been ACCEPTED.
+
+Application Details:
+- Booth Size: ${request.boothSize}
+- Price: ${boothPrice} EGP
+- Payment Deadline: ${deadlineStr}
+
+Please complete your payment before the deadline to secure your booth.
+
+Best regards,
+Eventity Team`;
+          } else if (status.toLowerCase() === "rejected") {
+            const bazaarTitle = request.bazaar?.title || "Bazaar Event";
+
+            emailSubject = `Bazaar Vendor Application Status – ${bazaarTitle}`;
+            emailBody = `Dear ${vendorName},
+
+Thank you for your interest in participating at ${bazaarTitle}.
+
+Unfortunately, your application for a ${request.boothSize} booth has not been accepted at this time.
+
+If you have any questions, please contact us.
+
+Best regards,
+Eventity Team`;
+          }
+
+          if (emailSubject && emailBody) {
+            await transporter.sendMail({
+              from: `"Eventity" <${process.env.EMAIL_USER}>`,
+              to: vendorEmail,
+              subject: emailSubject,
+              text: emailBody,
+            });
+            console.log(`Email sent successfully to ${vendorEmail}`);
+          }
+        } catch (emailErr) {
+          console.error("Error sending email to vendor:", emailErr);
+          // Don't fail the request if email fails
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Request ${status} successfully`,
+      request,
+    });
+  } catch (err) {
+    console.error("Error updating vendor request:", err);
+    res.status(500).json({ error: "Server error updating vendor request" });
+  }
+});
+
 module.exports = router;
