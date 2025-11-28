@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Store, FileText, Users, LogOut, X } from "lucide-react";
+import { Calendar, Store, FileText, Users, LogOut, X, IdCard, IdCardIcon } from "lucide-react";
 
 export default function VendorSidebar({
   isMobileSidebarOpen,
@@ -75,6 +75,13 @@ export default function VendorSidebar({
           >
             <Users size={20} />
             <span>Apply for GUC Loyalty Program</span>
+          </button>
+          <button
+            onClick={() => navigate("/vendor-documents")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-white/10 hover:bg-white/20"
+          >
+            <IdCardIcon size={18} />
+            <span>Company Documents</span>
           </button>
         </nav>
 
