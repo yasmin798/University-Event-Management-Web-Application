@@ -605,37 +605,37 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     let attendees = [];
     let eventType = null;
 
-    // 1. Try Workshop (has registeredUsers as User refs)
-    event = await Workshop.findById(id).populate(
-      "registeredUsers",
-      "firstName lastName email"
-    );
+    // 1. Try Workshop (has registrations array with form data)
+    event = await Workshop.findById(id);
     if (event) {
       eventType = "workshop";
-      attendees = (event.registeredUsers || []).map((u) => ({
-        name:
-          `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Unknown User",
-        email: u.email || "—",
-      }));
+      // Prioritize registrations array (has form data) over registeredUsers (user profile data)
+      if (event.registrations && event.registrations.length > 0) {
+        attendees = event.registrations.map((r) => ({
+          name: r.name || "Guest",
+          email: r.email || "—",
+        }));
+      } else if (event.registeredUsers && event.registeredUsers.length > 0) {
+        // Fallback to registeredUsers if no registrations array (for old data)
+        const populatedEvent = await Workshop.findById(id).populate(
+          "registeredUsers",
+          "firstName lastName email"
+        );
+        attendees = (populatedEvent.registeredUsers || []).map((u) => ({
+          name:
+            `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Unknown User",
+          email: u.email || "—",
+        }));
+      }
     }
 
     // 2. Try Bazaar (has registrations array of objects)
     if (!attendees.length) {
-      event = await Bazaar.findById(id).populate(
-        "registrations.userId",
-        "firstName lastName email"
-      );
+      event = await Bazaar.findById(id);
       if (event && event.registrations) {
         eventType = "bazaar";
         attendees = event.registrations.map((r) => {
-          // If userId is populated, use the user's name
-          if (r.userId && typeof r.userId === "object" && r.userId.firstName) {
-            return {
-              name: `${r.userId.firstName} ${r.userId.lastName}`,
-              email: r.userId.email || r.email || "—",
-            };
-          }
-          // Otherwise use the registration's name/email
+          // Prioritize the registration form data (name/email) over populated user data
           return {
             name: r.name || "Guest",
             email: r.email || "—",
@@ -652,46 +652,32 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
       );
       if (event) {
         eventType = "trip";
-        // First, add registered users (logged-in users)
-        if (event.registeredUsers && event.registeredUsers.length > 0) {
+        // Prioritize registrations array (has form data) over registeredUsers (user profile data)
+        if (event.registrations && event.registrations.length > 0) {
+          attendees = event.registrations.map((r) => ({
+            name: r.name || "Guest",
+            email: r.email || "—",
+          }));
+        } else if (event.registeredUsers && event.registeredUsers.length > 0) {
+          // Fallback to registered users if no registrations array
           attendees = event.registeredUsers.map((u) => ({
             name: `${u.firstName} ${u.lastName}`,
             email: u.email,
           }));
-        }
-        // Then, add guest registrations
-        if (event.registrations && event.registrations.length > 0) {
-          const guestAttendees = event.registrations.map((r) => ({
-            name: r.name || "Guest",
-            email: r.email || "—",
-          }));
-          attendees = [...attendees, ...guestAttendees];
         }
       }
     }
 
     // 4. Try Booth (has registrations array for visitors)
     if (!attendees.length) {
-      event = await BoothApplication.findById(id).populate(
-        "registrations.userId",
-        "firstName lastName email"
-      );
+      event = await BoothApplication.findById(id);
       if (event && event.registrations) {
         eventType = "booth";
-        attendees = event.registrations.map((r) => {
-          // If userId is populated, use the user's name
-          if (r.userId && typeof r.userId === "object" && r.userId.firstName) {
-            return {
-              name: `${r.userId.firstName} ${r.userId.lastName}`,
-              email: r.userId.email || r.email || "—",
-            };
-          }
-          // Otherwise use the registration's name/email
-          return {
-            name: r.name || "Guest",
-            email: r.email || "—",
-          };
-        });
+        attendees = event.registrations.map((r) => ({
+          // Prioritize the registration form data over populated user data
+          name: r.name || "Guest",
+          email: r.email || "—",
+        }));
       }
     }
 

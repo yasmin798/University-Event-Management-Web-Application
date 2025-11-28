@@ -76,9 +76,22 @@ exports.register = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const userEmail = user.email;
-    const userName =
-      `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Guest";
+    // Use form data from request body if provided, otherwise fall back to user profile
+    const userEmail = req.body.email || user.email;
+    const firstName = req.body.firstName || user.firstName || "";
+    const lastName = req.body.lastName || user.lastName || "";
+    const userName = `${firstName} ${lastName}`.trim() || "Guest";
+
+    // Debug logging
+    console.log("📝 Registration Data:");
+    console.log("  Request body:", req.body);
+    console.log("  User profile:", {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    });
+    console.log("  Final name:", userName);
+    console.log("  Final email:", userEmail);
 
     // Check 5: Role restriction (if defined)
     if (event.allowedRoles && event.allowedRoles.length > 0) {

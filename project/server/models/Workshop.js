@@ -10,6 +10,29 @@ const reviewSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Sub-schema for registrations (with form data)
+const RegistrationSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  registeredAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const workshopSchema = new mongoose.Schema(
   {
     workshopName: { type: String, required: true },
@@ -26,8 +49,14 @@ const workshopSchema = new mongoose.Schema(
     capacity: { type: Number, required: true },
     registrationDeadline: { type: Date, required: true },
 
-    // Registered users (attendees)
+    // Registered users (attendees) - keeping for backward compatibility
     registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    // Registrations array (with form data: name, email)
+    registrations: {
+      type: [RegistrationSchema],
+      default: [],
+    },
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -45,10 +74,12 @@ const workshopSchema = new mongoose.Schema(
 
     // ADD THIS: Reviews array
     reviews: [reviewSchema],
-    paidUsers: [{
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User"
-}],
+    paidUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     // ADD THIS: Allowed roles for registration (empty array = open to all)
     allowedRoles: {
       type: [String],
