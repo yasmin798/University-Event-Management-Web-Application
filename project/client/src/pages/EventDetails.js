@@ -1,6 +1,8 @@
 // client/src/pages/EventDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import StudentSidebar from "../components/StudentSidebar"; // or StudentSidebar / VendorSidebar etc
+
 import {
   Menu,
   Bell,
@@ -9,16 +11,29 @@ import {
   Star,
   MessageCircle,
   Heart,
+  MapPin,
+  Calendar,
+  Clock,
+  Users,
+  ArrowLeft,
+  Share2,
+  Bookmark,
+  Eye,
+  TrendingUp,
+  CheckCircle,
+  X,
 } from "lucide-react";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
 
 import workshopPlaceholder from "../images/workshop.png";
-import tripImage from "../images/trip.jpeg";
-import bazaarImage from "../images/bazaar.jpeg";
-import conferenceImage from "../images/conference.jpg";
-import boothImage from "../images/booth.jpg";
+import boothPlaceholder from "../images/booth.jpg";
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
+
 const API_BASE =
   process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
 
@@ -56,6 +71,7 @@ const EventDetails = () => {
 
   // Favorites State
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
 
@@ -68,16 +84,9 @@ const EventDetails = () => {
         setUserId(payload.id || payload.userId || payload._id);
         setUserRole(payload.role?.toLowerCase());
         setIsEventsOffice(payload.role?.toLowerCase() === "events_office");
-        console.log(
-          "User ID from token:",
-          payload.id || payload.userId || payload._id
-        );
-        console.log("User Role:", payload.role?.toLowerCase());
       } catch (e) {
         console.error("Invalid token");
       }
-    } else {
-      console.log("No token found — user not logged in");
     }
   }, []);
 
@@ -108,10 +117,8 @@ const EventDetails = () => {
   // Fetch Reviews
   useEffect(() => {
     const fetchReviews = async () => {
-      console.log("Fetching reviews for ID:", id);
       try {
         const res = await fetch(`${API_BASE}/api/events/${id}/reviews`);
-        console.log("Reviews response status:", res.status);
         if (res.ok) {
           const data = await res.json();
           setReviews(data || []);
@@ -120,8 +127,6 @@ const EventDetails = () => {
             setMyRating(myReview.rating);
             setMyComment(myReview.comment || "");
           }
-        } else {
-          console.error("Reviews fetch failed:", res.status, await res.text());
         }
       } catch (err) {
         console.error("Failed to load reviews:", err);
@@ -137,7 +142,7 @@ const EventDetails = () => {
   useEffect(() => {
     if (!event || !userId) return;
 
-    const eventType = event.type?.toUpperCase(); // TRIP, WORKSHOP, BOOTH, BAZAAR, CONFERENCE
+    const eventType = event.type?.toUpperCase();
     const alreadyReviewed = reviews.some(
       (r) => r.userId?.toString() === userId
     );
@@ -148,8 +153,6 @@ const EventDetails = () => {
       event.startDateTime ||
       event.startDate;
     const now = new Date();
-
-    // consider event ended if the end date is in the past or right now
     const hasEnded = endDate && new Date(endDate).getTime() <= now.getTime();
 
     if (["BOOTH", "BAZAAR", "CONFERENCE"].includes(eventType)) {
@@ -157,7 +160,6 @@ const EventDetails = () => {
       return;
     }
 
-    // CASE B: TRIPS / WORKSHOPS → must be registered AND event ended
     const hasPassedReview =
       new Date(event.endDateTime || event.startDateTime || event.startDate) <
       new Date();
@@ -203,7 +205,7 @@ const EventDetails = () => {
     setCanRegister(!isReg && !hasPassedReg);
   }, [event, userId]);
 
-  // Check if user is allowed to register (case-insensitive)
+  // Check if user is allowed to register
   const allowedLower = (event?.allowedRoles || []).map((r) =>
     String(r).toLowerCase().trim()
   );
@@ -216,7 +218,6 @@ const EventDetails = () => {
     userRoleLower === "events_office" ||
     isEventsOffice;
 
-  // Handle registration with role check
   const handleRegister = () => {
     navigate(`/events/${id}/register`);
   };
@@ -254,13 +255,6 @@ const EventDetails = () => {
       return;
     }
 
-    console.log("Submitting review:", {
-      myRating,
-      myComment,
-      userId,
-      eventId: id,
-    });
-
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/api/events/${id}/reviews`, {
@@ -275,18 +269,12 @@ const EventDetails = () => {
         }),
       });
 
-      console.log("Submit response status:", res.status);
-
       if (res.ok) {
         const updated = await res.json();
         setReviews(updated);
         setMyRating(0);
         setMyComment("");
         alert("Thank you for your review!");
-      } else {
-        const errText = await res.text();
-        console.error("Submit failed:", res.status, errText);
-        alert(`Failed: ${res.status} - ${errText || "Unknown error"}`);
       }
     } catch (err) {
       console.error("Network error:", err);
@@ -294,7 +282,7 @@ const EventDetails = () => {
     }
   };
 
-  // Booths fetch
+  // Booths and Workshops fetch (keep your existing code)
   useEffect(() => {
     const fetchBooths = async () => {
       setBoothsLoading(true);
@@ -304,18 +292,17 @@ const EventDetails = () => {
           _id: b._id,
           type: "BOOTH",
           bazaarId: b.bazaar?._id,
-          title: `${b.bazaar?.title} Booth`,
-          attendees: b.attendees?.map((a) => a.name || "Unknown") || [],
+          title:
+            b.attendees?.[0]?.name || `${b.bazaar?.title} Booth` || "Booth",
+          attendees: b.attendees || [],
           boothSize: b.boothSize,
           durationWeeks: b.durationWeeks,
           platformSlot: b.platformSlot,
           status: b.status,
           description: b.description || "",
-          // include registration info so EventDetails can detect if the
-          // current user already registered for this booth
           registeredUsers: b.registeredUsers || [],
           registrations: b.registrations || [],
-          image: b.image || boothImage,
+          image: b.image || boothPlaceholder,
         }));
         setBooths(normalizedBooths);
       } catch (err) {
@@ -328,7 +315,6 @@ const EventDetails = () => {
     fetchBooths();
   }, []);
 
-  // Workshops fetch
   useEffect(() => {
     const fetchWorkshops = async () => {
       setWorkshopsLoading(true);
@@ -345,11 +331,18 @@ const EventDetails = () => {
             type: "WORKSHOP",
             title: w.workshopName,
             name: w.workshopName,
+            budget: w.requiredBudget,
+            capacity: w.capacity,
+            registrationDeadline: w.registrationDeadline,
+            fundingSource: w.fundingSource,
+            facultyResponsible: w.facultyResponsible,
+            extraResources: w.extraResources,
+            fullAgenda: w.fullAgenda,
             startDateTime: start.toISOString(),
             endDateTime: end.toISOString(),
             startDate: start.toISOString(),
             date: start.toISOString(),
-            image: w.image || workshopPlaceholder,
+            image: w.image || workshopImg,
             description: w.shortDescription,
             professorsParticipating: w.professorsParticipating || "",
           };
@@ -365,7 +358,7 @@ const EventDetails = () => {
     fetchWorkshops();
   }, []);
 
-  // Combine events
+  // Combine events (keep your existing code)
   useEffect(() => {
     if (loading || boothsLoading || workshopsLoading) return;
 
@@ -391,9 +384,6 @@ const EventDetails = () => {
       setEvent(foundEvent);
       setError("");
     } else {
-      // If not found in client-side lists, try fetching from the API by trying
-      // possible event types. This covers cases where the client lists are
-      // stale or the unified event endpoint isn't available to the client.
       const tryFetch = async () => {
         const types = ["workshop", "bazaar", "trip", "conference", "booth"];
         for (const t of types) {
@@ -401,7 +391,6 @@ const EventDetails = () => {
             const res = await fetch(`${API_BASE}/api/events/${id}?type=${t}`);
             if (res.ok) {
               const data = await res.json();
-              // Normalize type to uppercase for the UI
               data.type = (t || data.type || "").toUpperCase();
               setEvent(data);
               setError("");
@@ -458,32 +447,41 @@ const EventDetails = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[#f5efeb] items-center justify-center">
-        <p className="text-[#567c8d] mb-4">Loading event details...</p>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#567c8d] mx-auto"></div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#567c8d] mx-auto mb-4"></div>
+          <p className="text-[#567c8d]">Loading event details...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !event) {
     return (
-      <div className="flex h-screen bg-[#f5efeb] items-center justify-center">
-        <h2 className="text-xl font-semibold text-[#2f4156] mb-4">
-          Event Not Found
-        </h2>
-        <button
-          onClick={() => navigate(-1)}
-          className="bg-[#567c8d] hover:bg-[#45687a] text-white px-6 py-2 rounded-lg"
-        >
-          ← Back to Events
-        </button>
+      <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-[#2f4156] mb-4">
+            Event Not Found
+          </h2>
+          <button
+            onClick={() => navigate(-1)}
+            className="bg-gradient-to-r from-[#567c8d] to-[#45687a] hover:from-[#45687a] hover:to-[#567c8d] text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            ← Back to Events
+          </button>
+        </div>
       </div>
     );
   }
 
   const type = event.type?.toUpperCase() || "EVENT";
   const title =
-    event.title || event.name || event.workshopName || "Untitled Event";
+    type === "BOOTH"
+      ? event.attendees?.[0]?.name ||
+        event.title ||
+        event.name ||
+        "Untitled Booth"
+      : event.title || event.name || event.workshopName || "Untitled Event";
   const isTrip = type === "TRIP";
   const isWorkshop = type === "WORKSHOP";
   const isBazaar = type === "BAZAAR";
@@ -494,22 +492,22 @@ const EventDetails = () => {
   if (!eventImage || eventImage === "") {
     switch (type) {
       case "TRIP":
-        eventImage = tripImage;
+        eventImage = tripImg;
         break;
       case "WORKSHOP":
-        eventImage = workshopPlaceholder;
+        eventImage = workshopImg;
         break;
       case "BAZAAR":
-        eventImage = bazaarImage;
+        eventImage = bazaarImg;
         break;
       case "CONFERENCE":
-        eventImage = conferenceImage;
+        eventImage = conferenceImg;
         break;
       case "BOOTH":
-        eventImage = boothImage;
+        eventImage = boothPlaceholder;
         break;
       default:
-        eventImage = workshopPlaceholder;
+        eventImage = workshopImg;
         break;
     }
   }
@@ -518,578 +516,547 @@ const EventDetails = () => {
     ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1)
     : 0;
 
-  return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-[#567c8d] rounded-lg"
-          >
-            <Menu size={20} />
-          </button>
+  const DetailCard = ({ icon: Icon, label, value, className = "" }) => (
+    <div
+      className={`bg-gradient-to-br from-white to-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm ${className}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-lg flex items-center justify-center">
+          <Icon size={20} className="text-white" />
         </div>
-        <div className="flex-1 px-4 mt-4">
-          <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              navigate("/");
-            }}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg"
-          >
-            <LogOut size={18} /> Logout
-          </button>
+        <div>
+          <p className="text-sm text-gray-600 font-medium">{label}</p>
+          <p className="text-gray-900 font-semibold">{value}</p>
         </div>
       </div>
+    </div>
+  );
 
-      <div className="flex-1 overflow-auto">
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 hover:bg-[#f5efeb] rounded-lg"
-          >
-            <Menu size={24} className="text-[#2f4156]" />
-          </button>
-          <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg">
-              <Bell size={20} className="text-[#567c8d]" />
-            </button>
-            <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
-              <User size={20} className="text-[#2f4156]" />
-            </div>
-          </div>
-        </header>
-
-        <main className="p-4 md:p-8 max-w-5xl mx-auto">
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-6 text-[#567c8d] hover:text-[#2f4156]"
-          >
-            ← Back to Events
-          </button>
-
-          <div className="bg-white rounded-2xl shadow-sm p-8">
-            <div className="flex items-start justify-between mb-6">
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <StudentSidebar />
+      <div className="flex-1 ml-[250px]">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center gap-6">
               <div>
-                <h1 className="text-3xl font-bold text-[#2f4156] mb-2">
-                  {title}
-                </h1>
-                {hasPassed && (
-                  <p className="text-red-500 text-sm">This event has passed</p>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Favorites Button - Only for student, staff, ta, professor */}
-                {userRole && userRole !== "events_office" && (
-                  <button
-                    onClick={toggleFavorite}
-                    className="p-3 bg-white border-2 border-[#c8d9e6] rounded-full shadow-sm hover:shadow-md transition-all"
-                    title={
-                      isFavorite ? "Remove from favorites" : "Add to favorites"
-                    }
-                  >
-                    <Heart
-                      size={20}
-                      className={
-                        isFavorite
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-600"
-                      }
-                    />
-                  </button>
-                )}
-                <span className="bg-[#c8d9e6] text-[#2f4156] px-4 py-2 rounded-full text-sm font-medium">
+                <span className="bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white px-3 py-1 rounded-full text-sm font-semibold">
                   {type}
                 </span>
               </div>
             </div>
 
-            <div className="h-64 w-full bg-gray-200 rounded-lg mb-6 overflow-hidden">
+            <div className="flex items-center gap-4">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <Share2 size={20} className="text-[#567c8d]" />
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <Bookmark size={20} className="text-[#567c8d]" />
+              </button>
+              <div className="w-10 h-10 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-full flex items-center justify-center text-white font-semibold">
+                <User size={20} />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          {/* Event Header */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+            <div className="relative h-80 w-full">
               <img
                 src={eventImage}
                 alt={title}
                 className="h-full w-full object-cover"
               />
-            </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
-            {/* EVENT DETAILS SECTION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* ==================== BAZAAR ==================== */}
-              {isBazaar && (
-                <>
-                  <div>
-                    <strong>Location:</strong> {event.location || "—"}
-                  </div>
-                  <div>
-                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
-                  </div>
-                  <div>
-                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
-                  </div>
-                  <div>
-                    <strong>Registration Deadline:</strong>{" "}
-                    {formatDate(event.registrationDeadline)}
-                  </div>
-                  <div>
-                    <strong>Registered:</strong>{" "}
-                    {event.registrations?.length || 0}
-                  </div>
-                  {event.description && (
-                    <div className="md:col-span-2">
-                      <strong>Description:</strong>
-                      <p>{event.description}</p>
+              {/* Header Content */}
+              <div className="absolute bottom-0 left-0 right-0 p-8">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h1 className="text-4xl font-bold text-white mb-3">
+                      {title}
+                    </h1>
+                    <div className="flex items-center gap-4 text-white/90">
+                      <div className="flex items-center gap-2">
+                        <MapPin size={18} />
+                        <span>
+                          {event.location || "Location not specified"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar size={18} />
+                        <span>{formatDate(event.startDateTime)}</span>
+                      </div>
+                      {event.capacity && (
+                        <div className="flex items-center gap-2">
+                          <Users size={18} />
+                          <span>{event.capacity} spots</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </>
-              )}
-              {/* ==================== CONFERENCE ==================== */}
-              {isConference && (
-                <>
-                  <div>
-                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
                   </div>
-                  <div>
-                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
-                  </div>
-                  <div>
-                    <strong>Full Agenda:</strong> {event.agenda || "—"}
-                  </div>
-                  <div>
-                    <strong>Conference Website:</strong>{" "}
-                    {event.website ? (
-                      <a href={event.website} target="_blank" rel="noreferrer">
-                        {event.website}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </div>
-                  <div>
-                    <strong>Required Budget:</strong>{" "}
-                    {formatMoney(event.budget)}
-                  </div>
-                  <div>
-                    <strong>Funding Source:</strong>{" "}
-                    {event.fundingSource || "—"}
-                  </div>
-                  <div>
-                    <strong>Extra Resources:</strong>{" "}
-                    {event.extraResources || "—"}
-                  </div>
-                  {/* Display restricted roles */}
-                  <div
-                    className="md:col-span-2"
-                    style={{
-                      margin: "16px 0",
-                      padding: "12px",
-                      backgroundColor: event.allowedRoles?.length
-                        ? "#fef3c7"
-                        : "#d1fae5",
-                      borderRadius: "8px",
-                      border: event.allowedRoles?.length
-                        ? "2px solid #f59e0b"
-                        : "2px solid #10b981",
-                      fontWeight: "bold",
-                      fontSize: "15px",
-                      color: "#1f2937",
-                    }}
-                  >
-                    {event.allowedRoles?.length > 0 ? (
-                      <>
-                        Restricted to:{" "}
-                        {event.allowedRoles
-                          .map(
-                            (r) => r.charAt(0).toUpperCase() + r.slice(1) + "s"
-                          )
-                          .join(", ")}
-                      </>
-                    ) : (
-                      <>Open to ALL users (Students, Professors, TAs, Staff)</>
-                    )}
-                  </div>
-                  {event.shortDescription && (
-                    <div className="md:col-span-2">
-                      <strong>Short Description:</strong>
-                      <p>{event.shortDescription}</p>
-                    </div>
-                  )}
-                </>
-              )}
-              {/* ==================== TRIP ==================== */}
-              {isTrip && (
-                <>
-                  <div>
-                    <strong>Location:</strong> {event.location || "—"}
-                  </div>
-                  <div>
-                    <strong>Price:</strong> {formatMoney(event.price)}
-                  </div>
-                  <div>
-                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
-                  </div>
-                  <div>
-                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
-                  </div>
-                  <div>
-                    <strong>Capacity:</strong> {event.capacity || "—"}
-                  </div>
-                  {/* Display restricted roles */}
-                  <div
-                    className="md:col-span-2"
-                    style={{
-                      margin: "16px 0",
-                      padding: "12px",
-                      backgroundColor: event.allowedRoles?.length
-                        ? "#fef3c7"
-                        : "#d1fae5",
-                      borderRadius: "8px",
-                      border: event.allowedRoles?.length
-                        ? "2px solid #f59e0b"
-                        : "2px solid #10b981",
-                      fontWeight: "bold",
-                      fontSize: "15px",
-                      color: "#1f2937",
-                    }}
-                  >
-                    {event.allowedRoles?.length > 0 ? (
-                      <>
-                        Restricted to:{" "}
-                        {event.allowedRoles
-                          .map(
-                            (r) => r.charAt(0).toUpperCase() + r.slice(1) + "s"
-                          )
-                          .join(", ")}
-                      </>
-                    ) : (
-                      <>Open to ALL users (Students, Professors, TAs, Staff)</>
-                    )}
-                  </div>
-                  <div>
-                    <strong>Registration Deadline:</strong>{" "}
-                    {formatDate(event.registrationDeadline)}
-                  </div>
-                  {event.shortDescription && (
-                    <div className="md:col-span-2">
-                      <strong>Description:</strong>
-                      <p>{event.shortDescription}</p>
-                    </div>
-                  )}
-                </>
-              )}
-              {/* ==================== WORKSHOP ==================== */}
-              {isWorkshop && (
-                <>
-                  <div>
-                    <strong>Location:</strong> {event.location || "—"}
-                  </div>
-                  <div>
-                    <strong>Starts:</strong> {formatDate(event.startDateTime)}
-                  </div>
-                  <div>
-                    <strong>Ends:</strong> {formatDate(event.endDateTime)}
-                  </div>
-                  <div>
-                    <strong>Full Agenda:</strong> {event.agenda || "—"}
-                  </div>
-                  <div>
-                    <strong>Faculty Responsible:</strong>{" "}
-                    {event.facultyResponsible || "—"}
-                  </div>
-                  <div>
-                    <strong>Professors Participating:</strong>{" "}
-                    {event.professorsParticipating || "—"}
-                  </div>
-                  <div>
-                    <strong>Required Budget:</strong>{" "}
-                    {formatMoney(event.budget)}
-                  </div>
-                  <div>
-                    <strong>Funding Source:</strong>{" "}
-                    {event.fundingSource || "—"}
-                  </div>
-                  <div>
-                    <strong>Extra Resources:</strong>{" "}
-                    {event.extraResources || "—"}
-                  </div>
-                  <div>
-                    <strong>Capacity:</strong> {event.capacity || "—"}
-                  </div>
-                  <div>
-                    <strong>Registration Deadline:</strong>{" "}
-                    {formatDate(event.registrationDeadline)}
-                  </div>
-                  {event.shortDescription && (
-                    <div className="md:col-span-2">
-                      <strong>Description:</strong>
-                      <p>{event.shortDescription}</p>
-                    </div>
-                  )}
-                </>
-              )}
-              {/* ==================== BOOTH ==================== */}
-              {isBooth && (
-                <>
-                  <div>
-                    <strong>Booth Size:</strong> {event.boothSize || "—"}
-                  </div>
-                  <div>
-                    <strong>Platform Slot:</strong> {event.platformSlot || "—"}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> {event.status || "—"}
-                  </div>
-                  <div>
-                    <strong>Attendee Names:</strong>{" "}
-                    {event.attendees?.length
-                      ? event.attendees.map((a) => a.name || "—").join(", ")
-                      : "None"}
-                  </div>
-                  <div>
-                    <strong>Attendee Emails:</strong>{" "}
-                    {event.attendees?.length
-                      ? event.attendees.map((a) => a.email).join(", ")
-                      : "None"}
-                  </div>
-                  {event.description && (
-                    <div className="md:col-span-2">
-                      <strong>Description:</strong>
-                      <p>{event.description}</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
 
-            {/* REGISTRATION SECTION */}
-            {!isRegistered && !hasPassed && (
-              <div style={{ marginTop: "20px" }}>
-                {canRegister ? (
-                  <button
-                    onClick={handleRegister}
-                    style={{
-                      background: "#10b981",
-                      color: "white",
-                      padding: "12px 24px",
-                      borderRadius: "8px",
-                      fontWeight: "bold",
-                      fontSize: "16px",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                    disabled={!userIsAllowed}
-                  >
-                    Register Now
-                  </button>
-                ) : (
-                  <div>
-                    <button
-                      disabled
-                      style={{
-                        background: "#9ca3af",
-                        color: "white",
-                        padding: "12px 24px",
-                        borderRadius: "8px",
-                        fontWeight: "bold",
-                        fontSize: "16px",
-                        border: "none",
-                        cursor: "not-allowed",
-                      }}
-                    >
-                      Registration Closed
-                    </button>
-                  </div>
-                )}
-                {/* ROLE RESTRICTION MESSAGE */}
-                {event?.allowedRoles?.length > 0 &&
-                  !userIsAllowed &&
-                  !isEventsOffice && (
-                    <div
-                      style={{
-                        marginTop: "12px",
-                        padding: "14px",
-                        backgroundColor: "#fef3c7",
-                        border: "2px solid #f59e0b",
-                        borderRadius: "8px",
-                        color: "#92400e",
-                        fontWeight: "bold",
-                        fontSize: "15px",
-                      }}
-                    >
-                      This event is restricted to:{" "}
-                      {event.allowedRoles
-                        .map(
-                          (role) =>
-                            role.charAt(0).toUpperCase() + role.slice(1) + "s"
-                        )
-                        .join(", ")}
-                      <br />
-                      <small style={{ fontWeight: "normal", color: "#78350f" }}>
-                        Only selected roles can register.
-                      </small>
-                    </div>
-                  )}
-              </div>
-            )}
-
-            {isRegistered && (
-              <div style={{ marginTop: "20px" }}>
-                <button
-                  disabled
-                  style={{
-                    background: "#6ee7b7",
-                    color: "#065f46",
-                    padding: "12px 24px",
-                    borderRadius: "8px",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                    border: "none",
-                    cursor: "default",
-                  }}
-                >
-                  ✓ Registered
-                </button>
-              </div>
-            )}
-
-            {isBazaar && event.booths && event.booths.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold text-[#2f4156] mb-4">
-                  Accepted Booths
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {event.booths.map((booth) => (
-                    <div
-                      key={booth._id}
-                      className="bg-[#f8f9fa] p-4 rounded-lg"
-                    >
-                      <h4 className="font-semibold">{booth.title}</h4>
-                      <p>
-                        <strong>Size:</strong> {booth.boothSize}
-                      </p>
-                      <p>
-                        <strong>Slot:</strong> {booth.platformSlot}
-                      </p>
-                      <p>
-                        <strong>Attendees:</strong> {booth.attendees.join(", ")}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* RATINGS & REVIEWS SECTION */}
-            <div className="mt-12 border-t pt-8">
-              <h2 className="text-2xl font-bold text-[#2f4156] mb-6 flex items-center gap-2">
-                <MessageCircle size={28} /> Ratings & Reviews{" "}
-                {reviews.length > 0 && `(${reviews.length})`}
-              </h2>
-
-              {reviews.length > 0 && (
-                <div className="flex items-center gap-4 mb-8 p-6 bg-[#f5efeb] rounded-xl">
-                  <div className="text-5xl font-bold text-[#567c8d]">
-                    {avgRating}
-                  </div>
-                  <div>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <Star
-                          key={n}
-                          size={32}
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3">
+                    {userRole && userRole !== "events_office" && (
+                      <button
+                        onClick={toggleFavorite}
+                        className="p-3 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 transition-all border border-white/30"
+                        title={
+                          isFavorite
+                            ? "Remove from favorites"
+                            : "Add to favorites"
+                        }
+                      >
+                        <Heart
+                          size={24}
                           className={
-                            n <= avgRating
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-300"
-                          }
-                        />
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Based on {reviews.length} reviews
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* REVIEW BOX */}
-              {canReview && (
-                <div className="bg-[#f8f9fa] p-6 rounded-xl mb-8 border">
-                  <h3 className="font-semibold text-[#2f4156] mb-4">
-                    Your Review
-                  </h3>
-                  <div className="flex gap-2 mb-4">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button key={n} onClick={() => setMyRating(n)}>
-                        <Star
-                          size={36}
-                          className={
-                            n <= myRating
-                              ? "fill-yellow-500 text-yellow-500"
-                              : "text-gray-400 hover:text-yellow-500 transition"
+                            isFavorite
+                              ? "fill-red-500 text-red-500"
+                              : "text-white"
                           }
                         />
                       </button>
-                    ))}
+                    )}
                   </div>
-                  <textarea
-                    placeholder="Share your experience with this event..."
-                    value={myComment}
-                    onChange={(e) => setMyComment(e.target.value)}
-                    className="w-full p-4 border border-[#c8d9e6] rounded-lg resize-none focus:ring-2 focus:ring-[#567c8d]"
-                    rows={4}
-                  />
-                  <button
-                    onClick={submitReview}
-                    className="mt-4 px-6 py-3 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg font-medium"
-                  >
-                    Submit Review
-                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats Bar */}
+            <div className="px-8 py-6 border-b border-gray-200">
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl flex items-center justify-center">
+                    <Star size={24} className="text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {avgRating}
+                    </p>
+                    <p className="text-sm text-gray-600">Average Rating</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl flex items-center justify-center">
+                    <Eye size={24} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {reviews.length}
+                    </p>
+                    <p className="text-sm text-gray-600">Reviews</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-50 to-green-100 rounded-xl flex items-center justify-center">
+                    <Users size={24} className="text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {event.registrations?.length || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Registered</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Registration Section */}
+            <div className="px-8 py-6">
+              {!isRegistered && !hasPassed && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Ready to join?
+                    </h3>
+                    <p className="text-gray-600">
+                      Don't miss out on this amazing event
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {canRegister ? (
+                      <button
+                        onClick={handleRegister}
+                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        disabled={!userIsAllowed}
+                      >
+                        Register Now
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
+                      >
+                        Registration Closed
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {!canReview && hasPassed && userId && (
-                <p className="text-gray-500 italic mb-4">
-                  You cannot review this event (already reviewed or not
-                  eligible).
-                </p>
+              {isRegistered && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      You're registered! 🎉
+                    </h3>
+                    <p className="text-gray-600">
+                      We're excited to see you at the event
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle size={24} />
+                    <span className="font-semibold">Registered</span>
+                  </div>
+                </div>
               )}
 
-              <div className="space-y-6">
-                {reviewsLoading ? (
-                  <p className="text-gray-500">Loading reviews...</p>
-                ) : reviews.length === 0 ? (
-                  <p className="text-gray-500 italic text-center py-8">
-                    No reviews yet. Be the first to review!
-                  </p>
-                ) : (
-                  reviews.map((r, i) => (
-                    <div key={i} className="bg-[#fdfdfd] p-6 rounded-xl border">
-                      <div className="flex items-center justify-between mb-3">
+              {/* Role Restriction Message */}
+              {event?.allowedRoles?.length > 0 &&
+                !userIsAllowed &&
+                !isEventsOffice && (
+                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <X size={16} className="text-yellow-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-yellow-800">
+                          This event is restricted to:{" "}
+                          {event.allowedRoles
+                            .map(
+                              (role) =>
+                                role.charAt(0).toUpperCase() +
+                                role.slice(1) +
+                                "s"
+                            )
+                            .join(", ")}
+                        </p>
+                        <p className="text-yellow-700 text-sm mt-1">
+                          Only selected roles can register for this event.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Event Details Grid */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-lg flex items-center justify-center">
+                    <Calendar size={18} className="text-white" />
+                  </div>
+                  Event Details
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Dynamic Details based on event type */}
+                  {isTrip && (
+                    <>
+                      <DetailCard
+                        icon={MapPin}
+                        label="Location"
+                        value={event.location || "—"}
+                      />
+                      <DetailCard
+                        icon={TrendingUp}
+                        label="Price"
+                        value={formatMoney(event.price)}
+                      />
+                      <DetailCard
+                        icon={Calendar}
+                        label="Starts"
+                        value={formatDate(event.startDateTime)}
+                      />
+                      <DetailCard
+                        icon={Clock}
+                        label="Ends"
+                        value={formatDate(event.endDateTime)}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Capacity"
+                        value={event.capacity || "—"}
+                      />
+                      <DetailCard
+                        icon={Calendar}
+                        label="Registration Deadline"
+                        value={formatDate(event.registrationDeadline)}
+                      />
+                    </>
+                  )}
+
+                  {isConference && (
+                    <>
+                      <DetailCard
+                        icon={Calendar}
+                        label="Starts"
+                        value={formatDate(event.startDateTime)}
+                      />
+                      <DetailCard
+                        icon={Clock}
+                        label="Ends"
+                        value={formatDate(event.endDateTime)}
+                      />
+                      <DetailCard
+                        icon={TrendingUp}
+                        label="Required Budget"
+                        value={formatMoney(event.requiredBudget)}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Funding Source"
+                        value={event.fundingSource || "—"}
+                      />
+                      <DetailCard
+                        icon={MapPin}
+                        label="Website"
+                        value={
+                          event.website ? (
+                            <a
+                              href={event.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              {event.website}
+                            </a>
+                          ) : (
+                            "—"
+                          )
+                        }
+                      />
+                      {event.extraResources && (
+                        <div className="md:col-span-2 bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                          <h3 className="font-semibold text-gray-900 mb-2">
+                            Extra Resources
+                          </h3>
+                          <p className="text-gray-700 text-sm leading-relaxed">
+                            {event.extraResources}
+                          </p>
+                        </div>
+                      )}
+                      {event.fullAgenda && (
+                        <div className="md:col-span-2 bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
+                          <h3 className="font-semibold text-gray-900 mb-2">
+                            Full Agenda
+                          </h3>
+                          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                            {event.fullAgenda}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {isWorkshop && (
+                    <>
+                      <DetailCard
+                        icon={MapPin}
+                        label="Location"
+                        value={event.location || "—"}
+                      />
+                      <DetailCard
+                        icon={Calendar}
+                        label="Starts"
+                        value={formatDate(event.startDateTime)}
+                      />
+                      <DetailCard
+                        icon={Clock}
+                        label="Ends"
+                        value={formatDate(event.endDateTime)}
+                      />
+                      <DetailCard
+                        icon={Calendar}
+                        label="Registration Deadline"
+                        value={formatDate(event.registrationDeadline)}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Capacity"
+                        value={event.capacity || "—"}
+                      />
+                      <DetailCard
+                        icon={TrendingUp}
+                        label="Required Budget"
+                        value={formatMoney(event.budget)}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Funding Source"
+                        value={event.fundingSource || "—"}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Faculty Responsible"
+                        value={event.facultyResponsible || "—"}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Professors Participating"
+                        value={event.professorsParticipating || "—"}
+                      />
+                      {event.extraResources && (
+                        <div className="md:col-span-2 bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                          <h3 className="font-semibold text-gray-900 mb-2">
+                            Extra Resources
+                          </h3>
+                          <p className="text-gray-700 text-sm leading-relaxed">
+                            {event.extraResources}
+                          </p>
+                        </div>
+                      )}
+                      {event.fullAgenda && (
+                        <div className="md:col-span-2 bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
+                          <h3 className="font-semibold text-gray-900 mb-2">
+                            Full Agenda
+                          </h3>
+                          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                            {event.fullAgenda}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {isBooth && (
+                    <>
+                      <DetailCard
+                        icon={TrendingUp}
+                        label="Booth Size"
+                        value={event.boothSize || "—"}
+                      />
+                      <DetailCard
+                        icon={MapPin}
+                        label="Platform Slot"
+                        value={event.platformSlot || "—"}
+                      />
+                      <DetailCard
+                        icon={Users}
+                        label="Status"
+                        value={event.status || "—"}
+                      />
+                    </>
+                  )}
+
+                  {isBazaar && (
+                    <>
+                      <DetailCard
+                        icon={MapPin}
+                        label="Location"
+                        value={event.location || "—"}
+                      />
+                      <DetailCard
+                        icon={Calendar}
+                        label="Starts"
+                        value={formatDate(event.startDateTime)}
+                      />
+                      <DetailCard
+                        icon={Clock}
+                        label="Ends"
+                        value={formatDate(event.endDateTime)}
+                      />
+                      <DetailCard
+                        icon={Calendar}
+                        label="Registration Deadline"
+                        value={formatDate(event.registrationDeadline)}
+                      />
+                    </>
+                  )}
+
+                  {/* Description */}
+                  {(event.description || event.shortDescription) && (
+                    <div className="md:col-span-2 bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        Description
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed">
+                        {event.description || event.shortDescription}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Reviews Section */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-lg flex items-center justify-center">
+                    <MessageCircle size={18} className="text-white" />
+                  </div>
+                  Ratings & Reviews{" "}
+                  {reviews.length > 0 && `(${reviews.length})`}
+                </h2>
+
+                {/* Review Input */}
+                {canReview && (
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 mb-8">
+                    <h3 className="font-semibold text-gray-900 mb-4">
+                      Share Your Experience
+                    </h3>
+                    <div className="flex gap-2 mb-4">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setMyRating(n)}
+                          className="transform hover:scale-110 transition-transform"
+                        >
+                          <Star
+                            size={32}
+                            className={
+                              n <= myRating
+                                ? "fill-yellow-500 text-yellow-500"
+                                : "text-gray-400 hover:text-yellow-500 transition-colors"
+                            }
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="Share your thoughts about this event..."
+                      value={myComment}
+                      onChange={(e) => setMyComment(e.target.value)}
+                      className="w-full p-4 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-[#567c8d] focus:border-transparent"
+                      rows={4}
+                    />
+                    <button
+                      onClick={submitReview}
+                      className="mt-4 bg-gradient-to-r from-[#567c8d] to-[#45687a] hover:from-[#45687a] hover:to-[#567c8d] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      Submit Review
+                    </button>
+                  </div>
+                )}
+
+                {/* Reviews List */}
+                <div className="space-y-4">
+                  {reviews.map((review, index) => (
+                    <div
+                      key={index}
+                      className="bg-gradient-to-br from-gray-50 to-white p-6 rounded-xl border border-gray-200"
+                    >
+                      <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-[#567c8d] rounded-full flex items-center justify-center text-white font-bold text-lg">
-                            {r.userName?.[0] || "A"}
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                            {review.userName?.[0]?.toUpperCase() || "U"}
                           </div>
                           <div>
-                            <p className="font-semibold text-[#2f4156]">
-                              {r.userName || "Anonymous"}
+                            <p className="font-semibold text-gray-900">
+                              {review.userName || "Anonymous"}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {new Date(r.createdAt).toLocaleDateString()}
+                              {new Date(review.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -1097,9 +1064,9 @@ const EventDetails = () => {
                           {[1, 2, 3, 4, 5].map((n) => (
                             <Star
                               key={n}
-                              size={20}
+                              size={18}
                               className={
-                                n <= r.rating
+                                n <= review.rating
                                   ? "fill-yellow-400 text-yellow-400"
                                   : "text-gray-300"
                               }
@@ -1107,14 +1074,66 @@ const EventDetails = () => {
                           ))}
                         </div>
                       </div>
-                      {r.comment && (
-                        <p className="text-[#567c8d] mt-2 leading-relaxed">
-                          {r.comment}
+                      {review.comment && (
+                        <p className="text-gray-700 leading-relaxed">
+                          {review.comment}
                         </p>
                       )}
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Quick Info Card */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">
+                  Event Summary
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Type</span>
+                    <span className="font-semibold text-gray-900">{type}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Status</span>
+                    <span
+                      className={`font-semibold ${
+                        hasPassed ? "text-red-600" : "text-green-600"
+                      }`}
+                    >
+                      {hasPassed ? "Ended" : "Upcoming"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Your Status</span>
+                    <span
+                      className={`font-semibold ${
+                        isRegistered ? "text-green-600" : "text-gray-600"
+                      }`}
+                    >
+                      {isRegistered ? "Registered" : "Not Registered"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Share Card */}
+              <div className="bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-2xl p-6 text-white">
+                <h3 className="font-semibold mb-3">Share this event</h3>
+                <p className="text-white/80 text-sm mb-4">
+                  Let others know about this amazing event!
+                </p>
+                <div className="flex gap-2">
+                  <button className="flex-1 bg-white/20 hover:bg-white/30 backdrop-blur-sm py-2 rounded-lg transition-colors text-sm font-medium">
+                    Copy Link
+                  </button>
+                  <button className="flex-1 bg-white/20 hover:bg-white/30 backdrop-blur-sm py-2 rounded-lg transition-colors text-sm font-medium">
+                    Share
+                  </button>
+                </div>
               </div>
             </div>
           </div>

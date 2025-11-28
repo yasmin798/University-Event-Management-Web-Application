@@ -69,89 +69,83 @@ export default function CourtsAvailability() {
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className="flex min-h-screen bg-[#f5efeb]">
       <StudentSidebar />
-      <div style={{ ...containerStyle, marginLeft: "260px", flex: 1 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-start",
-            marginBottom: "20px",
-          }}
-        >
-          <button
-            onClick={handleBack}
+      <div className="flex-1 p-8" style={{ marginLeft: "260px" }}>
+        <div className="max-w-4xl mx-auto">
+          <div
             style={{
-              padding: "10px 20px",
-              backgroundColor: "#567c8d",
-              color: "white",
-              borderRadius: "8px",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1rem",
-              fontWeight: "500",
-              transition: "background-color 0.2s",
+              display: "flex",
+              justifyContent: "flex-start",
+              marginBottom: "20px",
             }}
-            onMouseOver={(e) => (e.target.style.backgroundColor = "#45687a")}
-            onMouseOut={(e) => (e.target.style.backgroundColor = "#567c8d")}
           >
-            Back to Dashboard
-          </button>
-        </div>
-        <h1 style={headingStyle}>Campus Courts Availability</h1>
+            <button
+              onClick={handleBack}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#567c8d",
+                color: "white",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "1rem",
+                fontWeight: "500",
+                transition: "background-color 0.2s",
+              }}
+              onMouseOver={(e) => (e.target.style.backgroundColor = "#45687a")}
+              onMouseOut={(e) => (e.target.style.backgroundColor = "#567c8d")}
+            >
+              Back to Dashboard
+            </button>
+          </div>
+          <h1 style={headingStyle}>Campus Courts Availability</h1>
 
-        {courtsData.map((court) => (
-          <div key={court.id} style={courtCardStyle}>
-            <div style={cardFlexStyle}>
-              <img
-                src={courtImages[court.id]}
-                alt={court.name}
-                style={courtImageStyle}
-              />
+          {courtsData.map((court) => (
+            <div key={court.id} style={courtCardStyle}>
+              <div style={cardFlexStyle}>
+                <img
+                  src={courtImages[court.id]}
+                  alt={court.name}
+                  style={courtImageStyle}
+                />
 
-              <div style={cardContentStyle}>
-                <h2 style={courtNameStyle}>{court.name}</h2>
+                <div style={cardContentStyle}>
+                  <h2 style={courtNameStyle}>{court.name}</h2>
 
-                {court.availability.length > 0 ? (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr style={tableHeaderStyle}>
-                        <th style={thTdStyle}>Date</th>
-                        <th style={thTdStyle}>Available Times</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {court.availability.map(({ date, times }) => (
-                        <tr key={date} style={tableRowStyle}>
-                          <td style={thTdStyle}>
-                            {new Date(date).toLocaleDateString()}
-                          </td>
-                          <td style={thTdStyle}>{times.join(", ")}</td>
+                  {court.availability.length > 0 ? (
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr style={tableHeaderStyle}>
+                          <th style={thTdStyle}>Date</th>
+                          <th style={thTdStyle}>Available Times</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p style={{ color: "#6B7280" }}>No availability data.</p>
-                )}
+                      </thead>
+                      <tbody>
+                        {court.availability.map(({ date, times }) => (
+                          <tr key={date} style={tableRowStyle}>
+                            <td style={thTdStyle}>
+                              {new Date(date).toLocaleDateString()}
+                            </td>
+                            <td style={thTdStyle}>{times.join(", ")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p style={{ color: "#6B7280" }}>No availability data.</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 // =================== Styles ===================
-
-const containerStyle = {
-  padding: "30px",
-  fontFamily: "Poppins, Arial, sans-serif",
-  color: "#111827",
-  maxWidth: "900px",
-  margin: "0 auto",
-};
 
 const headingStyle = {
   textAlign: "center",
