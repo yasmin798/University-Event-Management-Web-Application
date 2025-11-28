@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo for dynamic locations
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Calendar, MapPin, Users, Clock, UserCheck, CheckCircle } from 'lucide-react'; // Added CheckCircle for attendance btn
+import { Plus, Edit, Trash2, Calendar, MapPin, Users, Clock, UserCheck, CheckCircle } from 'lucide-react'; // Added CheckCircle for attendance btn
 import { workshopAPI } from '../api/workshopApi';
 import ProfessorSidebar from '../components/ProfessorSidebar';
 
@@ -137,12 +137,6 @@ const WorkshopsListPage = () => {
         <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/professor/dashboard')}
-              className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-            >
-              <ArrowLeft size={20} className="text-[#567c8d]" />
-            </button>
             <h1 className="text-2xl font-bold text-[#2f4156]">Workshops</h1>
           </div>
           <button

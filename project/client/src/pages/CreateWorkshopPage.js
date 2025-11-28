@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, X } from "lucide-react";
+import { Save, X } from "lucide-react";
 import { workshopAPI } from "../api/workshopApi";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 
@@ -138,12 +138,6 @@ const CreateWorkshopPage = () => {
         <div className="bg-white border-b border-[#c8d9e6] px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/professor/dashboard")}
-              className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-            >
-              <ArrowLeft size={20} className="text-[#567c8d]" />
-            </button>
             <h1 className="text-2xl font-bold text-[#2f4156]">
               Create Workshop
             </h1>
