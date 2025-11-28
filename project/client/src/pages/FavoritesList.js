@@ -6,8 +6,10 @@ import { useNavigate } from "react-router-dom";
 
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
+import TaSidebar from "../components/TaSidebar";
+import StaffSidebar from "../components/StaffSidebar";
 
-import { Heart, Calendar, MapPin, Clock, ArrowLeft } from "lucide-react";
+import { Heart, Calendar, MapPin } from "lucide-react";
 
 import tripPlaceholder from "../images/trip.jpeg";
 
@@ -32,7 +34,7 @@ const FavoritesList = () => {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role);
+        setUserRole((payload.role || "student").toLowerCase());
       } catch (err) {
         console.error("Failed to decode token", err);
       }
@@ -119,7 +121,15 @@ const FavoritesList = () => {
 
   return (
     <div className="flex min-h-screen">
-      {userRole === "professor" ? <ProfessorSidebar /> : <StudentSidebar />}
+      {!userRole ? null : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : userRole === "staff" ? (
+        <StaffSidebar />
+      ) : userRole === "ta" ? (
+        <TaSidebar />
+      ) : (
+        <StudentSidebar />
+      )}
       <div
         className="flex-1 bg-[#f5efeb] p-4 md:p-8"
         style={{ marginLeft: "260px" }}
@@ -128,13 +138,6 @@ const FavoritesList = () => {
           {/* Header */}
 
           <div className="flex items-center gap-4 mb-8">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-white rounded-lg shadow-sm transition-colors"
-            >
-              <ArrowLeft size={24} className="text-[#2f4156]" />
-            </button>
-
             <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156]">
               My Favorites
             </h1>

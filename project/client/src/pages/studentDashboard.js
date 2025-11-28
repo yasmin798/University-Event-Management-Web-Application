@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import conferencePlaceholder from "../images/Conferenceroommeetingconcept.jpeg";
-import tripPlaceholder from "../images/Womanlookingatmapplanningtrip.jpeg";
-import bazaarPlaceholder from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
-import workshopPlaceholder from "../images/download(12).jpeg";
+import workshopPlaceholder from "../images/workshop.png";
+import boothPlaceholder from "../images/booth.jpg";
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 
 import {
   Search,
@@ -72,14 +74,13 @@ const StudentDashboard = () => {
         const res = await fetch(`${API}/api/events/all?${params}`);
         const data = await res.json();
         if (res.ok) {
-  const cleanData = data.filter(
-    (e) => e.status?.toLowerCase() !== "archived"
-  );
-  setAllEvents(cleanData);
-} else {
-  setAllEvents([]);
-}
-
+          const cleanData = data.filter(
+            (e) => e.status?.toLowerCase() !== "archived"
+          );
+          setAllEvents(cleanData);
+        } else {
+          setAllEvents([]);
+        }
       } catch (err) {
         console.error(err);
         setAllEvents([]);
@@ -244,21 +245,21 @@ const StudentDashboard = () => {
 
           {/* Search + Filters */}
           <div className="flex flex-col md:flex-row gap-2 flex-1 mx-4">
-            <div className="relative flex-[3]">
+            <div className="relative md:w-40">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
-                size={22}
+                size={18}
               />
               <input
                 type="text"
                 placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg"
+                className="w-full pl-11 pr-4 py-2 text-base border border-[#c8d9e6] rounded-lg"
               />
             </div>
 
-            <div className="md:w-48">
+            <div className="md:w-40">
               <SearchableDropdown
                 options={uniqueLocations}
                 value={searchLocation}
@@ -269,7 +270,7 @@ const StudentDashboard = () => {
               />
             </div>
 
-            <div className="md:w-48">
+            <div className="md:w-40">
               <SearchableDropdown
                 options={uniqueProfessors}
                 value={professorFilter}
@@ -442,14 +443,14 @@ const StudentDashboard = () => {
           {/* Events Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {allEvents.map((e) => {
-              const fallbackImage =
-                {
-                  TRIP: tripPlaceholder,
-                  BAZAAR: bazaarPlaceholder,
-                  CONFERENCE: conferencePlaceholder,
-                  WORKSHOP: workshopPlaceholder,
-                  BOOTH: workshopPlaceholder,
-                }[e.type] || workshopPlaceholder;
+              let cardImage = workshopImg;
+              if (e.type === "TRIP") cardImage = tripImg;
+              if (e.type === "BAZAAR") cardImage = bazaarImg;
+              if (e.type === "CONFERENCE") cardImage = conferenceImg;
+              if (e.type === "WORKSHOP") cardImage = workshopImg;
+              if (e.type === "BOOTH") cardImage = boothPlaceholder;
+
+              const fallbackImage = cardImage;
 
               // Format date
               const eventDate = e.startDateTime
@@ -499,7 +500,9 @@ const StudentDashboard = () => {
 
                   <div className="p-5">
                     <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
-                      {e.title}
+                      {e.type === "BOOTH"
+                        ? e.attendees?.[0]?.name || e.title
+                        : e.title}
                     </h3>
 
                     <div className="space-y-2 mb-4">
