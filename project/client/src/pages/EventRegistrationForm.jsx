@@ -81,12 +81,21 @@ const EventRegistrationForm = () => {
     // Retrieve the token from localStorage (or wherever you store it)
     const token = localStorage.getItem("token");
     const apiUrl = `/api/events/${eventId}/register`;
+
     // --- Start of Debugging Logs ---
-    console.log("Attempting registration...");
-    console.log("Event ID:", eventId);
-    console.log("Auth Token:", token ? "Token found" : "No token found!");
-    console.log("API URL:", apiUrl);
+    console.log("📋 FORM SUBMISSION:");
+    console.log("  Event ID:", eventId);
+    console.log("  Form Data:", {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      roleSpecificId: formData.roleSpecificId,
+      role: formData.role,
+    });
+    console.log("  Auth Token:", token ? "Token found" : "No token found!");
+    console.log("  API URL:", apiUrl);
     // --- End of Debugging Logs ---
+
     if (!token) {
       setError("You must be logged in to register.");
       setIsLoading(false);

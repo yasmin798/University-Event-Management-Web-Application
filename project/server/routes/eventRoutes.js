@@ -671,13 +671,27 @@ router.get("/events/:id/registrations", protect, async (req, res) => {
     // 4. Try Booth (has registrations array for visitors)
     if (!attendees.length) {
       event = await BoothApplication.findById(id);
-      if (event && event.registrations) {
+      if (event) {
         eventType = "booth";
-        attendees = event.registrations.map((r) => ({
-          // Prioritize the registration form data over populated user data
-          name: r.name || "Guest",
-          email: r.email || "—",
-        }));
+        // Prioritize registrations array (form data) over registeredUsers (user profile data)
+        if (event.registrations && event.registrations.length > 0) {
+          attendees = event.registrations.map((r) => ({
+            name: r.name || "Guest",
+            email: r.email || "—",
+          }));
+        } else if (event.registeredUsers && event.registeredUsers.length > 0) {
+          // Fallback to registeredUsers if no registrations array
+          const populatedEvent = await BoothApplication.findById(id).populate(
+            "registeredUsers",
+            "firstName lastName email"
+          );
+          attendees = (populatedEvent.registeredUsers || []).map((u) => ({
+            name:
+              `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
+              "Unknown User",
+            email: u.email || "—",
+          }));
+        }
       }
     }
 
