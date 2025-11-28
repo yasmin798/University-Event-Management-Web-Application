@@ -6,8 +6,9 @@ import { useNavigate } from "react-router-dom";
 
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
+import TaSidebar from "../components/TaSidebar";
 
-import { Heart, Calendar, MapPin, Clock } from "lucide-react";
+import { Heart, Calendar, MapPin } from "lucide-react";
 
 import tripPlaceholder from "../images/trip.jpeg";
 
@@ -119,7 +120,13 @@ const FavoritesList = () => {
 
   return (
     <div className="flex min-h-screen">
-      {userRole === "professor" ? <ProfessorSidebar /> : <StudentSidebar />}
+      {userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : userRole === "ta" ? (
+        <TaSidebar />
+      ) : (
+        <StudentSidebar />
+      )}
       <div
         className="flex-1 bg-[#f5efeb] p-4 md:p-8"
         style={{ marginLeft: "260px" }}
