@@ -21,6 +21,22 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "blocked"],
       default: "active",     // added for checking if user is active/blocked
     },
+
+    // ⭐️ NEW: Vendor documents & verification
+    taxCardUrl: {
+      type: String,
+      default: null,
+    },
+    logoUrl: {
+      type: String,
+      default: null,
+    },
+    vendorVerificationStatus: {
+      type: String,
+      enum: ["not_submitted", "pending", "approved", "rejected"],
+      default: "not_submitted",
+    },
+
     favorites: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Event", // we'll use a virtual populate later

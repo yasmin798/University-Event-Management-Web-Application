@@ -1,7 +1,7 @@
 // client/src/pages/VendorsPage.js
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, LogOut, User as UserIcon, Menu, X } from "lucide-react";
+import { Search, LogOut, User as UserIcon, Menu, X, IdCard, IdCardIcon } from "lucide-react";
 import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg"; // Reuse from EventsHome imports
 import { Calendar, Store, FileText, Users } from "lucide-react";
 
@@ -141,6 +141,13 @@ const VendorsPage = () => {
           >
             <Users size={20} />
             <span>Apply for GUC Loyalty Program</span>
+          </button>
+          <button
+            onClick={() => navigate("/vendor-documents")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/5"
+          >
+            <IdCardIcon size={18} />
+            <span>Company Documents</span>
           </button>
         </nav>
 
