@@ -23,38 +23,19 @@ const ConferenceSchema = new mongoose.Schema(
     requiredBudget: { type: Number, required: true },
     fundingSource: { type: String, required: true, enum: ["GUC", "external"] },
     extraResources: { type: String, trim: true },
-    
+
     status: {
       type: String,
       enum: ["draft", "published", "cancelled"],
       default: "published",
     },
 
-    // Registrations (logged-in + guest users)
-    registrations: {
-      type: [
-        {
-          userId: { type: String }, // null for guests
-          email: { type: String, required: true },
-          registeredAt: { type: Date, default: Date.now },
-        },
-      ],
-      default: [],
-    },
-
     // ADD THIS: Reviews from attendees
     reviews: [reviewSchema],
-
-    // ADD THIS: Allowed roles for registration (empty array = open to all)
-    allowedRoles: {
-      type: [String],
-      enum: ["student", "professor", "ta", "staff"],
-      default: [],
-    },
   },
-  { 
-    timestamps: true, 
-    collection: "conferences" 
+  {
+    timestamps: true,
+    collection: "conferences",
   }
 );
 
