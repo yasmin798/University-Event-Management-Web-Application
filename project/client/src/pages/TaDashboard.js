@@ -1,3 +1,4 @@
+// client/src/pages/TaDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -5,42 +6,46 @@ import {
   Menu,
   Bell,
   User,
-  LogOut,
-  Calendar,
-  Map,
+  ArrowUp,
+  ArrowDown,
+  MapPin,
+  Clock,
   Heart,
-  Star,
-  MessageCircle,
+  TrendingUp,
 } from "lucide-react";
-import workshopPlaceholder from "../images/workshop.png";
-import tripPlaceholder from "../images/trip.jpeg";
-import bazaarPlaceholder from "../images/bazaar.jpeg";
-import conferencePlaceholder from "../images/conference.jpg";
+
+import TaSidebar from "../components/TaSidebar";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 
-const API_BASE = "http://localhost:3000"; // ← Your working backend
+// Placeholder images for events
+import conferencePlaceholder from "../images/Conferenceroommeetingconcept.jpeg";
+import tripPlaceholder from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarPlaceholder from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopPlaceholder from "../images/download(12).jpeg";
+const API_BASE = "http://localhost:3000";
 
 const TaDashboard = () => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [eventTypeFilter, setEventTypeFilter] = useState("All");
-  const [searchLocation, setSearchLocation] = useState("");
-  const [sortOrder, setSortOrder] = useState("asc");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [favorites, setFavorites] = useState([]);
-  const [allEvents, setAllEvents] = useState([]);
-  const [serverLoading, setServerLoading] = useState(true);
-  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [debouncedSearchLocation, setDebouncedSearchLocation] =
-    useState(searchLocation);
 
-  // Reviews state
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [myRating, setMyRating] = useState(0);
-  const [myComment, setMyComment] = useState("");
-  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [eventTypeFilter, setEventTypeFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [allEvents, setAllEvents] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   const [userId, setUserId] = useState(null);
+
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [debouncedSearchLocation, setDebouncedSearchLocation] = useState(
+    searchLocation
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -52,7 +57,7 @@ const TaDashboard = () => {
     return () => clearTimeout(t);
   }, [searchLocation]);
 
-  // Get user ID
+  // Get user ID from token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -65,13 +70,46 @@ const TaDashboard = () => {
     }
   }, []);
 
+  // Fetch events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (debouncedSearch) params.append("search", debouncedSearch);
+        if (debouncedSearchLocation)
+          params.append("location", debouncedSearchLocation);
+        if (eventTypeFilter !== "All") params.append("type", eventTypeFilter);
+        params.append("sort", "startDateTime");
+        params.append("order", sortOrder === "asc" ? "desc" : "asc");
+
+        const res = await fetch(`${API_BASE}/api/events/all?${params}`);
+        const data = await res.json();
+        if (res.ok) {
+          const cleanData = data.filter((e) => e.status?.toLowerCase() !== "archived");
+          setAllEvents(cleanData);
+        } else {
+          setAllEvents([]);
+        }
+      } catch (err) {
+        console.error(err);
+        setAllEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, [debouncedSearch, debouncedSearchLocation, eventTypeFilter, sortOrder]);
+
   // Fetch favorites
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
         const token = localStorage.getItem("token");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch("/api/users/me/favorites", { headers });
+        if (!token) return;
+        const res = await fetch("/api/users/me/favorites", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (res.ok) {
           const data = await res.json();
           setFavorites(data.map((e) => e._id));
@@ -83,122 +121,31 @@ const TaDashboard = () => {
     fetchFavorites();
   }, []);
 
-  // Fetch all events
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setServerLoading(true);
-      try {
-        const params = new URLSearchParams();
-        const searchValue = [debouncedSearch, debouncedSearchLocation]
-          .filter(Boolean)
-          .join(" ");
-        if (searchValue) params.append("search", searchValue);
-        if (debouncedSearchLocation)
-          params.append("location", debouncedSearchLocation);
-        if (eventTypeFilter && eventTypeFilter !== "All")
-          params.append("type", eventTypeFilter);
-        params.append("sort", "startDateTime");
-        params.append("order", sortOrder === "asc" ? "desc" : "asc");
-
-        const res = await fetch(`/api/events/all?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          setAllEvents(data);
-        } else {
-          setAllEvents([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch events", err);
-        setAllEvents([]);
-      } finally {
-        setServerLoading(false);
-      }
-    };
-    fetchEvents();
-  }, [debouncedSearch, eventTypeFilter, debouncedSearchLocation, sortOrder]);
-
-  // Fetch reviews when event is selected
-  const loadReviews = async (eventId) => {
-    setReviewsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/events/${eventId}/reviews`);
-      if (res.ok) {
-        const data = await res.json();
-        setReviews(data || []);
-        const myReview = data.find((r) => r.userId?.toString() === userId);
-        if (myReview) {
-          setMyRating(myReview.rating);
-          setMyComment(myReview.comment || "");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load reviews", err);
-    } finally {
-      setReviewsLoading(false);
-    }
-  };
-
-  const submitReview = async () => {
-    if (!selectedEvent || myRating === 0) return;
-
+  // Toggle favorite
+  const toggleFavorite = async (eventId) => {
+    const method = favorites.includes(eventId) ? "DELETE" : "POST";
+    const url = `/api/users/me/favorites${method === "DELETE" ? `/${eventId}` : ""}`;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${API_BASE}/api/events/${selectedEvent._id}/reviews`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            rating: myRating,
-            comment: myComment.trim() || null,
-          }),
-        }
+      const headers = token
+        ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+        : { "Content-Type": "application/json" };
+      await fetch(url, {
+        method,
+        headers,
+        body: method === "POST" ? JSON.stringify({ eventId }) : undefined,
+      });
+      setFavorites((prev) =>
+        prev.includes(eventId)
+          ? prev.filter((id) => id !== eventId)
+          : [...prev, eventId]
       );
-
-      if (res.ok) {
-        const updated = await res.json();
-        setReviews(updated);
-        alert("Review submitted successfully!");
-        setMyRating(0);
-        setMyComment("");
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to submit");
-      }
     } catch (err) {
-      alert("Network error");
+      console.error("Favorite toggle failed", err);
     }
   };
 
-  const toggleFavorite = async (eventId) => {
-    // ... your existing toggleFavorite code
-  };
-
-  const handleDetails = (event) => {
-    setSelectedEvent(event);
-    loadReviews(event._id);
-  };
-
-  const closeReviews = () => setSelectedEvent(null);
-
-  const avgRating = reviews.length
-    ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1)
-    : 0;
-
-  const hasPassed =
-    selectedEvent &&
-    new Date(selectedEvent.endDateTime || selectedEvent.startDateTime) <
-      new Date();
-  const alreadyReviewed = reviews.some((r) => r.userId?.toString() === userId);
-  const isBazaarOrBooth =
-    selectedEvent &&
-    (selectedEvent.type === "BAZAAR" || selectedEvent.type === "BOOTH");
-  const canReview = userId && hasPassed && !alreadyReviewed && isBazaarOrBooth;
-
-  if (serverLoading) {
+  if (loading) {
     return (
       <div className="flex h-screen bg-[#f5efeb] items-center justify-center">
         <p className="text-[#567c8d]">Loading events...</p>
@@ -207,153 +154,188 @@ const TaDashboard = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar & Header — unchanged */}
-      {/* ... your existing sidebar and header ... */}
+    <div className="flex min-h-screen bg-[#f5efeb] ml-[260px]">
+      {/* Sidebar */}
+      <TaSidebar />
 
-      <div className="flex-1 overflow-auto">
-        {/* Header — unchanged */}
-        {/* ... your header ... */}
+      <div className="flex-1 flex flex-col overflow-auto bg-[#f5efeb]">
+        {/* Header */}
+        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 hover:bg-[#f5efeb] rounded-lg md:hidden"
+          >
+            <Menu size={24} className="text-[#2f4156]" />
+          </button>
 
-        <main className="p-4 md:p-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#2f4156] mb-6">
-            Available Events
-          </h1>
+          <div className="flex flex-col md:flex-row gap-2 flex-1 mx-4">
+            <div className="relative flex-[3]">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
+                size={22}
+              />
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 text-base border border-[#c8d9e6] rounded-lg"
+              />
+            </div>
 
-          {/* Event Grid — unchanged */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {allEvents
-              .filter((e) => e.status !== "archived") // hide archived events
-              .map((e) => (
-                <div
-                  key={e._id}
-                  className="bg-white rounded-2xl shadow-sm overflow-hidden"
-                >
-                  {/* ... your existing card ... */}
-                  <button
-                    onClick={() => handleDetails(e)}
-                    className="w-full bg-[#567c8d] hover:bg-[#45687a] text-white py-3 font-medium"
-                  >
-                    View Details & Review
-                  </button>
-                </div>
-              ))}
+            <input
+              type="text"
+              placeholder="Location"
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
+              className="px-4 py-2 border border-[#c8d9e6] rounded-lg md:w-48"
+            />
+
+            <EventTypeDropdown
+              selected={eventTypeFilter}
+              onChange={setEventTypeFilter}
+            />
+
+            <button
+              onClick={() =>
+                setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              className="px-4 py-2 bg-[#567c8d] text-white rounded-lg flex items-center gap-2"
+            >
+              {sortOrder === "asc" ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+              {sortOrder === "asc" ? "Oldest" : "Newest"}
+            </button>
           </div>
-        </main>
 
-        {/* REVIEWS MODAL — Appears when event is selected */}
-        {selectedEvent && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-screen overflow-y-auto p-8 relative">
-              <button
-                onClick={closeReviews}
-                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-              >
-                × Close
-              </button>
-
-              <h2 className="text-2xl font-bold text-[#2f4156] mb-4">
-                {selectedEvent.title || selectedEvent.name}
-              </h2>
-
-              {hasPassed ? (
-                <div className="mt-8">
-                  <h3 className="text-xl font-bold flex items-center gap-2 mb-6">
-                    <MessageCircle /> Ratings & Reviews
-                  </h3>
-
-                  {reviews.length > 0 && (
-                    <div className="bg-[#f5efeb] p-6 rounded-xl mb-6 text-center">
-                      <div className="text-5xl font-bold text-[#567c8d]">
-                        {avgRating}
-                      </div>
-                      <div className="flex justify-center gap-1 my-2">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <Star
-                            key={n}
-                            size={32}
-                            className={
-                              n <= avgRating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
-                            }
-                          />
-                        ))}
-                      </div>
-                      <p>Based on {reviews.length} reviews</p>
-                    </div>
-                  )}
-
-                  {canReview && (
-                    <div className="bg-[#f8f9fa] p-6 rounded-xl mb-8 border">
-                      <h4 className="font-semibold mb-4">Leave Your Review</h4>
-                      <div className="flex gap-2 mb-4">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <button key={n} onClick={() => setMyRating(n)}>
-                            <Star
-                              size={40}
-                              className={
-                                n <= myRating
-                                  ? "fill-yellow-500 text-yellow-500"
-                                  : "text-gray-400 hover:text-yellow-500"
-                              }
-                            />
-                          </button>
-                        ))}
-                      </div>
-                      <textarea
-                        placeholder="Share your experience..."
-                        value={myComment}
-                        onChange={(e) => setMyComment(e.target.value)}
-                        className="w-full p-4 border rounded-lg resize-none"
-                        rows={4}
-                      />
-                      <button
-                        onClick={submitReview}
-                        className="mt-4 px-8 py-3 bg-[#567c8d] hover:bg-[#45687a] text-white rounded-lg"
-                      >
-                        Submit Review
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    {reviews.map((r) => (
-                      <div
-                        key={r._id || r.createdAt}
-                        className="bg-gray-50 p-4 rounded-lg"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="font-semibold">{r.userName}</div>
-                          <div className="flex gap-1">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <Star
-                                key={n}
-                                size={18}
-                                className={
-                                  n <= r.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
-                                }
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        {r.comment && (
-                          <p className="mt-2 text-gray-700">{r.comment}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-600">
-                  Event has not ended yet. Reviews available after it ends.
-                </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
+            >
+              <Bell size={20} className="text-[#567c8d]" />
+              {notifications.some((n) => n.unread) && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               )}
+            </button>
+
+            <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
+              <User size={20} className="text-[#2f4156]" />
             </div>
           </div>
-        )}
+        </header>
+
+        {/* Main content */}
+        <main className="p-4 md:p-8">
+          <div className="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <h1 className="text-3xl font-bold text-[#2f4156] mb-2">
+              Discover Events
+            </h1>
+            <button
+              onClick={() => navigate("/favorites")}
+              className="flex items-center gap-2 px-5 py-2 bg-white border-2 border-[#c8d9e6] rounded-xl hover:border-red-300 hover:bg-red-50 shadow-sm"
+            >
+              <Heart
+                size={20}
+                className={favorites.length > 0 ? "fill-red-500 text-red-500" : "text-[#567c8d]"}
+              />
+              My Favorites
+              {favorites.length > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {favorites.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+              <p className="text-sm text-blue-600 font-medium mb-1">Total Events</p>
+              <p className="text-2xl font-bold text-blue-900">{allEvents.length}</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+              <p className="text-sm text-purple-600 font-medium mb-1">Favorites</p>
+              <p className="text-2xl font-bold text-purple-900">{favorites.length}</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+              <p className="text-sm text-green-600 font-medium mb-1">Event Types</p>
+              <p className="text-2xl font-bold text-green-900">
+                {new Set(allEvents.map((e) => e.type).filter(Boolean)).size}
+              </p>
+            </div>
+          </div>
+
+          {/* Events Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            {allEvents.map((e) => {
+              const fallbackImage =
+                {
+                  TRIP: tripPlaceholder,
+                  BAZAAR: bazaarPlaceholder,
+                  CONFERENCE: conferencePlaceholder,
+                  WORKSHOP: workshopPlaceholder,
+                  BOOTH: workshopPlaceholder,
+                }[e.type] || workshopPlaceholder;
+
+              const eventDate = e.startDateTime
+                ? new Date(e.startDateTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                : "";
+
+              return (
+                <div key={e._id} className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm overflow-hidden group">
+                  <div className="h-48 w-full bg-gray-200 relative overflow-hidden">
+                    <img
+                      src={e.image || fallbackImage}
+                      alt={e.title}
+                      className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+                        {e.type}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => toggleFavorite(e._id)}
+                      className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
+                    >
+                      <Heart
+                        size={18}
+                        className={favorites.includes(e._id) ? "fill-red-500 text-red-500" : "text-gray-600"}
+                      />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
+                      {e.title}
+                    </h3>
+                    <div className="space-y-2 mb-4">
+                      {e.location && (
+                        <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                          <MapPin size={16} />
+                          <span>{e.location}</span>
+                        </div>
+                      )}
+                      {eventDate && (
+                        <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                          <Clock size={16} />
+                          <span>{eventDate}</span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => navigate(`/events/${e._id}`)}
+                      className="mt-4 w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </main>
       </div>
     </div>
   );
