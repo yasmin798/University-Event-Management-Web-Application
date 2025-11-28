@@ -104,8 +104,14 @@ exports.getWorkshopById = async (req, res) => {
   try {
     console.log('Fetching workshop by ID:', req.params.id);
     const workshop = await Workshop.findById(req.params.id)
-      .populate('registeredUsers', 'name email role') // FIXED: Use 'name' (based on logs showing email/role but no name/fullName)
-      .populate('createdBy', 'name'); // FIXED: Use 'name'
+      .populate(
+    "registeredUsers",
+    "firstName lastName email role roleSpecificId"
+  )
+  .populate(
+    "createdBy",
+    "firstName lastName email"
+  );
     if (!workshop) {
       console.log('Workshop not found');
       return res.status(404).json({ error: "Workshop not found" });
@@ -253,9 +259,18 @@ exports.getOtherWorkshops = async (req, res) => {
 exports.getParticipants = async (req, res) => {
   try {
     const workshop = await Workshop.findById(req.params.id)
-      .populate('registeredUsers', 'name email role') // FIXED: Use 'name'
-      .populate('attendedUsers', 'name email role') // FIXED: Use 'name'
-      .populate('createdBy', 'name'); // FIXED: Use 'name'
+     .populate(
+        "registeredUsers",
+        "firstName lastName email role roleSpecificId"
+      )
+      .populate(
+        "attendedUsers",
+        "firstName lastName email role roleSpecificId"
+      )
+      .populate(
+        "createdBy",
+        "firstName lastName email"
+      );
 
     if (!workshop) {
       return res.status(404).json({ message: 'Workshop not found' });
@@ -376,35 +391,32 @@ exports.sendCertificates = async (req, res) => {
 };
 
 // controllers/workshopController.js
+// controllers/workshopController.js
 exports.requestEdits = async (req, res) => {
   try {
     const { id } = req.params; // Workshop ID
     const { message } = req.body;
 
-    // Find the workshop
     const workshop = await Workshop.findById(id);
     if (!workshop) {
       return res.status(404).json({ error: "Workshop not found" });
     }
 
-    // Get the createdBy string and convert to ObjectId if valid
     const createdByStr = workshop.createdBy;
     if (!createdByStr || !mongoose.Types.ObjectId.isValid(createdByStr)) {
       console.warn(`Invalid or missing createdBy ID: ${createdByStr}`);
       return res.status(400).json({ error: "Invalid professor ID in workshop" });
     }
 
-    const professorId = new mongoose.Types.ObjectId(createdByStr); // Convert string to ObjectId
+    const professorId = new mongoose.Types.ObjectId(createdByStr);
 
-    // Find the professor using the ObjectId
-    const professor = await User.findById(professorId).select('name email'); // FIXED: Use 'name'
+    const professor = await User.findById(professorId).select('name email');
     if (!professor) {
-      console.warn(`Professor not found for ID: ${createdByStr}`);
-      // Optional: Fallback to admin
-      const admin = await User.findOne({ role: "admin" }).select('email'); // FIXED: Select email
+      const admin = await User.findOne({ role: "admin" }).select('email');
       if (!admin) {
         return res.status(500).json({ error: "No professor or admin found to receive edit request" });
       }
+
       await Notification.create({
         userId: admin._id,
         message: `Edit request for workshop "${workshop.workshopName}" (original professor missing): ${message}`,
@@ -412,6 +424,7 @@ exports.requestEdits = async (req, res) => {
         type: "edit_request",
         unread: true,
       });
+
       console.log(`📩 Notification sent to admin ${admin.email}`);
     } else {
       await Notification.create({
@@ -421,16 +434,40 @@ exports.requestEdits = async (req, res) => {
         type: "edit_request",
         unread: true,
       });
+
       console.log(`📩 Notification sent to professor ${professor.email}`);
     }
 
-    // Do NOT update status to keep buttons visible in EventsHome
-    // workshop.status = "edits_requested";
-    // await workshop.save();
-
     res.status(200).json({ success: true, message: "Edit request sent successfully" });
+
   } catch (err) {
     console.error("Error in requestEdits:", err);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+// ✅ ✅ ✅ THIS MUST BE OUTSIDE — SEPARATE EXPORT
+exports.sendBatchCertificates = async (req, res) => {
+  try {
+    const { participantIds } = req.body;
+    const workshopId = req.params.id;
+
+    if (!participantIds || !Array.isArray(participantIds)) {
+      return res.status(400).json({ error: "participantIds must be an array" });
+    }
+
+    console.log("✅ Sending certificates to:", participantIds);
+    console.log("✅ Workshop:", workshopId);
+
+    // ✅ TEMP SAFE RESPONSE (NO EMAIL YET)
+    return res.status(200).json({
+      sentCount: participantIds.length,
+      message: "Certificates sent successfully (mock)"
+    });
+
+  } catch (err) {
+    console.error("❌ Certificate Error:", err);
+    return res.status(500).json({ error: "Failed to send certificates" });
   }
 };
