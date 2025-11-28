@@ -52,10 +52,6 @@ export default function TaSidebar() {
           navigate("/ta/favorite")
         )}
 
-        {navBtn("Courts Availability", <Map size={18} />, () =>
-          navigate("/courts-availability")
-        )}
-
         {navBtn("Gym Sessions", <Dumbbell size={18} />, () =>
           navigate("/gym-sessions-register")
         )}

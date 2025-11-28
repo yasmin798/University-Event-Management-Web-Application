@@ -94,6 +94,9 @@ import WorkshopParticipants from "./pages/WorkshopParticipants";
 import WorkshopEditsPage from "./pages/WorkshopEditsPage";
 import WalletPage from "./pages/WalletPage";
 import WorkshopAttendance from './pages/WorkshopAttendance'; 
+
+import VendorDocumentsPage from "./pages/VendorDocumentsPage";
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -240,6 +243,8 @@ function App() {
 
         <Route path="/poll-voting" element={<PollVoting />} />{" "}
         <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
+        <Route path="/vendor-documents" element={<VendorDocumentsPage />} />
+
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

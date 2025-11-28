@@ -7,7 +7,7 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
-
+import TaSidebar from "../components/TaSidebar";
 // Accept an optional SidebarComponent prop so other pages (professor)
 // can reuse the registration UI but render a different sidebar.
 export default function GymManager({ SidebarComponent = null }) {
@@ -293,6 +293,8 @@ export default function GymManager({ SidebarComponent = null }) {
     ? ProfessorSidebar
     : userRole === "student"
     ? StudentSidebar
+    : userRole === "ta"
+    ? TaSidebar
     : Sidebar;
 
   return (

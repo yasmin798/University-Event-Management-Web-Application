@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import StudentSidebar from "../components/StudentSidebar";
-
+import TaSidebar from "../components/TaSidebar";
 const API_URL = "http://localhost:3000/api/polls";
 
 export default function PollVoting() {
@@ -116,7 +116,14 @@ export default function PollVoting() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
-      {userRole === "student" ? <StudentSidebar /> : <ProfessorSidebar />}
+     {/* SIDEBAR SELECTION */}
+{userRole === "student" ? (
+  <StudentSidebar />
+) : userRole === "professor" ? (
+  <ProfessorSidebar />
+) : userRole === "ta" ? (
+  <TaSidebar />
+) : null}
       <div
         style={{
           flex: 1,
