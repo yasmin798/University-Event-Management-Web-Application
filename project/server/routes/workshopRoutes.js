@@ -11,9 +11,9 @@ const {
   deleteWorkshop,
   getMyWorkshops,
   getOtherWorkshops,
-  getMine,
-  getOthers,
+ sendBatchCertificates   // ✅ ADD THIS
 } = require("../controllers/workshopController");
+
 // ... existing routes ...
 const { requestEdits } = require('../controllers/workshopController');
 const { protect, adminOnly } = require('../middleware/auth'); // Assuming adminOnly exists
@@ -38,6 +38,18 @@ router.get("/workshops/others", protect, getOtherWorkshops);
 // CRUD routes (general paths)
 router.post('/', createWorkshop);
 router.get('/', getAllWorkshops);
+router.post(
+  "/:id/certificates/batch",
+  protect,
+  (req, res, next) => {
+    if (req.user.role !== "professor") {
+      return res.status(403).json({ error: "Only professors can send certificates" });
+    }
+    next();
+  },
+  sendBatchCertificates
+);
+
 router.get('/:id', getWorkshopById); // This catches everything not matched above
 router.put('/:id', updateWorkshop);
 router.delete('/:id', deleteWorkshop);
