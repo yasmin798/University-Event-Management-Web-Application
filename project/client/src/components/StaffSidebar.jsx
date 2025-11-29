@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Heart,
-  Map,
   CheckCircle,
   LogOut,
   Dumbbell,
@@ -46,10 +45,6 @@ export default function StaffSidebar() {
         )}
 
         {navBtn("Favorites", <Heart size={18} />, () => navigate("/favorites"))}
-
-        {navBtn("Courts Availability", <Map size={18} />, () =>
-          navigate("/courts-availability")
-        )}
 
         {navBtn("Gym Sessions", <Dumbbell size={18} />, () =>
           navigate("/gym-sessions-register")
