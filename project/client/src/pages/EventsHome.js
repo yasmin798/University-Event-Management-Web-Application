@@ -1590,19 +1590,21 @@ export default function EventsHome() {
                               </button>
                             )}
 
-                            {/* Export */}
-                            <button
-                              style={dropdownItemStyle}
-                              onClick={() => {
-                                exportAttendees(
-                                  id,
-                                  typeRaw.toLowerCase() + "s"
-                                );
-                                closeMenu();
-                              }}
-                            >
-                              <Download size={14} /> Export List
-                            </button>
+                            {/* Export - Only for Workshops and Trips */}
+                            {(typeRaw === "WORKSHOP" || typeRaw === "TRIP") && (
+                              <button
+                                style={dropdownItemStyle}
+                                onClick={() => {
+                                  exportAttendees(
+                                    id,
+                                    typeRaw.toLowerCase() + "s"
+                                  );
+                                  closeMenu();
+                                }}
+                              >
+                                <Download size={14} /> Export List
+                              </button>
+                            )}
 
                             {/* Vendor Requests (Bazaar) */}
                             {typeRaw === "BAZAAR" && (
