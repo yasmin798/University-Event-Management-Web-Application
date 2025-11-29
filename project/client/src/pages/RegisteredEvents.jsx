@@ -15,6 +15,7 @@ import {
   Users,
   ArrowUp,
   ArrowDown,
+  Clock,
 } from "lucide-react";
 import axios from "axios"; // uncomment after testing ui
 //import { getMyRegisteredEvents } from "../testData/mockAPI"; // remove after ui testing
@@ -26,10 +27,12 @@ import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
 
 import "./RegisteredEvents.css";
-import workshopImage from "../images/workshop.png";
-import tripImage from "../images/trip.jpeg";
-import conferenceImage from "../images/conference.jpg";
-import bazaarImage from "../images/bazaar.jpeg";
+import workshopPlaceholder from "../images/workshop.png";
+import boothPlaceholder from "../images/booth.jpg";
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 // top of RegisteredEvents.jsx
 
 const API =
@@ -215,16 +218,27 @@ const RegisteredEvents = () => {
   };
   const getEventImage = (type) => {
     const map = {
-      TRIP: tripImage,
-      BAZAAR: bazaarImage,
-      CONFERENCE: conferenceImage,
-      WORKSHOP: workshopImage,
-      BOOTH: workshopImage,
+      TRIP: tripImg,
+      BAZAAR: bazaarImg,
+      CONFERENCE: conferenceImg,
+      WORKSHOP: workshopImg,
+      BOOTH: boothPlaceholder,
     };
 
-    if (!type) return workshopImage;
+    if (!type) {
+      console.warn("Event type is missing, using placeholder");
+      return workshopPlaceholder;
+    }
 
-    return map[type.toUpperCase()] || workshopImage;
+    const upperType = type.toUpperCase();
+    const image = map[upperType];
+
+    if (!image) {
+      console.warn(`No image found for type: ${type}, using placeholder`);
+      return workshopPlaceholder;
+    }
+
+    return image;
   };
 
   const getEventTitle = (event) => {
@@ -449,44 +463,86 @@ const RegisteredEvents = () => {
       }
     };
 
+    // Get event image
+    const eventImage = getEventImage(event.type);
+
+    // Format date
+    const eventDate = event.startDateTime
+      ? new Date(event.startDateTime).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })
+      : "";
+
     return (
-      <div className="event-card">
+      <div className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group">
         {/* IMAGE & OVERLAYS */}
-        <div
-          className="event-image"
-          style={{ backgroundImage: `url(${getEventImage(event.type)})` }}
-        >
-          <div className="event-category">{event.type || "Event"}</div>
-          <div className="event-date">
-            {new Date(getEventDate(event)).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
+        <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+          <img
+            src={eventImage}
+            alt={getEventTitle(event)}
+            className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+          />
+
+          {/* Event Type Badge */}
+          <div className="absolute top-3 left-3">
+            <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+              {event.type || "Event"}
+            </span>
           </div>
+
+          {/* Favorite Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleFavorite(event._id);
             }}
-            className="favorite-btn"
+            className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
           >
             <Heart
-              size={20}
-              fill={favorites.includes(event._id) ? "#ef4444" : "none"}
-              color={favorites.includes(event._id) ? "#ef4444" : "#666"}
+              size={18}
+              className={
+                favorites.includes(event._id)
+                  ? "fill-red-500 text-red-500"
+                  : "text-gray-600"
+              }
             />
           </button>
+
+          {/* Gradient Overlay */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
 
         {/* CONTENT */}
-        <div className="event-content">
-          <h3 className="event-title">{getEventTitle(event)}</h3>
-          <p className="event-organizer text-sm text-gray-600">
-            by{" "}
-            {event.professorsParticipating ||
-              event.facultyResponsible ||
-              "GUC Events"}
-          </p>
+        <div className="p-5">
+          <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
+            {getEventTitle(event)}
+          </h3>
+
+          <div className="space-y-2 mb-4">
+            {event.location && (
+              <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                <MapPin size={16} className="flex-shrink-0" />
+                <span className="truncate">{event.location}</span>
+              </div>
+            )}
+
+            {eventDate && (
+              <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                <Clock size={16} className="flex-shrink-0" />
+                <span>{eventDate}</span>
+              </div>
+            )}
+
+            {(event.professorsParticipating || event.facultyResponsible) && (
+              <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                <Users size={16} className="flex-shrink-0" />
+                <span className="truncate">
+                  {event.professorsParticipating || event.facultyResponsible}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* PAYMENT SECTION – ONLY FOR WORKSHOPS & TRIPS WITH PRICE */}
           {hasPrice && isWorkshopOrTrip && !isPast && (
@@ -559,14 +615,12 @@ const RegisteredEvents = () => {
           )}
 
           {/* VIEW DETAILS BUTTON */}
-          <div className="event-actions mt-4">
-            <button
-              className="btn-primary w-full"
-              onClick={() => handleViewDetails(event)}
-            >
-              View Details
-            </button>
-          </div>
+          <button
+            className="mt-4 w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
+            onClick={() => handleViewDetails(event)}
+          >
+            View Details
+          </button>
         </div>
       </div>
     );

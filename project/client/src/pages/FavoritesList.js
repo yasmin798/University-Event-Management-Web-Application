@@ -9,15 +9,14 @@ import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
 
-import { Heart, Calendar, MapPin } from "lucide-react";
-
-import tripPlaceholder from "../images/trip.jpeg";
-
-import bazaarPlaceholder from "../images/bazaar.jpeg";
-
-import conferencePlaceholder from "../images/conference.jpg";
+import { Heart, Calendar, MapPin, Clock } from "lucide-react";
 
 import workshopPlaceholder from "../images/workshop.png";
+import boothPlaceholder from "../images/booth.jpg";
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 
 const FavoritesList = () => {
   const navigate = useNavigate();
@@ -97,15 +96,11 @@ const FavoritesList = () => {
 
   const getImage = (type) => {
     const map = {
-      TRIP: tripPlaceholder,
-
-      BAZAAR: bazaarPlaceholder,
-
-      CONFERENCE: conferencePlaceholder,
-
-      WORKSHOP: workshopPlaceholder,
-
-      BOOTH: workshopPlaceholder,
+      TRIP: tripImg,
+      BAZAAR: bazaarImg,
+      CONFERENCE: conferenceImg,
+      WORKSHOP: workshopImg,
+      BOOTH: boothPlaceholder,
     };
 
     return map[type] || workshopPlaceholder;
@@ -185,64 +180,93 @@ const FavoritesList = () => {
           ) : (
             /* Favorites Grid */
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {favorites.map((event) => (
-                <div
-                  key={event._id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <div className="h-48 relative">
-                    <img
-                      src={event.image || getImage(event.type)}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => (e.target.src = getImage(event.type))}
-                    />
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {favorites.map((event) => {
+                const eventDate = event.startDateTime
+                  ? new Date(event.startDateTime).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "";
 
-                    <button
-                      onClick={() => removeFavorite(event._id)}
-                      className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
-                    >
-                      <Heart size={18} className="fill-red-500 text-red-500" />
-                    </button>
-                  </div>
+                return (
+                  <div
+                    key={event._id}
+                    className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group"
+                  >
+                    <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+                      <img
+                        src={event.image || getImage(event.type)}
+                        alt={event.title}
+                        className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => (e.target.src = getImage(event.type))}
+                      />
 
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg text-[#2f4156] line-clamp-1">
-                      {event.title}
-                    </h3>
+                      {/* Event Type Badge */}
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+                          {event.type}
+                        </span>
+                      </div>
 
-                    {event.professorsParticipating && (
-                      <p className="text-sm text-[#567c8d] mt-1">
-                        Prof: {event.professorsParticipating}
-                      </p>
-                    )}
+                      {/* Remove Favorite Button */}
+                      <button
+                        onClick={() => removeFavorite(event._id)}
+                        className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
+                      >
+                        <Heart
+                          size={18}
+                          className="fill-red-500 text-red-500"
+                        />
+                      </button>
 
-                    <div className="flex items-center gap-1 text-sm text-[#567c8d] mt-2">
-                      <Calendar size={14} />
-
-                      <span>{formatDate(event.startDateTime)}</span>
+                      {/* Gradient Overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
                     </div>
 
-                    {event.location && (
-                      <div className="flex items-center gap-1 text-sm text-[#567c8d] mt-1">
-                        <MapPin size={14} />
+                    <div className="p-5">
+                      <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
+                        {event.title ||
+                          event.name ||
+                          event.workshopName ||
+                          "Untitled Event"}
+                      </h3>
 
-                        <span className="line-clamp-1">{event.location}</span>
+                      <div className="space-y-2 mb-4">
+                        {event.location && (
+                          <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                            <MapPin size={16} className="flex-shrink-0" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                        )}
+
+                        {eventDate && (
+                          <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                            <Clock size={16} className="flex-shrink-0" />
+                            <span>{eventDate}</span>
+                          </div>
+                        )}
+
+                        {event.professorsParticipating && (
+                          <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                            <Calendar size={16} className="flex-shrink-0" />
+                            <span className="truncate">
+                              Prof: {event.professorsParticipating}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
 
-                    <div className="flex gap-2 mt-4">
                       <button
                         onClick={() => handleDetails(event)}
-                        className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg text-sm transition-colors"
+                        className="mt-4 w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
                       >
                         View Details
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

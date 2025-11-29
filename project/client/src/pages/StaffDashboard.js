@@ -610,7 +610,16 @@ const StaffDashboard = () => {
 
                     <div className="p-5">
                       <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
-                        {e.title || e.name || "Untitled Event"}
+                        {e.type === "BOOTH"
+                          ? e.boothTitle ||
+                            e.attendees?.[0]?.name ||
+                            e.title ||
+                            e.name ||
+                            "Booth"
+                          : e.title ||
+                            e.name ||
+                            e.workshopName ||
+                            "Untitled Event"}
                       </h3>
 
                       <div className="space-y-2 mb-4">
