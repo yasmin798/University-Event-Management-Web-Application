@@ -96,11 +96,15 @@ export default function BazaarForm() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errorMsg = errData.error || "Failed to save";
+        throw new Error(errorMsg);
+      }
 
       navigate("/events");
     } catch (e) {
-      alert("Save failed");
+      alert(e.message || "Save failed");
       console.error(e);
     }
   }

@@ -92,14 +92,17 @@ export default function ConferenceForm() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ...data, 
+        body: JSON.stringify({
+          ...data,
           title: data.name,
           allowedRoles: data.allowedRoles,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to save conference");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save conference");
+      }
       navigate("/events", { replace: true });
     } catch (e) {
       console.error(e);
@@ -115,16 +118,23 @@ export default function ConferenceForm() {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="events-theme" style={{ display: "flex", minHeight: "100vh" }}>
+    <div
+      className="events-theme"
+      style={{ display: "flex", minHeight: "100vh" }}
+    >
       <Sidebar filter={filter} setFilter={setFilter} />
 
       <main style={{ flex: 1, marginLeft: "260px", padding: "24px" }}>
-        <h1 style={{ marginTop: 0, color: "var(--navy)", marginBottom: "18px" }}>
+        <h1
+          style={{ marginTop: 0, color: "var(--navy)", marginBottom: "18px" }}
+        >
           {editing ? "Edit Conference" : "Create Conference"}
         </h1>
 
         {!canEdit && editing && (
-          <div className="lock">This conference has started; editing is disabled.</div>
+          <div className="lock">
+            This conference has started; editing is disabled.
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="form form-pro" noValidate>
@@ -143,7 +153,10 @@ export default function ConferenceForm() {
                 <div className="help">Use a clear, descriptive title.</div>
               </FormField>
 
-              <FormField label="Short Description" error={errors.shortDescription}>
+              <FormField
+                label="Short Description"
+                error={errors.shortDescription}
+              >
                 <textarea
                   name="shortDescription"
                   rows={3}
@@ -196,7 +209,11 @@ export default function ConferenceForm() {
           {/* Website */}
           <fieldset className="form-sec">
             <legend>Website</legend>
-            <FormField label="Conference Website" error={errors.website} required>
+            <FormField
+              label="Conference Website"
+              error={errors.website}
+              required
+            >
               <input
                 name="website"
                 placeholder="https://conference.example.com"
@@ -211,7 +228,11 @@ export default function ConferenceForm() {
           <fieldset className="form-sec">
             <legend>Budget</legend>
             <div className="form-grid form-grid-2">
-              <FormField label="Required Budget" error={errors.requiredBudget} required>
+              <FormField
+                label="Required Budget"
+                error={errors.requiredBudget}
+                required
+              >
                 <input
                   type="number"
                   name="requiredBudget"
@@ -222,7 +243,11 @@ export default function ConferenceForm() {
                 />
               </FormField>
 
-              <FormField label="Funding Source" error={errors.fundingSource} required>
+              <FormField
+                label="Funding Source"
+                error={errors.fundingSource}
+                required
+              >
                 <select
                   name="fundingSource"
                   value={data.fundingSource}
@@ -240,7 +265,10 @@ export default function ConferenceForm() {
           {/* Resources */}
           <fieldset className="form-sec">
             <legend>Resources</legend>
-            <FormField label="Extra Required Resources" error={errors.extraResources}>
+            <FormField
+              label="Extra Required Resources"
+              error={errors.extraResources}
+            >
               <textarea
                 name="extraResources"
                 rows={4}
@@ -255,9 +283,17 @@ export default function ConferenceForm() {
           <fieldset className="form-sec">
             <legend>Role Restrictions</legend>
             <p className="help">
-              Select which roles may register. Leave all unchecked = open to everyone.
+              Select which roles may register. Leave all unchecked = open to
+              everyone.
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginTop: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "24px",
+                marginTop: "12px",
+              }}
+            >
               {["student", "professor", "ta", "staff"].map((role) => (
                 <label
                   key={role}
@@ -275,9 +311,15 @@ export default function ConferenceForm() {
                     checked={data.allowedRoles.includes(role)}
                     onChange={handleChange}
                     disabled={!canEdit && editing}
-                    style={{ width: "18px", height: "18px", marginRight: "8px" }}
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      marginRight: "8px",
+                    }}
                   />
-                  <span style={{ textTransform: "capitalize" }}>{role}s only</span>
+                  <span style={{ textTransform: "capitalize" }}>
+                    {role}s only
+                  </span>
                 </label>
               ))}
             </div>
@@ -285,7 +327,11 @@ export default function ConferenceForm() {
 
           {/* Submit */}
           <div className="form-actions">
-            <button className="btn" type="submit" disabled={editing && !canEdit}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={editing && !canEdit}
+            >
               {editing ? "Save Changes" : "Create Conference"}
             </button>
           </div>
@@ -298,7 +344,10 @@ export default function ConferenceForm() {
               <h2>{editing ? "Save changes?" : "Create this conference?"}</h2>
 
               <div className="confirm-actions">
-                <button className="btn btn-outline" onClick={() => setConfirmOpen(false)}>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => setConfirmOpen(false)}
+                >
                   Cancel
                 </button>
 

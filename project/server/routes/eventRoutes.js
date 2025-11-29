@@ -147,6 +147,16 @@ router.post("/bazaars", async (req, res) => {
 
 router.put("/bazaars/:id", async (req, res) => {
   try {
+    const doc = await Bazaar.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: "Not found" });
+
+    // Prevent editing if event has started
+    if (doc.startDateTime && new Date() > new Date(doc.startDateTime)) {
+      return res
+        .status(403)
+        .json({ error: "Cannot edit bazaar after it has started" });
+    }
+
     const b = req.body || {};
     const updates = {
       ...(b.title || b.name ? { title: b.title || b.name } : {}),
@@ -161,13 +171,13 @@ router.put("/bazaars/:id", async (req, res) => {
         : {}),
       ...(b.price != null ? { price: Number(b.price) } : {}),
       ...(b.capacity != null ? { capacity: Number(b.capacity) } : {}),
+      ...(b.allowedRoles !== undefined ? { allowedRoles: b.allowedRoles } : {}),
     };
-    const doc = await Bazaar.findByIdAndUpdate(req.params.id, updates, {
+    const updated = await Bazaar.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
     });
-    if (!doc) return res.status(404).json({ error: "Not found" });
-    res.json(doc);
+    res.json(updated);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -276,6 +286,18 @@ router.post("/trips", async (req, res) => {
 /* ------------------- UPDATE TRIP (MISSING BEFORE) ------------------- */
 router.put("/trips/:id", async (req, res) => {
   try {
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) {
+      return res.status(404).json({ error: "Trip not found" });
+    }
+
+    // Prevent editing if event has started
+    if (trip.startDateTime && new Date() > new Date(trip.startDateTime)) {
+      return res
+        .status(403)
+        .json({ error: "Cannot edit trip after it has started" });
+    }
+
     const {
       title,
       location,
@@ -303,10 +325,6 @@ router.put("/trips/:id", async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
-    if (!updatedTrip) {
-      return res.status(404).json({ error: "Trip not found" });
-    }
 
     res.json(updatedTrip);
   } catch (err) {
@@ -409,6 +427,20 @@ router.post("/conferences", async (req, res) => {
 
 router.put("/conferences/:id", async (req, res) => {
   try {
+    const conference = await Conference.findById(req.params.id);
+    if (!conference)
+      return res.status(404).json({ error: "Conference not found" });
+
+    // Prevent editing if event has started
+    if (
+      conference.startDateTime &&
+      new Date() > new Date(conference.startDateTime)
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Cannot edit conference after it has started" });
+    }
+
     const {
       title,
       name,
@@ -441,8 +473,6 @@ router.put("/conferences/:id", async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    if (!updated)
-      return res.status(404).json({ error: "Conference not found" });
     res.json(updated);
   } catch (err) {
     console.error("Update conference error:", err);

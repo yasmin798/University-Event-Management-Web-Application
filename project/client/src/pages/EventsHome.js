@@ -320,7 +320,15 @@ export default function EventsHome() {
         image: w.image || workshopPlaceholder,
         allowedRoles: w.allowedRoles || [],
       }));
-      setWorkshops(normalized);
+      setWorkshops((prevWorkshops) => {
+        // Merge with existing state to preserve any local updates (like restrictions)
+        return normalized.map((newWorkshop) => {
+          const existing = prevWorkshops.find((w) => w._id === newWorkshop._id);
+          return existing
+            ? { ...newWorkshop, allowedRoles: existing.allowedRoles }
+            : newWorkshop;
+        });
+      });
     } catch (err) {
       console.error("Error fetching workshops:", err);
     }
@@ -368,7 +376,15 @@ export default function EventsHome() {
         endDateTime: b.bazaar?.endDateTime || null,
       }));
       console.log("Normalized booths:", normalized);
-      setBooths(normalized);
+      setBooths((prevBooths) => {
+        // Merge with existing state to preserve any local updates (like restrictions)
+        return normalized.map((newBooth) => {
+          const existing = prevBooths.find((b) => b._id === newBooth._id);
+          return existing
+            ? { ...newBooth, allowedRoles: existing.allowedRoles }
+            : newBooth;
+        });
+      });
     } catch (err) {
       console.error("Error fetching booths:", err);
     }
@@ -414,7 +430,15 @@ export default function EventsHome() {
         allowedRoles: b.allowedRoles || [],
       }));
       console.log("Normalized bazaars:", normalized);
-      setBazaars(normalized);
+      setBazaars((prevBazaars) => {
+        // Merge with existing state to preserve any local updates (like restrictions)
+        return normalized.map((newBazaar) => {
+          const existing = prevBazaars.find((b) => b._id === newBazaar._id);
+          return existing
+            ? { ...newBazaar, allowedRoles: existing.allowedRoles }
+            : newBazaar;
+        });
+      });
     } catch (err) {
       console.error("Error fetching bazaars:", err);
     }
@@ -449,7 +473,15 @@ export default function EventsHome() {
         image: conferenceImg,
         allowedRoles: c.allowedRoles || [],
       }));
-    setConferences(normalizedConferences);
+    setConferences((prevConferences) => {
+      // Merge with existing state to preserve any local updates (like restrictions)
+      return normalizedConferences.map((newConf) => {
+        const existing = prevConferences.find((c) => c._id === newConf._id);
+        return existing
+          ? { ...newConf, allowedRoles: existing.allowedRoles }
+          : newConf;
+      });
+    });
   }, [otherEvents]);
 
   const fetchNotifications = useCallback(async () => {
@@ -655,6 +687,8 @@ export default function EventsHome() {
         WORKSHOP: "workshops",
         CONFERENCE: "conferences",
         TRIP: "trips",
+        BAZAAR: "bazaars",
+        BOOTH: "booths",
       };
       const path = typeMap[eventType.toUpperCase()];
       if (!path) {
@@ -680,10 +714,39 @@ export default function EventsHome() {
         eventType: null,
         currentRoles: [],
       });
-      fetchWorkshops();
-      fetchBooths();
-      fetchBazaars();
-      refreshEvents && refreshEvents();
+
+      // Update local state to reflect the restriction change immediately
+      if (eventType === "WORKSHOP") {
+        setWorkshops((ws) =>
+          ws.map((w) =>
+            w._id === eventId ? { ...w, allowedRoles: currentRoles } : w
+          )
+        );
+      } else if (eventType === "CONFERENCE") {
+        setConferences((cs) =>
+          cs.map((c) =>
+            c._id === eventId ? { ...c, allowedRoles: currentRoles } : c
+          )
+        );
+      } else if (eventType === "BAZAAR") {
+        setBazaars((bz) =>
+          bz.map((b) =>
+            b._id === eventId ? { ...b, allowedRoles: currentRoles } : b
+          )
+        );
+      } else if (eventType === "TRIP") {
+        setTrips((ts) =>
+          ts.map((t) =>
+            t._id === eventId ? { ...t, allowedRoles: currentRoles } : t
+          )
+        );
+      } else if (eventType === "BOOTH") {
+        setBooths((bs) =>
+          bs.map((b) =>
+            b._id === eventId ? { ...b, allowedRoles: currentRoles } : b
+          )
+        );
+      }
     } catch (e) {
       setToast({ open: true, text: "Network error" });
     }
