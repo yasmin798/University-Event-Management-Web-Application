@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Menu,
+  Home,
   Calendar,
   Users,
   FileText,
@@ -35,7 +35,7 @@ export default function ProfessorSidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {navBtn("Dashboard", <Menu size={18} />, () =>
+        {navBtn("Home", <Home size={18} />, () =>
           navigate("/professor/dashboard")
         )}
 
