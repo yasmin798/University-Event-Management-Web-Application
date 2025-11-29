@@ -1,14 +1,13 @@
-// Signup.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Briefcase, ShoppingBag } from "lucide-react"; // install lucide-react if needed, or use text
+import { User, Briefcase, ShoppingBag } from "lucide-react";
 import StudentSignup from "./StudentSignup";
 import StaffSignup from "./StaffSignup";
 import VendorSignup from "./VendorSignup";
+import Spline from '@splinetool/react-spline';
 
 export default function Signup() {
   const navigate = useNavigate();
-  // RECOMMENDATION: Default to 'student' so the page isn't empty on load
   const [activeTab, setActiveTab] = useState("student");
 
   const renderForm = () => {
@@ -32,92 +31,61 @@ export default function Signup() {
         fontFamily: "Poppins, sans-serif",
       }}
     >
-      {/* LEFT SIDE: Brand & Visuals */}
+      {/* LEFT SIDE: Spline Scene with Text Below */}
       <div
         style={{
           flex: "1",
-          background: "linear-gradient(135deg, #2f4156 0%, #1a2530 100%)",
-          color: "white",
+          background: "#263545",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "60px",
           position: "relative",
           overflow: "hidden",
+          minHeight: "100vh",
         }}
         className="hidden-mobile"
       >
-        {" "}
-        {/* Add a media query in CSS to hide this on mobile */}
-        {/* Decorative Circle Backgrounds */}
         <div
           style={{
-            position: "absolute",
-            top: "-10%",
-            left: "-10%",
-            width: "400px",
-            height: "400px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.05)",
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
           }}
-        ></div>
-        <div
-          style={{
-            position: "absolute",
-            bottom: "10%",
-            right: "-5%",
-            width: "300px",
-            height: "300px",
-            borderRadius: "50%",
-            background: "rgba(86, 124, 141, 0.2)",
-          }}
-        ></div>
-        {/* Logo Area */}
-        <div style={{ zIndex: 2 }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              background: "white",
-              borderRadius: "12px",
-              color: "#2f4156",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "bold",
-              fontSize: "24px",
-            }}
-          >
-            E
-          </div>
+        >
+          <Spline scene="https://prod.spline.design/ruT0zmYhJkJ84mLn/scene.splinecode" />
         </div>
-        {/* Big Text */}
-        <div style={{ zIndex: 2, maxWidth: "450px" }}>
+
+        {/* Text Content Below the Spline Scene */}
+        <div
+          style={{
+            padding: "40px 60px 60px",
+            maxWidth: "450px",
+            zIndex: 2,
+          }}
+        >
           <h1
             style={{
               fontSize: "3.5rem",
               fontWeight: "700",
               lineHeight: "1.1",
               marginBottom: "20px",
+              color: "white",
             }}
           >
-            Join the <span style={{ color: "#8caabb" }}>Community.</span>
+            Welcome <span style={{ color: "#8caabb" }}>Back.</span>
           </h1>
-          <p style={{ fontSize: "1.1rem", opacity: 0.8, lineHeight: "1.6" }}>
-            Discover campus events, manage your activities, and connect with the
-            best vendors in one place.
+          <p style={{ fontSize: "1.1rem", opacity: 0.8, lineHeight: "1.6", color: "white" }}>
+            Log in to access your dashboard, manage upcoming events, and stay
+            connected with the campus community.
           </p>
-        </div>
-        {/* Footer info */}
-        <div style={{ zIndex: 2, opacity: 0.6, fontSize: "0.9rem" }}>
-          © 2025 Eventity. All Rights Reserved.
         </div>
       </div>
 
       {/* RIGHT SIDE: Form Area */}
       <div
         style={{
-          flex: "1", // On Mobile make this 100% width
+          flex: "1",
           backgroundColor: "#f8fafc",
           display: "flex",
           flexDirection: "column",
@@ -128,7 +96,7 @@ export default function Signup() {
         }}
       >
         <div style={{ width: "100%", maxWidth: "480px" }}>
-          {/* Mobile Logo (Only show if left side is hidden) */}
+          {/* Mobile Logo */}
           <div style={{ textAlign: "center", marginBottom: "30px" }}>
             <h2
               style={{
@@ -143,7 +111,7 @@ export default function Signup() {
             <p style={{ color: "#64748b" }}>Create your account to continue</p>
           </div>
 
-          {/* NEW: Segmented Control (Pill Switcher) */}
+          {/* Segmented Control */}
           <div
             style={{
               background: "#e2e8f0",
@@ -182,7 +150,7 @@ export default function Signup() {
                     gap: "8px",
                   }}
                 >
-                  <Icon size={16} /> {/* Optional Icon */}
+                  <Icon size={16} />
                   {role.label}
                 </button>
               );
@@ -190,13 +158,7 @@ export default function Signup() {
           </div>
 
           {/* The Actual Form */}
-          <div
-            style={{
-              animation: "fadeIn 0.4s ease-in-out",
-            }}
-          >
-            {renderForm()}
-          </div>
+          <div>{renderForm()}</div>
 
           {/* Footer Link */}
           <p

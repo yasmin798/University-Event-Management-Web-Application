@@ -1,8 +1,8 @@
-// Login.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, ArrowLeft } from "lucide-react"; // install lucide-react if needed
+import { Mail, Lock } from "lucide-react";
 import { loginUser } from "../api/authApi";
+import Spline from '@splinetool/react-spline';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -19,11 +19,9 @@ export default function Login() {
     try {
       const data = await loginUser(email, password);
 
-      // Save token and user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect based on role
       switch (data.user.role) {
         case "student":
           navigate("/student/dashboard");
@@ -65,86 +63,54 @@ export default function Login() {
         fontFamily: "Poppins, sans-serif",
       }}
     >
-      {/* LEFT SIDE: Brand & Visuals */}
+      {/* LEFT SIDE: Spline Scene with Text Below */}
       <div
         style={{
           flex: "1",
-          background: "linear-gradient(135deg, #2f4156 0%, #1a2530 100%)",
-          color: "white",
+          background: "#263545",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "60px",
           position: "relative",
           overflow: "hidden",
+          minHeight: "100vh",
         }}
         className="hidden-mobile"
       >
-        {/* Background Decorations */}
         <div
           style={{
-            position: "absolute",
-            top: "-10%",
-            left: "-10%",
-            width: "400px",
-            height: "400px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.05)",
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
           }}
-        ></div>
-        <div
-          style={{
-            position: "absolute",
-            bottom: "10%",
-            right: "-5%",
-            width: "300px",
-            height: "300px",
-            borderRadius: "50%",
-            background: "rgba(86, 124, 141, 0.2)",
-          }}
-        ></div>
-
-        {/* Logo */}
-        <div style={{ zIndex: 2 }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              background: "white",
-              borderRadius: "12px",
-              color: "#2f4156",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "bold",
-              fontSize: "24px",
-            }}
-          >
-            E
-          </div>
+        >
+          <Spline scene="https://prod.spline.design/ruT0zmYhJkJ84mLn/scene.splinecode" />
         </div>
 
-        {/* Text */}
-        <div style={{ zIndex: 2, maxWidth: "450px" }}>
+        {/* Text Content Below the Spline Scene */}
+        <div
+          style={{
+            padding: "40px 60px 60px",
+            maxWidth: "450px",
+            zIndex: 2,
+          }}
+        >
           <h1
             style={{
               fontSize: "3.5rem",
               fontWeight: "700",
               lineHeight: "1.1",
               marginBottom: "20px",
+              color: "white",
             }}
           >
             Welcome <span style={{ color: "#8caabb" }}>Back.</span>
           </h1>
-          <p style={{ fontSize: "1.1rem", opacity: 0.8, lineHeight: "1.6" }}>
+          <p style={{ fontSize: "1.1rem", opacity: 0.8, lineHeight: "1.6", color: "white" }}>
             Log in to access your dashboard, manage upcoming events, and stay
             connected with the campus community.
           </p>
-        </div>
-
-        {/* Footer */}
-        <div style={{ zIndex: 2, opacity: 0.6, fontSize: "0.9rem" }}>
-          © 2025 Eventity. All Rights Reserved.
         </div>
       </div>
 
@@ -161,7 +127,6 @@ export default function Login() {
         }}
       >
         <div style={{ width: "100%", maxWidth: "400px" }}>
-          {/* Header */}
           <div style={{ marginBottom: "30px" }}>
             <h2
               style={{
@@ -182,7 +147,6 @@ export default function Login() {
             onSubmit={handleSubmit}
             style={{ display: "flex", flexDirection: "column", gap: "20px" }}
           >
-            {/* Email Input */}
             <div>
               <label
                 style={{
@@ -214,7 +178,7 @@ export default function Login() {
                   required
                   style={{
                     width: "100%",
-                    padding: "12px 12px 12px 40px", // space for icon
+                    padding: "12px 12px 12px 40px",
                     borderRadius: "10px",
                     border: "1px solid #e2e8f0",
                     fontSize: "1rem",
@@ -228,7 +192,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password Input */}
             <div>
               <label
                 style={{
@@ -260,7 +223,7 @@ export default function Login() {
                   required
                   style={{
                     width: "100%",
-                    padding: "12px 12px 12px 40px", // space for icon
+                    padding: "12px 12px 12px 40px",
                     borderRadius: "10px",
                     border: "1px solid #e2e8f0",
                     fontSize: "1rem",
@@ -274,7 +237,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div
                 style={{
@@ -290,7 +252,6 @@ export default function Login() {
               </div>
             )}
 
-            {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
@@ -319,7 +280,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Footer Link */}
           <p
             style={{
               textAlign: "center",
