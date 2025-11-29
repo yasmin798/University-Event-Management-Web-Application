@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
-import { Menu } from "lucide-react";
+import SearchableDropdown from "../components/SearchableDropdown";
+import { Menu, MapPin, Users } from "lucide-react";
 
 const API_ORIGIN = "http://localhost:3001";
 
@@ -17,12 +18,16 @@ export default function AdminAllEvents() {
 
   // ===== Filters =====
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [eventFilter, setEventFilter] = useState(""); // WORKSHOP / TRIP / ...
   const [sortOrder, setSortOrder] = useState("asc");
 
   // Debounced filters
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  const [debouncedLocation, setDebouncedLocation] = useState(searchLocation);
+  const [debouncedProfessor, setDebouncedProfessor] = useState(professorFilter);
   const [debouncedDate, setDebouncedDate] = useState(dateFilter);
 
   // ===== Debounce logic =====
@@ -30,6 +35,16 @@ export default function AdminAllEvents() {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocation(searchLocation), 300);
+    return () => clearTimeout(t);
+  }, [searchLocation]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedProfessor(professorFilter), 300);
+    return () => clearTimeout(t);
+  }, [professorFilter]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
@@ -46,6 +61,8 @@ export default function AdminAllEvents() {
 
       // unified search (title, prof, location handled on backend)
       if (debouncedSearch) params.append("search", debouncedSearch);
+      if (debouncedLocation) params.append("location", debouncedLocation);
+      if (debouncedProfessor) params.append("professor", debouncedProfessor);
 
       if (debouncedDate) params.append("date", debouncedDate);
 
@@ -95,7 +112,29 @@ export default function AdminAllEvents() {
 
   useEffect(() => {
     fetchEvents();
-  }, [debouncedSearch, debouncedDate, sortOrder, eventFilter]);
+  }, [
+    debouncedSearch,
+    debouncedLocation,
+    debouncedProfessor,
+    debouncedDate,
+    sortOrder,
+    eventFilter,
+  ]);
+
+  // ===== Extract Unique Filter Options =====
+  const uniqueLocations = React.useMemo(() => {
+    const locations = events
+      .map((e) => e.location || e.venue)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [events]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = events
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [events]);
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading events…</p>;
   const indexOfLast = currentPage * eventsPerPage;
@@ -136,7 +175,7 @@ export default function AdminAllEvents() {
           {/* ===== FILTER BAR ===== */}
           <div className="flex items-center gap-3 mb-6 flex-wrap">
             {/* Search bar */}
-            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-300 shadow-sm w-full md:flex-[2]">
+            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-300 shadow-sm w-full md:w-48 flex-shrink-0">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -154,26 +193,42 @@ export default function AdminAllEvents() {
 
               <input
                 type="text"
-                placeholder="Search by title, professor, location"
+                placeholder="Search events..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full outline-none bg-transparent text-sm"
               />
             </div>
 
-            {/* Date picker */}
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-300 rounded-xl shadow-sm w-full md:flex-[1]"
-            />
+            {/* Location Filter */}
+            <div className="md:w-44 flex-shrink-0">
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={searchLocation}
+                onChange={setSearchLocation}
+                placeholder="All Locations"
+                label="Location"
+                icon={MapPin}
+              />
+            </div>
+
+            {/* Professor Filter */}
+            <div className="md:w-44 flex-shrink-0">
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="All Professors"
+                label="Professor"
+                icon={Users}
+              />
+            </div>
 
             {/* Event Type dropdown */}
             <select
               value={eventFilter}
               onChange={(e) => setEventFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-300 rounded-xl shadow-sm w-full md:flex-[1] text-sm"
+              className="px-3 py-2 bg-white border border-gray-300 rounded-xl shadow-sm flex-shrink-0 text-sm"
             >
               <option value="">All Types</option>
               <option value="WORKSHOP">Workshop</option>
@@ -182,6 +237,14 @@ export default function AdminAllEvents() {
               <option value="CONFERENCE">Conference</option>
               <option value="BOOTH">Booth</option>
             </select>
+
+            {/* Date picker */}
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-300 rounded-xl shadow-sm flex-shrink-0"
+            />
 
             {/* Sort button */}
             <button
