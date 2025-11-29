@@ -92,7 +92,7 @@ export default function EventsHome() {
   const [professorFilter, setProfessorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [filter, setFilter] = useState("All");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [params] = useSearchParams();
 
   // Debounced filters
@@ -919,7 +919,7 @@ export default function EventsHome() {
               ) : (
                 <ArrowDown size={16} />
               )}
-              {sortOrder === "asc" ? "Oldest" : "Newest"}
+              {sortOrder === "asc" ? "Newest" : "Oldest"}
             </button>
           </div>
 
