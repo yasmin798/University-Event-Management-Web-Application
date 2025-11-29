@@ -1445,7 +1445,9 @@ export default function EventsHome() {
                         onMouseLeave={(e) => {
                           e.target.style.background = "#567c8d";
                         }}
-                        onClick={() => navigate(`/events-home/${ev._id}/details`)}
+                        onClick={() =>
+                          navigate(`/events-home/${ev._id}/details`)
+                        }
                       >
                         View Details
                       </button>

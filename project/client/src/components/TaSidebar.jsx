@@ -11,7 +11,7 @@ import {
   Dumbbell,
   Store,
   Home,
-  CheckCircle, 
+  CheckCircle,
 } from "lucide-react";
 import EventityLogo from "./EventityLogo";
 
@@ -43,9 +43,7 @@ export default function TaSidebar() {
 
       {/* MENU */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {navBtn("Home", <Home size={18} />, () =>
-          navigate("/ta/dashboard")
-        )}
+        {navBtn("Home", <Home size={18} />, () => navigate("/ta/dashboard"))}
 
         {navBtn("Registered Events", <Calendar size={18} />, () =>
           navigate("/events/registered")
@@ -67,9 +65,7 @@ export default function TaSidebar() {
           navigate("/ta/loyalty-vendors")
         )}
 
-        {navBtn("Wallet", <User size={18} />, () =>
-          navigate("/wallet")
-        )}
+        {navBtn("Wallet", <User size={18} />, () => navigate("/wallet"))}
       </nav>
 
       {/* LOGOUT */}

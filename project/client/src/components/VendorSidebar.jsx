@@ -1,6 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Store, FileText, Users, LogOut, X, IdCard, IdCardIcon } from "lucide-react";
+import {
+  Calendar,
+  Store,
+  FileText,
+  Users,
+  LogOut,
+  X,
+  IdCard,
+  IdCardIcon,
+} from "lucide-react";
 import EventityLogo from "./EventityLogo";
 
 export default function VendorSidebar({

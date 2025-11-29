@@ -1,7 +1,15 @@
 // client/src/pages/VendorsPage.js
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, LogOut, User as UserIcon, Menu, X, IdCard, IdCardIcon } from "lucide-react";
+import {
+  Search,
+  LogOut,
+  User as UserIcon,
+  Menu,
+  X,
+  IdCard,
+  IdCardIcon,
+} from "lucide-react";
 import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg"; // Reuse from EventsHome imports
 import { Calendar, Store, FileText, Users } from "lucide-react";
 import EventityLogo from "../components/EventityLogo";

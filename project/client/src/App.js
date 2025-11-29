@@ -95,7 +95,7 @@ import TaFavoriteList from "./pages/TaFavoriteList";
 import WorkshopParticipants from "./pages/WorkshopParticipants";
 import WorkshopEditsPage from "./pages/WorkshopEditsPage";
 import WalletPage from "./pages/WalletPage";
-import WorkshopAttendance from './pages/WorkshopAttendance'; 
+import WorkshopAttendance from "./pages/WorkshopAttendance";
 
 import VendorDocumentsPage from "./pages/VendorDocumentsPage";
 
@@ -128,22 +128,36 @@ function App() {
         />
         <Route path="/admin/events" element={<AdminAllEvents />} />
         <Route path="/admin/vendor-requests" element={<AdminVendor />} />
-        <Route path="/admin/vendor-requests-booths" element={<AdminVendorBooths />} />
-
+        <Route
+          path="/admin/vendor-requests-booths"
+          element={<AdminVendorBooths />}
+        />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
-        <Route path="/student/loyalty-vendors" element={<StudentLoyaltyVendors />} />
-         <Route path="/ta/loyalty-vendors" element={<TaLoyaltyVendors />} />
+        <Route
+          path="/student/loyalty-vendors"
+          element={<StudentLoyaltyVendors />}
+        />
+        <Route path="/ta/loyalty-vendors" element={<TaLoyaltyVendors />} />
         {/*favorite*/}
         <Route path="/ta/favorite" element={<TaFavoriteList />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/ta/dashboard" element={<TaDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/loyalty-vendors" element={<AdminLoyaltyVendors />} />
-        <Route path="/staff/loyalty-vendors" element={<StaffLoyaltyVendors />} />
+        <Route
+          path="/admin/loyalty-vendors"
+          element={<AdminLoyaltyVendors />}
+        />
+        <Route
+          path="/staff/loyalty-vendors"
+          element={<StaffLoyaltyVendors />}
+        />
         {/* 👨‍🏫 Professor & Workshop */}
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
-        <Route path="/professor/loyalty-vendors" element={<ProfessorLoyaltyVendors />} />
+        <Route
+          path="/professor/loyalty-vendors"
+          element={<ProfessorLoyaltyVendors />}
+        />
         <Route path="/professor/workshops" element={<WorkshopsListPage />} />
         <Route
           path="/professor/workshops/create"
@@ -167,7 +181,10 @@ function App() {
         <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
         <Route path="/events" element={<EventsHome />} />
-        <Route path="/events-home/:id/details" element={<EventsHomeEventDetails />} />
+        <Route
+          path="/events-home/:id/details"
+          element={<EventsHomeEventDetails />}
+        />
         <Route path="/events/list" element={<EventList />} />
         <Route path="/events/choose-type" element={<ChooseEventType />} />
         <Route path="/favorites" element={<FavoritesList />} />
@@ -212,7 +229,10 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/apply/:bazaarId" element={<BazaarApplicationForm />} />
         <Route path="/wallet" element={<WalletPage />} />
-        <Route path="/event-payment-success" element={<EventPaymentSuccess />} />
+        <Route
+          path="/event-payment-success"
+          element={<EventPaymentSuccess />}
+        />
         {/* Courts */}
         <Route
           path="/courts-availability"
@@ -243,12 +263,13 @@ function App() {
           element={<WorkshopEditsPage />}
         />{" "}
         <Route path="/create-poll" element={<CreatePoll />} />
-                <Route path="/professor/workshops/attendance/:workshopId" element={<WorkshopAttendance />} />
-
+        <Route
+          path="/professor/workshops/attendance/:workshopId"
+          element={<WorkshopAttendance />}
+        />
         <Route path="/poll-voting" element={<PollVoting />} />{" "}
         <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         <Route path="/vendor-documents" element={<VendorDocumentsPage />} />
-
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
