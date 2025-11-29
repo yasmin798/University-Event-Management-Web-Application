@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
 
-export default function NotificationsDropdown() {
+export default function NotificationsDropdown({ align = 'center' }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -174,8 +174,11 @@ export default function NotificationsDropdown() {
       {open && (
         <div style={{
           position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          ...(align === 'right'
+            ? { right: 0 }
+            : align === 'left'
+            ? { left: 0 }
+            : { left: '50%', transform: 'translateX(-50%)' }),
           marginTop: 8,
           width: 360,
           maxHeight: 360,

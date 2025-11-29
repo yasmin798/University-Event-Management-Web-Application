@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import {
   Search,
   Menu,
   User,
-  ChevronLeft,
-  ChevronRight,
   Calendar,
   Clock,
   Users,
@@ -19,16 +17,18 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import workshopPlaceholder from "../images/workshop.png";
-import tripPlaceholder from "../images/trip.jpeg";
-import bazaarPlaceholder from "../images/bazaar.jpeg";
-import conferencePlaceholder from "../images/conference.jpg";
+import ProfessorMonthCalendar from "../components/ProfessorMonthCalendar";
 import boothPlaceholder from "../images/booth.jpg";
+import conferenceImg from "../images/Conferenceroommeetingconcept.jpeg";
+import tripImg from "../images/Womanlookingatmapplanningtrip.jpeg";
+import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg";
+import workshopImg from "../images/download(12).jpeg";
 import { workshopAPI } from "../api/workshopApi";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 import SearchableDropdown from "../components/SearchableDropdown";
 import { useServerEvents } from "../hooks/useServerEvents";
 import { boothAPI } from "../api/boothApi"; // make sure you created boothApi.js
+import NotificationsDropdown from "../components/NotificationsDropdown";
 import { Wallet } from "lucide-react";
 const now = new Date();
 const ProfessorDashboard = () => {
@@ -41,8 +41,7 @@ const ProfessorDashboard = () => {
   const [professorFilter, setProfessorFilter] = useState("");
   // Fixed sidebar is rendered via ProfessorSidebar component
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const notificationsRef = useRef(null);
+  // Notifications handled by shared NotificationsDropdown component
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
@@ -101,7 +100,7 @@ const ProfessorDashboard = () => {
           startDateTime: new Date(w.startDateTime).toISOString(),
           endDateTime: new Date(w.endDateTime).toISOString(),
           date: new Date(w.startDateTime).toISOString().split("T")[0],
-          image: w.image || workshopPlaceholder,
+          image: w.image || workshopImg,
           description: w.shortDescription,
         }));
 
@@ -187,41 +186,7 @@ const ProfessorDashboard = () => {
     return [...new Set(professors)].sort();
   }, [allEvents]);
 
-  useEffect(() => {
-    const fetchWorkshops = async () => {
-      try {
-        console.log("🔍 Fetching workshops...");
-        const data = await workshopAPI.getAllWorkshops();
-        console.log("✅ Workshops fetched:", data);
-        console.log("📊 Number of workshops:", data.length);
-        setWorkshops(data);
-      } catch (error) {
-        console.error("❌ Error fetching workshops:", error);
-        console.error("Error details:", error.response?.data);
-      }
-    };
-
-    fetchWorkshops();
-  }, []);
-  // Close notifications dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target)
-      ) {
-        setIsNotificationsOpen(false);
-      }
-    };
-
-    if (isNotificationsOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isNotificationsOpen]);
+  // Removed legacy notifications dropdown outside-click handler after refactor to shared component.
 
   // Navigate to registered events (used in sidebar)
   const handleRegisteredEvents = () => {
@@ -417,72 +382,7 @@ const ProfessorDashboard = () => {
   const closeModal = () => setSelectedWorkshop(null);
 
   // 🔔 Notifications state
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const markNotification = async (notifId) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      const res = await fetch(`/api/notifications/${notifId}/read`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      // update local state: mark as read
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n))
-      );
-      setUnreadCount((c) => Math.max(0, (c || 0) - 1));
-      try {
-        window.dispatchEvent(new Event("notifications:changed"));
-      } catch (e) {
-        /* ignore */
-      }
-    } catch (err) {
-      console.error("Failed to mark notification read", err);
-    }
-  };
-
-  // 🔹 Fetch notifications from backend
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.warn("No token found, skipping notifications fetch.");
-          return;
-        }
-
-        const res = await fetch("http://localhost:3000/api/notifications", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch notifications");
-
-        const data = await res.json();
-        console.log("✅ Notifications fetched:", data);
-
-        const formatted = data.map((n) => ({
-          id: n._id,
-          message: n.message,
-          time: new Date(n.createdAt).toLocaleString(),
-          unread: n.unread,
-          workshopName: n.workshopId?.workshopName || "General",
-        }));
-
-        setNotifications(formatted);
-        setUnreadCount(formatted.filter((n) => n.unread).length);
-      } catch (err) {
-        console.error("❌ Error fetching notifications:", err);
-      }
-    };
-
-    fetchNotifications();
-  }, []);
+  // Removed local notifications logic; using NotificationsDropdown instead.
 
   return (
     <div className="events-theme flex min-h-screen bg-[#f5efeb] ml-[260px]">
@@ -734,89 +634,10 @@ const ProfessorDashboard = () => {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
-              <span className="hidden md:block text-[#567c8d] text-sm">
+              <span className="hidden md:block text-[#567c8d] text-sm ml-4 whitespace-nowrap">
                 Today, {formatDate(currentDate)}
               </span>
-              <div className="relative">
-                <button
-                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors relative"
-                >
-                  <Bell size={24} className="text-[#2f4156]" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 bg-[#c88585] text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem]">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {isNotificationsOpen && (
-                  <div
-                    ref={notificationsRef}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#c8d9e6] z-50 overflow-hidden"
-                  >
-                    <div className="p-4 border-b border-[#c8d9e6] flex items-center justify-between">
-                      <h3 className="font-semibold text-[#2f4156]">
-                        Notifications
-                      </h3>
-                      <button
-                        onClick={() => setIsNotificationsOpen(false)}
-                        className="text-[#567c8d] hover:text-[#2f4156]"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-[#567c8d]">
-                          No notifications yet
-                        </div>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif.id}
-                            className={`p-4 border-b border-[#c8d9e6] hover:bg-[#f5efeb] transition-colors ${
-                              notif.unread ? "bg-[#f5efeb]" : ""
-                            }`}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="text-sm text-[#2f4156] mb-1">
-                                  {notif.message}
-                                </p>
-                                <p className="text-xs text-[#567c8d]">
-                                  {notif.time}
-                                </p>
-                              </div>
-                              <div>
-                                {notif.unread && (
-                                  <button
-                                    onClick={() => markNotification(notif.id)}
-                                    style={{
-                                      background: "var(--teal, #567c8d)",
-                                      color: "white",
-                                      padding: "6px 10px",
-                                      borderRadius: 6,
-                                      border: "none",
-                                    }}
-                                  >
-                                    Mark
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <button className="w-full p-3 text-[#567c8d] hover:bg-[#f5efeb] text-sm font-medium transition-colors">
-                      View all notifications
-                    </button>
-                  </div>
-                )}
-              </div>
+              <NotificationsDropdown align="right" />
               <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
                 <User size={20} className="text-[#2f4156]" />
               </div>
@@ -848,16 +669,15 @@ const ProfessorDashboard = () => {
                       <div className="h-40 w-full bg-gray-200 relative">
                         <img
                           src={
-                            e.image ||
-                            (e.type === "TRIP"
-                              ? tripPlaceholder
+                            e.type === "TRIP"
+                              ? tripImg
                               : e.type === "BAZAAR"
-                              ? bazaarPlaceholder
+                              ? bazaarImg
                               : e.type === "CONFERENCE"
-                              ? conferencePlaceholder
+                              ? conferenceImg
                               : e.type === "BOOTH"
-                              ? boothPlaceholder
-                              : workshopPlaceholder)
+                              ? e.image || boothPlaceholder
+                              : workshopImg
                           }
                           alt={
                             e.title ||
@@ -871,14 +691,14 @@ const ProfessorDashboard = () => {
                           onError={(target) => {
                             target.target.src =
                               e.type === "TRIP"
-                                ? tripPlaceholder
+                                ? tripImg
                                 : e.type === "BAZAAR"
-                                ? bazaarPlaceholder
+                                ? bazaarImg
                                 : e.type === "CONFERENCE"
-                                ? conferencePlaceholder
+                                ? conferenceImg
                                 : e.type === "BOOTH"
                                 ? boothPlaceholder
-                                : workshopPlaceholder;
+                                : workshopImg;
                           }}
                         />
                         <button
@@ -946,119 +766,14 @@ const ProfessorDashboard = () => {
 
             {/* Calendar & Upcoming Events */}
             <div className="w-full lg:w-96">
-              <div className="bg-white rounded-xl p-6 mb-6 border border-[#c8d9e6]">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-[#2f4156]">
-                    {getMonthYear(currentDate)}
-                  </h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        const newDate = new Date(currentDate);
-                        newDate.setMonth(currentDate.getMonth() - 1);
-                        setCurrentDate(newDate);
-                      }}
-                      className="p-1 hover:bg-[#f5efeb] rounded transition-colors"
-                    >
-                      <ChevronLeft size={20} className="text-[#567c8d]" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        const newDate = new Date(currentDate);
-                        newDate.setMonth(currentDate.getMonth() + 1);
-                        setCurrentDate(newDate);
-                      }}
-                      className="p-1 hover:bg-[#f5efeb] rounded transition-colors"
-                    >
-                      <ChevronRight size={20} className="text-[#567c8d]" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-7 gap-2 mb-2">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-                    (day) => (
-                      <div
-                        key={day}
-                        className="text-center text-xs font-semibold text-[#567c8d] py-2"
-                      >
-                        {day}
-                      </div>
-                    )
-                  )}
-                </div>
-
-                <div className="grid grid-cols-7 gap-2">
-                  {getCalendarDays().map((day, idx) => {
-                    let bgColor = "hover:bg-[#f5efeb]";
-                    let textColor = day.isCurrentMonth
-                      ? "text-[#2f4156]"
-                      : "text-[#c8d9e6]";
-
-                    const isSelected =
-                      selectedCalendarDate &&
-                      day.fullDate.toDateString() ===
-                        selectedCalendarDate.toDateString();
-
-                    if (isSelected) {
-                      bgColor = "bg-[#2f4156]";
-                      textColor = "text-white font-bold";
-                    } else if (day.isToday) {
-                      bgColor = "bg-[#567c8d]";
-                      textColor = "text-white font-bold";
-                    } else if (day.hasEvent && day.isCurrentMonth) {
-                      // Check if it's an upcoming event
-                      const isUpcoming = day.fullDate > new Date();
-                      if (isUpcoming) {
-                        bgColor = "bg-[#c8d9e6] hover:bg-[#b8c9d6]"; // Highlight color for upcoming
-                        textColor = "text-[#2f4156] font-semibold";
-                      } else {
-                        bgColor = "bg-[#f5efeb] hover:bg-[#e5dfd8]"; // Lighter for past
-                        textColor = "text-[#567c8d] font-semibold";
-                      }
-                    }
-
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          if (day.isCurrentMonth) {
-                            // Toggle: if clicking same date, clear filter; otherwise set new date
-                            if (isSelected) {
-                              setSelectedCalendarDate(null);
-                            } else {
-                              setSelectedCalendarDate(day.fullDate);
-                            }
-                          }
-                        }}
-                        className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-colors relative
-                          ${bgColor} ${textColor}
-                        `}
-                        title={
-                          day.hasEvent
-                            ? day.fullDate > new Date()
-                              ? "Upcoming event"
-                              : "Past event"
-                            : ""
-                        }
-                      >
-                        {day.date}
-                        {day.hasWorkshop &&
-                          day.isCurrentMonth &&
-                          !day.isToday && (
-                            <span
-                              className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
-                                day.fullDate > new Date()
-                                  ? "bg-[#567c8d]"
-                                  : "bg-[#c8d9e6]"
-                              }`}
-                            ></span>
-                          )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <ProfessorMonthCalendar
+                events={allEvents}
+                selectedDate={selectedCalendarDate}
+                onSelectDate={(d) => {
+                  const isSame = selectedCalendarDate && d.toDateString() === selectedCalendarDate.toDateString();
+                  setSelectedCalendarDate(isSame ? null : d);
+                }}
+              />
 
               <div className="bg-white rounded-xl p-6 border border-[#c8d9e6]">
                 <h3 className="text-lg font-bold text-[#2f4156] mb-4">
