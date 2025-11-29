@@ -251,36 +251,59 @@ const StaffDashboard = () => {
   };
 
   useEffect(() => {
-    if (!userId) return;
-
     const fetchNotifications = async () => {
       try {
-        // No token needed anymore
-        const res = await fetch(`${API_BASE}/api/notifications/user/${userId}`);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.log("⚠️ No token found, cannot fetch notifications");
+          return;
+        }
+        
+        console.log("📞 Fetching notifications from /api/notifications");
+        const res = await fetch(`/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
         if (res.ok) {
           const data = await res.json();
+          console.log(`✅ Received ${data.length} notifications:`, data);
           setNotifications(data);
         } else {
-          console.error("Failed to fetch notifications");
+          console.error("❌ Failed to fetch notifications, status:", res.status);
         }
       } catch (err) {
-        console.error("Failed to load notifications", err);
+        console.error("❌ Failed to load notifications", err);
       }
     };
 
+    console.log("🔄 Setting up notifications fetch...");
     fetchNotifications();
-  }, [userId]);
+    
+    // Poll every 10 seconds for new notifications
+    const interval = setInterval(() => {
+      console.log("🔄 Polling for new notifications...");
+      fetchNotifications();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const markAsRead = async () => {
+  const markAsRead = async (notifId) => {
     try {
-      await fetch(`${API_BASE}/api/notifications/mark-read/${userId}`, {
-        method: "PUT",
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      
+      await fetch(`/api/notifications/${notifId}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
       });
+      
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === notifId ? { ...n, unread: false } : n))
+      );
     } catch (err) {
-      console.error("Failed to mark notifications as read", err);
+      console.error("Failed to mark notification as read", err);
     }
   };
 
@@ -449,7 +472,17 @@ const StaffDashboard = () => {
                       : "bg-gray-50 border-gray-200"
                   }`}
                 >
-                  <p className="text-sm text-[#2f4156]">{n.message}</p>
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-sm text-[#2f4156] flex-1">{n.message}</p>
+                    {n.unread && (
+                      <button
+                        onClick={() => markAsRead(n._id)}
+                        className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Mark Read
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             )}
