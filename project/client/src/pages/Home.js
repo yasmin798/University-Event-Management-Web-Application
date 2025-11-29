@@ -5,7 +5,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/signup");
+    navigate("/login");
   }, [navigate]);
 
   return null;
