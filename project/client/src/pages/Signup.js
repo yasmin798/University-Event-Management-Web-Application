@@ -4,7 +4,7 @@ import { User, Briefcase, ShoppingBag } from "lucide-react";
 import StudentSignup from "./StudentSignup";
 import StaffSignup from "./StaffSignup";
 import VendorSignup from "./VendorSignup";
-import Spline from '@splinetool/react-spline';
+import Spline from "@splinetool/react-spline";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -73,11 +73,18 @@ export default function Signup() {
               color: "white",
             }}
           >
-            Welcome <span style={{ color: "#8caabb" }}>Back.</span>
+            Join the <span style={{ color: "#8caabb" }}> community.</span>
           </h1>
-          <p style={{ fontSize: "1.1rem", opacity: 0.8, lineHeight: "1.6", color: "white" }}>
-            Log in to access your dashboard, manage upcoming events, and stay
-            connected with the campus community.
+          <p
+            style={{
+              fontSize: "1.1rem",
+              opacity: 0.8,
+              lineHeight: "1.6",
+              color: "white",
+            }}
+          >
+            Discover campus events, manage your activities, and connect with the
+            best vendors in one place.
           </p>
         </div>
       </div>

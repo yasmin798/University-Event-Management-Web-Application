@@ -205,7 +205,7 @@ const TaDashboard = () => {
 
       <div className="flex-1 flex flex-col overflow-auto bg-[#f5efeb]">
         {/* Header */}
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-[#c8d9e6] px-2 md:px-4 py-4 flex items-center justify-between">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 hover:bg-[#f5efeb] rounded-lg md:hidden"
