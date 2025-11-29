@@ -1573,20 +1573,22 @@ export default function EventsHome() {
                                 </>
                               )}
 
-                            {/* Restrictions */}
-                            <button
-                              style={dropdownItemStyle}
-                              onClick={() => {
-                                handleOpenRestriction(
-                                  id,
-                                  typeRaw,
-                                  ev.allowedRoles
-                                );
-                                closeMenu();
-                              }}
-                            >
-                              <Users size={14} /> Roles/Restriction
-                            </button>
+                            {/* Restrictions - only for WORKSHOP and CONFERENCE */}
+                            {typeRaw !== "BAZAAR" && typeRaw !== "BOOTH" && (
+                              <button
+                                style={dropdownItemStyle}
+                                onClick={() => {
+                                  handleOpenRestriction(
+                                    id,
+                                    typeRaw,
+                                    ev.allowedRoles
+                                  );
+                                  closeMenu();
+                                }}
+                              >
+                                <Users size={14} /> Roles/Restriction
+                              </button>
+                            )}
 
                             {/* Export */}
                             <button

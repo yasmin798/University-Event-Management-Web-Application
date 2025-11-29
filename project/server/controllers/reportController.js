@@ -34,34 +34,7 @@ exports.getAttendeesReport = async (req, res) => {
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
 
-    // 1) Bazaars
-    if (!eventType || eventType === "bazaar") {
-      const pipeline = [];
-      const m = {};
-      if (eventName) m.title = { $regex: eventName, $options: "i" };
-      if (start || end) {
-        const range = {};
-        if (start) range.$gte = start;
-        if (end) range.$lte = end;
-        m.startDateTime = range;
-      }
-      if (Object.keys(m).length) pipeline.push({ $match: m });
-      pipeline.push({
-        $project: {
-          title: 1,
-          count: { $size: { $ifNull: ["$registrations", []] } },
-        },
-      });
-      const bazaars = await Bazaar.aggregate(pipeline);
-      bazaars.forEach((b) =>
-        breakdown.push({
-          eventType: "bazaar",
-          id: b._id,
-          title: b.title,
-          count: b.count,
-        })
-      );
-    }
+    // Note: Bazaars do not support registrations, so they are excluded from attendees report
 
     // 2) Trips
     if (!eventType || eventType === "trip") {
@@ -97,34 +70,7 @@ exports.getAttendeesReport = async (req, res) => {
       );
     }
 
-    // 3) Conferences
-    if (!eventType || eventType === "conference") {
-      const pipeline = [];
-      const m = {};
-      if (eventName) m.title = { $regex: eventName, $options: "i" };
-      if (start || end) {
-        const range = {};
-        if (start) range.$gte = start;
-        if (end) range.$lte = end;
-        m.startDateTime = range;
-      }
-      if (Object.keys(m).length) pipeline.push({ $match: m });
-      pipeline.push({
-        $project: {
-          title: 1,
-          count: { $size: { $ifNull: ["$registrations", []] } },
-        },
-      });
-      const conferences = await Conference.aggregate(pipeline);
-      conferences.forEach((c) =>
-        breakdown.push({
-          eventType: "conference",
-          id: c._id,
-          title: c.title,
-          count: c.count,
-        })
-      );
-    }
+    // Note: Conferences do not support registrations, so they are excluded from attendees report
 
     // 4) Workshops
     if (!eventType || eventType === "workshop") {
@@ -155,34 +101,7 @@ exports.getAttendeesReport = async (req, res) => {
       );
     }
 
-    // 5) Gym sessions
-    if (!eventType || eventType === "gymsession" || eventType === "gym") {
-      const pipeline = [];
-      const m = {};
-      if (start || end) {
-        const range = {};
-        if (start) range.$gte = start;
-        if (end) range.$lte = end;
-        m.date = range;
-      }
-      if (Object.keys(m).length) pipeline.push({ $match: m });
-      pipeline.push({
-        $project: {
-          date: 1,
-          time: 1,
-          count: { $size: { $ifNull: ["$registeredUsers", []] } },
-        },
-      });
-      const gyms = await GymSession.aggregate(pipeline);
-      gyms.forEach((g) =>
-        breakdown.push({
-          eventType: "gymsession",
-          id: g._id,
-          title: `${new Date(g.date).toLocaleDateString()} ${g.time}`,
-          count: g.count,
-        })
-      );
-    }
+    // Note: Gym sessions do not support registrations, so they are excluded from attendees report
 
     const totalAttendees = breakdown.reduce(
       (sum, item) => sum + (item.count || 0),

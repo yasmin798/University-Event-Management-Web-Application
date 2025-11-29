@@ -152,10 +152,7 @@ export default function AdminAttendeesReport() {
             >
               <option value="">All Event Types</option>
               <option value="workshop">Workshop</option>
-              <option value="bazaar">Bazaar</option>
               <option value="trip">Trip</option>
-              <option value="conference">Conference</option>
-              <option value="gymsession">Gym Session</option>
             </select>
 
             {/* START DATE */}
