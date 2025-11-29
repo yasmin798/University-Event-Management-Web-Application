@@ -6,6 +6,7 @@ router.post("/", boothController.createBooth);
 router.get("/", boothController.getAllBooths);
 router.get("/:id", boothController.getBoothById);
 router.put("/:id", boothController.updateBooth);
+router.patch("/:id", boothController.updateBooth);
 router.delete("/:id", boothController.deleteBooth);
 
 module.exports = router;

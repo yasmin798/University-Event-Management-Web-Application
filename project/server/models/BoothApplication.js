@@ -32,7 +32,7 @@ const BoothApplicationSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected"],
+      enum: ["pending", "accepted", "rejected", "archived"],
       default: "pending",
     },
     paid: { type: Boolean, default: false },

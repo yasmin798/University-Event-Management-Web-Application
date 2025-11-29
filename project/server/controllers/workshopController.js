@@ -3,8 +3,8 @@ const Workshop = require("../models/Workshop");
 const Notification = require("../models/Notification");
 const User = require("../models/User"); // Add this import
 
-const nodemailer = require('nodemailer');
-const PDFDocument = require('pdfkit');
+const nodemailer = require("nodemailer");
+const PDFDocument = require("pdfkit");
 
 // CREATE Workshop
 // CREATE Workshop + SEND NOTIFICATIONS TO BOTH SIDES
@@ -17,7 +17,6 @@ exports.createWorkshop = async (req, res) => {
     });
 
     await workshop.save();
-
 
     // -----------------------------
     // NOTIFICATIONS SECTION
@@ -52,7 +51,6 @@ exports.createWorkshop = async (req, res) => {
       unread: true,
     });
 
-
     // 🔥 3. NEW: Notify **all users** that a new workshop exists (same style as trips/bazaars)
     const allUsers = await User.find({}, "_id");
 
@@ -71,30 +69,27 @@ exports.createWorkshop = async (req, res) => {
       await Notification.insertMany(notificationsToCreate);
     }
 
-
     // -----------------------------
     // END NOTIFICATIONS
     // -----------------------------
 
     res.status(201).json(workshop);
-
   } catch (err) {
     console.error("CREATE WORKSHOP ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-
 // GET all workshops
 exports.getAllWorkshops = async (req, res) => {
   try {
-    console.log('Fetching all workshops...');
+    console.log("Fetching all workshops...");
     const workshops = await Workshop.find().sort({ createdAt: -1 });
     console.log(`Found ${workshops.length} workshops`);
     res.status(200).json(workshops);
   } catch (err) {
-    console.error('Error fetching workshops:', err);
-    console.error('Error stack:', err.stack);
+    console.error("Error fetching workshops:", err);
+    console.error("Error stack:", err.stack);
     res.status(500).json({ error: err.message });
   }
 };
@@ -102,24 +97,21 @@ exports.getAllWorkshops = async (req, res) => {
 // GET workshop by ID
 exports.getWorkshopById = async (req, res) => {
   try {
-    console.log('Fetching workshop by ID:', req.params.id);
+    console.log("Fetching workshop by ID:", req.params.id);
     const workshop = await Workshop.findById(req.params.id)
       .populate(
-    "registeredUsers",
-    "firstName lastName email role roleSpecificId"
-  )
-  .populate(
-    "createdBy",
-    "firstName lastName email"
-  );
+        "registeredUsers",
+        "firstName lastName email role roleSpecificId"
+      )
+      .populate("createdBy", "firstName lastName email");
     if (!workshop) {
-      console.log('Workshop not found');
+      console.log("Workshop not found");
       return res.status(404).json({ error: "Workshop not found" });
     }
-    console.log('Workshop found:', workshop._id);
+    console.log("Workshop found:", workshop._id);
     res.status(200).json(workshop);
   } catch (err) {
-    console.error('Error fetching workshop by ID:', err);
+    console.error("Error fetching workshop by ID:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -127,38 +119,37 @@ exports.getWorkshopById = async (req, res) => {
 // UPDATE workshop
 exports.updateWorkshop = async (req, res) => {
   try {
-    console.log('Updating workshop:', req.params.id);
-    console.log('Update data:', req.body);
+    console.log("Updating workshop:", req.params.id);
+    console.log("Update data:", req.body);
 
     // 🔥 NEW: Fetch the original workshop to check for status change
     const originalWorkshop = await Workshop.findById(req.params.id);
     if (!originalWorkshop) {
-      console.log('Workshop not found for update');
+      console.log("Workshop not found for update");
       return res.status(404).json({ error: "Workshop not found" });
     }
 
-    const updated = await Workshop.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
-      { 
-        new: true,
-        runValidators: true 
-      }
-    );
+    const updated = await Workshop.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!updated) {
-      console.log('Workshop not found for update');
+      console.log("Workshop not found for update");
       return res.status(404).json({ error: "Workshop not found" });
     }
 
-    console.log('Workshop updated successfully:', updated._id);
+    console.log("Workshop updated successfully:", updated._id);
 
     // 🔥 NEW: Check if status changed to "published" or "rejected"
-    const statusChange = req.body.status && req.body.status !== originalWorkshop.status;
+    const statusChange =
+      req.body.status && req.body.status !== originalWorkshop.status;
     if (statusChange) {
       const newStatus = req.body.status.toLowerCase();
       if (newStatus === "published" || newStatus === "rejected") {
-        console.log(`🔄 Status changed to "${newStatus}" for workshop "${updated.workshopName}"`);
+        console.log(
+          `🔄 Status changed to "${newStatus}" for workshop "${updated.workshopName}"`
+        );
 
         // Resolve professor IDs: Start with createdBy (submitter)
         let professorIds = [originalWorkshop.createdBy];
@@ -168,14 +159,22 @@ exports.updateWorkshop = async (req, res) => {
           let additionalProfs = [];
           if (Array.isArray(updated.professorsParticipating)) {
             // If array of ObjectIds
-            additionalProfs = updated.professorsParticipating.filter(id => id.toString() !== originalWorkshop.createdBy.toString());
-          } else if (typeof updated.professorsParticipating === 'string') {
+            additionalProfs = updated.professorsParticipating.filter(
+              (id) => id.toString() !== originalWorkshop.createdBy.toString()
+            );
+          } else if (typeof updated.professorsParticipating === "string") {
             // If comma-separated names, lookup by name in User
-            const profNames = updated.professorsParticipating.split(',').map(name => name.trim()).filter(name => name);
-            const users = await User.find({ name: { $in: profNames }, role: "professor" }, '_id'); // FIXED: Use 'name' for lookup
-            additionalProfs = users.map(u => u._id);
+            const profNames = updated.professorsParticipating
+              .split(",")
+              .map((name) => name.trim())
+              .filter((name) => name);
+            const users = await User.find(
+              { name: { $in: profNames }, role: "professor" },
+              "_id"
+            ); // FIXED: Use 'name' for lookup
+            additionalProfs = users.map((u) => u._id);
           }
-          professorIds = [...new Set([...professorIds, ...additionalProfs])];  // Dedupe
+          professorIds = [...new Set([...professorIds, ...additionalProfs])]; // Dedupe
         }
 
         // Create notifications for each professor
@@ -185,7 +184,7 @@ exports.updateWorkshop = async (req, res) => {
             userId: profId,
             message: `Your workshop "${updated.workshopName}" has been ${newStatus}!`,
             type: "workshop_status",
-            eventType: "workshop",  // For polymorphic ref
+            eventType: "workshop", // For polymorphic ref
             workshopId: updated._id,
             unread: true,
           });
@@ -194,31 +193,33 @@ exports.updateWorkshop = async (req, res) => {
         // Save all at once
         if (notificationsToCreate.length > 0) {
           await Notification.insertMany(notificationsToCreate);
-          console.log(`📩 Created ${notificationsToCreate.length} status notifications`);
+          console.log(
+            `📩 Created ${notificationsToCreate.length} status notifications`
+          );
         }
       }
     }
 
     res.status(200).json(updated);
   } catch (err) {
-    console.error('Error updating workshop:', err);
-    res.status(400).json({ error: err.message });
+    console.error("Error updating workshop:", err);
+    res.status(500).json({ error: err.message || "Server error" });
   }
 };
 
 // DELETE workshop
 exports.deleteWorkshop = async (req, res) => {
   try {
-    console.log('Deleting workshop:', req.params.id);
+    console.log("Deleting workshop:", req.params.id);
     const deleted = await Workshop.findByIdAndDelete(req.params.id);
     if (!deleted) {
-      console.log('Workshop not found for deletion');
+      console.log("Workshop not found for deletion");
       return res.status(404).json({ error: "Workshop not found" });
     }
-    console.log('Workshop deleted successfully:', deleted._id);
+    console.log("Workshop deleted successfully:", deleted._id);
     res.status(200).json({ message: "Workshop deleted successfully" });
   } catch (err) {
-    console.error('Error deleting workshop:', err);
+    console.error("Error deleting workshop:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -226,10 +227,10 @@ exports.deleteWorkshop = async (req, res) => {
 // GET workshops by professor ID
 exports.getMyWorkshops = async (req, res) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user._id;
     const workshops = await Workshop.find({ createdBy: userId });
     res.status(200).json(
-      workshops.map(w => ({
+      workshops.map((w) => ({
         ...w.toObject(),
         createdBy: w.createdBy.toString(), // ✅ convert ObjectId to string
       }))
@@ -242,10 +243,10 @@ exports.getMyWorkshops = async (req, res) => {
 // GET workshops NOT created by this professor
 exports.getOtherWorkshops = async (req, res) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user._id;
     const workshops = await Workshop.find({ createdBy: { $ne: userId } });
     res.status(200).json(
-      workshops.map(w => ({
+      workshops.map((w) => ({
         ...w.toObject(),
         createdBy: w.createdBy.toString(), // ✅ convert ObjectId to string
       }))
@@ -259,26 +260,20 @@ exports.getOtherWorkshops = async (req, res) => {
 exports.getParticipants = async (req, res) => {
   try {
     const workshop = await Workshop.findById(req.params.id)
-     .populate(
+      .populate(
         "registeredUsers",
         "firstName lastName email role roleSpecificId"
       )
-      .populate(
-        "attendedUsers",
-        "firstName lastName email role roleSpecificId"
-      )
-      .populate(
-        "createdBy",
-        "firstName lastName email"
-      );
+      .populate("attendedUsers", "firstName lastName email role roleSpecificId")
+      .populate("createdBy", "firstName lastName email");
 
     if (!workshop) {
-      return res.status(404).json({ message: 'Workshop not found' });
+      return res.status(404).json({ message: "Workshop not found" });
     }
 
     // Check ownership (only creator can access)
     if (workshop.createdBy._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Access denied' });
+      return res.status(403).json({ message: "Access denied" });
     }
 
     res.json({
@@ -287,8 +282,8 @@ exports.getParticipants = async (req, res) => {
       attendedUsers: workshop.attendedUsers,
     });
   } catch (error) {
-    console.error('Error fetching participants:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error fetching participants:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -297,31 +292,38 @@ exports.sendCertificates = async (req, res) => {
   try {
     const { attendedUserIds } = req.body; // Array of user _id strings
     if (!Array.isArray(attendedUserIds) || attendedUserIds.length === 0) {
-      return res.status(400).json({ message: 'No users selected' });
+      return res.status(400).json({ message: "No users selected" });
     }
 
-    const workshop = await Workshop.findById(req.params.id).populate('createdBy', 'name'); // FIXED: Use 'name'
+    const workshop = await Workshop.findById(req.params.id).populate(
+      "createdBy",
+      "name"
+    ); // FIXED: Use 'name'
 
     if (!workshop) {
-      return res.status(404).json({ message: 'Workshop not found' });
+      return res.status(404).json({ message: "Workshop not found" });
     }
 
     if (workshop.createdBy._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Access denied' });
+      return res.status(403).json({ message: "Access denied" });
     }
 
     // Validate users are in registeredUsers (fetch populated for check)
-    const populatedWorkshop = await Workshop.findById(req.params.id).populate('registeredUsers', '_id');
-    const invalidUsers = attendedUserIds.filter(id => 
-      !populatedWorkshop.registeredUsers.some(u => u._id.toString() === id)
+    const populatedWorkshop = await Workshop.findById(req.params.id).populate(
+      "registeredUsers",
+      "_id"
+    );
+    const invalidUsers = attendedUserIds.filter(
+      (id) =>
+        !populatedWorkshop.registeredUsers.some((u) => u._id.toString() === id)
     );
     if (invalidUsers.length > 0) {
-      return res.status(400).json({ message: 'Some users not registered' });
+      return res.status(400).json({ message: "Some users not registered" });
     }
 
     // Setup nodemailer transporter (configure with your SMTP, e.g., Gmail)
     const transporter = nodemailer.createTransporter({
-      service: 'gmail', // Or your provider
+      service: "gmail", // Or your provider
       auth: {
         user: process.env.EMAIL_USER, // Env var
         pass: process.env.EMAIL_PASS, // App password
@@ -331,14 +333,14 @@ exports.sendCertificates = async (req, res) => {
     const attendedObjs = []; // To push to attendedUsers
 
     for (const userIdStr of attendedUserIds) {
-      const user = await User.findById(userIdStr).select('name email role'); // FIXED: Use 'name'
+      const user = await User.findById(userIdStr).select("name email role"); // FIXED: Use 'name'
       if (!user) continue; // Skip invalid
 
       // Generate PDF certificate
       const doc = new PDFDocument();
       const chunks = [];
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', async () => {
+      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("end", async () => {
         const pdfBuffer = Buffer.concat(chunks);
 
         // Send email
@@ -346,22 +348,40 @@ exports.sendCertificates = async (req, res) => {
           from: process.env.EMAIL_USER,
           to: user.email,
           subject: `Certificate of Attendance: ${workshop.workshopName}`,
-          text: `Dear ${user.name},\n\nYou have successfully completed the workshop "${workshop.workshopName}" on ${new Date(workshop.startDateTime).toLocaleDateString()}.\n\nPlease find your certificate attached.\n\nBest regards,\nWorkshop Team`, // FIXED: Use 'name'
-          attachments: [{
-            filename: `Certificate_${workshop.workshopName}_${user.name.replace(/\s+/g, '_')}.pdf`, // FIXED: Use 'name'
-            content: pdfBuffer,
-          }],
+          text: `Dear ${
+            user.name
+          },\n\nYou have successfully completed the workshop "${
+            workshop.workshopName
+          }" on ${new Date(
+            workshop.startDateTime
+          ).toLocaleDateString()}.\n\nPlease find your certificate attached.\n\nBest regards,\nWorkshop Team`, // FIXED: Use 'name'
+          attachments: [
+            {
+              filename: `Certificate_${
+                workshop.workshopName
+              }_${user.name.replace(/\s+/g, "_")}.pdf`, // FIXED: Use 'name'
+              content: pdfBuffer,
+            },
+          ],
         });
       });
 
       // Build PDF content (simple template)
-      doc.fontSize(20).text('Certificate of Attendance', 100, 100);
+      doc.fontSize(20).text("Certificate of Attendance", 100, 100);
       doc.fontSize(12).text(`This certifies that`, 100, 150);
       doc.fontSize(16).text(user.name, 100, 170); // FIXED: Use 'name'
       doc.text(`${user.role.toUpperCase()}`, 100, 190);
       doc.text(`has attended and completed the workshop`, 100, 220);
       doc.fontSize(18).text(workshop.workshopName, 100, 240);
-      doc.text(`Held on: ${new Date(workshop.startDateTime).toLocaleDateString()} - ${new Date(workshop.endDateTime).toLocaleDateString()}`, 100, 270);
+      doc.text(
+        `Held on: ${new Date(
+          workshop.startDateTime
+        ).toLocaleDateString()} - ${new Date(
+          workshop.endDateTime
+        ).toLocaleDateString()}`,
+        100,
+        270
+      );
       doc.text(`Location: ${workshop.location}`, 100, 290);
       doc.text(`Issued on: ${new Date().toLocaleDateString()}`, 100, 320);
       // Add signature/space or image if needed
@@ -371,22 +391,22 @@ exports.sendCertificates = async (req, res) => {
     }
 
     // Update workshop: remove from registered, add to attended
-    workshop.registeredUsers = workshop.registeredUsers.filter(u => 
-      !attendedUserIds.includes(u._id.toString())
+    workshop.registeredUsers = workshop.registeredUsers.filter(
+      (u) => !attendedUserIds.includes(u._id.toString())
     );
     workshop.attendedUsers.push(...attendedObjs);
     await workshop.save();
 
     // Repopulate for response
-    await workshop.populate('attendedUsers', 'name email role'); // FIXED: Use 'name'
+    await workshop.populate("attendedUsers", "name email role"); // FIXED: Use 'name'
 
     res.json({
       message: `Certificates sent to ${attendedUserIds.length} users`,
       updatedAttendedCount: workshop.attendedUsers.length,
     });
   } catch (error) {
-    console.error('Error sending certificates:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error sending certificates:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -405,16 +425,22 @@ exports.requestEdits = async (req, res) => {
     const createdByStr = workshop.createdBy;
     if (!createdByStr || !mongoose.Types.ObjectId.isValid(createdByStr)) {
       console.warn(`Invalid or missing createdBy ID: ${createdByStr}`);
-      return res.status(400).json({ error: "Invalid professor ID in workshop" });
+      return res
+        .status(400)
+        .json({ error: "Invalid professor ID in workshop" });
     }
 
     const professorId = new mongoose.Types.ObjectId(createdByStr);
 
-    const professor = await User.findById(professorId).select('name email');
+    const professor = await User.findById(professorId).select("name email");
     if (!professor) {
-      const admin = await User.findOne({ role: "admin" }).select('email');
+      const admin = await User.findOne({ role: "admin" }).select("email");
       if (!admin) {
-        return res.status(500).json({ error: "No professor or admin found to receive edit request" });
+        return res
+          .status(500)
+          .json({
+            error: "No professor or admin found to receive edit request",
+          });
       }
 
       await Notification.create({
@@ -429,7 +455,8 @@ exports.requestEdits = async (req, res) => {
     } else {
       await Notification.create({
         userId: professor._id,
-        message: message || `Edit request for workshop "${workshop.workshopName}"`,
+        message:
+          message || `Edit request for workshop "${workshop.workshopName}"`,
         workshopId: workshop._id,
         type: "edit_request",
         unread: true,
@@ -438,14 +465,14 @@ exports.requestEdits = async (req, res) => {
       console.log(`📩 Notification sent to professor ${professor.email}`);
     }
 
-    res.status(200).json({ success: true, message: "Edit request sent successfully" });
-
+    res
+      .status(200)
+      .json({ success: true, message: "Edit request sent successfully" });
   } catch (err) {
     console.error("Error in requestEdits:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
-
 
 // ✅ ✅ ✅ THIS MUST BE OUTSIDE — SEPARATE EXPORT
 exports.sendBatchCertificates = async (req, res) => {
@@ -463,9 +490,8 @@ exports.sendBatchCertificates = async (req, res) => {
     // ✅ TEMP SAFE RESPONSE (NO EMAIL YET)
     return res.status(200).json({
       sentCount: participantIds.length,
-      message: "Certificates sent successfully (mock)"
+      message: "Certificates sent successfully (mock)",
     });
-
   } catch (err) {
     console.error("❌ Certificate Error:", err);
     return res.status(500).json({ error: "Failed to send certificates" });

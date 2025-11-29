@@ -21,7 +21,11 @@ const TripSchema = new mongoose.Schema(
     registrationDeadline: { type: Date },
     price: { type: Number, default: 0, min: 0 },
     capacity: { type: Number, default: 0, min: 0 },
-    status: { type: String, default: "published" },
+    status: {
+      type: String,
+      default: "published",
+      enum: ["published", "archived"],
+    },
 
     // Registered users (from User model)
     registeredUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
@@ -41,16 +45,18 @@ const TripSchema = new mongoose.Schema(
 
     // ADD THIS: Reviews from attendees
     reviews: [reviewSchema],
-    paidUsers: [{
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User"
-}],
-  // ADD THIS: Allowed roles for registration (empty array = open to all)
- allowedRoles: {
-    type: [String],
-    enum: ["student", "professor", "ta", "staff"], // Restrict to valid roles (no vendors for trips)
-     default: [],
-   },
+    paidUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // ADD THIS: Allowed roles for registration (empty array = open to all)
+    allowedRoles: {
+      type: [String],
+      enum: ["student", "professor", "ta", "staff"], // Restrict to valid roles (no vendors for trips)
+      default: [],
+    },
   },
   {
     timestamps: true,

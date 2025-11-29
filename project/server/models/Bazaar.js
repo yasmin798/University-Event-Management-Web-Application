@@ -44,7 +44,11 @@ const BazaarSchema = new mongoose.Schema(
     registrationDeadline: { type: Date },
     price: { type: Number, default: 0 },
     capacity: { type: Number, default: 0 },
-    status: { type: String, default: "published" },
+    status: {
+      type: String,
+      default: "published",
+      enum: ["published", "archived"],
+    },
 
     // Registrations (logged-in + guest users)
     registrations: {
@@ -55,10 +59,10 @@ const BazaarSchema = new mongoose.Schema(
     // ADD THIS: Reviews from attendees
     reviews: [reviewSchema],
   },
-  { 
-    timestamps: true, 
-    strict: true, 
-    collection: "bazaars" 
+  {
+    timestamps: true,
+    strict: true,
+    collection: "bazaars",
   }
 );
 
@@ -66,4 +70,5 @@ const BazaarSchema = new mongoose.Schema(
 BazaarSchema.index({ startDateTime: 1 });
 BazaarSchema.index({ "reviews.createdAt": -1 });
 
-module.exports = mongoose.models.Bazaar || mongoose.model("Bazaar", BazaarSchema);
+module.exports =
+  mongoose.models.Bazaar || mongoose.model("Bazaar", BazaarSchema);

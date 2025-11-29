@@ -67,7 +67,7 @@ const workshopSchema = new mongoose.Schema(
     status: {
       type: String,
       default: "pending",
-      enum: ["pending", "published", "rejected", "edits_requested"],
+      enum: ["pending", "published", "rejected", "edits_requested", "archived"],
     },
 
     image: { type: String },

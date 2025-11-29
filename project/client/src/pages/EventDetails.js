@@ -535,15 +535,14 @@ const EventDetails = () => {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
-    
-    {/* Sidebar */}
-    {userRole === "student" ? (
-      <StudentSidebar />
-    ) : userRole === "professor" ? (
-      <ProfessorSidebar />
-    ) : userRole === "ta" ? (
-      <TaSidebar />
-    ) : null}
+      {/* Sidebar */}
+      {userRole === "student" ? (
+        <StudentSidebar />
+      ) : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : userRole === "ta" ? (
+        <TaSidebar />
+      ) : null}
       <div className="flex-1 ml-[250px]">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40 backdrop-blur-sm bg-white/95">

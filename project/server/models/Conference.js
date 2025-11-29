@@ -26,7 +26,7 @@ const ConferenceSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "published", "cancelled"],
+      enum: ["draft", "published", "cancelled", "archived"],
       default: "published",
     },
 
