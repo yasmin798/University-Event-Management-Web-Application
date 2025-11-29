@@ -9,6 +9,7 @@ import {
   ArrowUp,
   ArrowDown,
   MapPin,
+  Users,
   Clock,
   Heart,
   TrendingUp,
@@ -16,6 +17,7 @@ import {
 
 import TaSidebar from "../components/TaSidebar";
 import EventTypeDropdown from "../components/EventTypeDropdown";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 // Placeholder images for events
 import conferencePlaceholder from "../images/Conferenceroommeetingconcept.jpeg";
@@ -29,6 +31,8 @@ const TaDashboard = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
+  const [professorFilter, setProfessorFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("asc");
   const [allEvents, setAllEvents] = useState([]);
@@ -43,9 +47,10 @@ const TaDashboard = () => {
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [debouncedSearchLocation, setDebouncedSearchLocation] = useState(
-    searchLocation
-  );
+  const [debouncedSearchLocation, setDebouncedSearchLocation] =
+    useState(searchLocation);
+  const [debouncedProfessorFilter, setDebouncedProfessorFilter] =
+    useState(professorFilter);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -56,6 +61,14 @@ const TaDashboard = () => {
     const t = setTimeout(() => setDebouncedSearchLocation(searchLocation), 300);
     return () => clearTimeout(t);
   }, [searchLocation]);
+
+  useEffect(() => {
+    const t = setTimeout(
+      () => setDebouncedProfessorFilter(professorFilter),
+      300
+    );
+    return () => clearTimeout(t);
+  }, [professorFilter]);
 
   // Get user ID from token
   useEffect(() => {
@@ -79,14 +92,19 @@ const TaDashboard = () => {
         if (debouncedSearch) params.append("search", debouncedSearch);
         if (debouncedSearchLocation)
           params.append("location", debouncedSearchLocation);
+        if (debouncedProfessorFilter)
+          params.append("professor", debouncedProfessorFilter);
         if (eventTypeFilter !== "All") params.append("type", eventTypeFilter);
+        if (dateFilter) params.append("date", dateFilter);
         params.append("sort", "startDateTime");
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
 
         const res = await fetch(`${API_BASE}/api/events/all?${params}`);
         const data = await res.json();
         if (res.ok) {
-          const cleanData = data.filter((e) => e.status?.toLowerCase() !== "archived");
+          const cleanData = data.filter(
+            (e) => e.status?.toLowerCase() !== "archived"
+          );
           setAllEvents(cleanData);
         } else {
           setAllEvents([]);
@@ -99,7 +117,14 @@ const TaDashboard = () => {
       }
     };
     fetchEvents();
-  }, [debouncedSearch, debouncedSearchLocation, eventTypeFilter, sortOrder]);
+  }, [
+    debouncedSearch,
+    debouncedSearchLocation,
+    debouncedProfessorFilter,
+    eventTypeFilter,
+    dateFilter,
+    sortOrder,
+  ]);
 
   // Fetch favorites
   useEffect(() => {
@@ -121,14 +146,34 @@ const TaDashboard = () => {
     fetchFavorites();
   }, []);
 
+  // Extract unique filter options
+  const uniqueLocations = React.useMemo(() => {
+    const locations = allEvents
+      .map((e) => e.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return [...new Set(locations)].sort();
+  }, [allEvents]);
+
+  const uniqueProfessors = React.useMemo(() => {
+    const professors = allEvents
+      .map((e) => e.professorsParticipating || e.facultyResponsible)
+      .filter((prof) => prof && prof.trim() !== "");
+    return [...new Set(professors)].sort();
+  }, [allEvents]);
+
   // Toggle favorite
   const toggleFavorite = async (eventId) => {
     const method = favorites.includes(eventId) ? "DELETE" : "POST";
-    const url = `/api/users/me/favorites${method === "DELETE" ? `/${eventId}` : ""}`;
+    const url = `/api/users/me/favorites${
+      method === "DELETE" ? `/${eventId}` : ""
+    }`;
     try {
       const token = localStorage.getItem("token");
       const headers = token
-        ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+        ? {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          }
         : { "Content-Type": "application/json" };
       await fetch(url, {
         method,
@@ -183,17 +228,38 @@ const TaDashboard = () => {
               />
             </div>
 
-            <input
-              type="text"
-              placeholder="Location"
-              value={searchLocation}
-              onChange={(e) => setSearchLocation(e.target.value)}
-              className="px-4 py-2 border border-[#c8d9e6] rounded-lg md:w-48"
-            />
+            <div className="md:w-40">
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={searchLocation}
+                onChange={setSearchLocation}
+                placeholder="All Locations"
+                label="Location"
+                icon={MapPin}
+              />
+            </div>
+
+            <div className="md:w-40">
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="All Professors"
+                label="Professor"
+                icon={Users}
+              />
+            </div>
 
             <EventTypeDropdown
               selected={eventTypeFilter}
               onChange={setEventTypeFilter}
+            />
+
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-4 py-2 border border-[#c8d9e6] rounded-lg"
             />
 
             <button
@@ -202,7 +268,11 @@ const TaDashboard = () => {
               }
               className="px-4 py-2 bg-[#567c8d] text-white rounded-lg flex items-center gap-2"
             >
-              {sortOrder === "asc" ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+              {sortOrder === "asc" ? (
+                <ArrowUp size={18} />
+              ) : (
+                <ArrowDown size={18} />
+              )}
               {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
@@ -236,7 +306,11 @@ const TaDashboard = () => {
             >
               <Heart
                 size={20}
-                className={favorites.length > 0 ? "fill-red-500 text-red-500" : "text-[#567c8d]"}
+                className={
+                  favorites.length > 0
+                    ? "fill-red-500 text-red-500"
+                    : "text-[#567c8d]"
+                }
               />
               My Favorites
               {favorites.length > 0 && (
@@ -250,15 +324,25 @@ const TaDashboard = () => {
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-              <p className="text-sm text-blue-600 font-medium mb-1">Total Events</p>
-              <p className="text-2xl font-bold text-blue-900">{allEvents.length}</p>
+              <p className="text-sm text-blue-600 font-medium mb-1">
+                Total Events
+              </p>
+              <p className="text-2xl font-bold text-blue-900">
+                {allEvents.length}
+              </p>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-              <p className="text-sm text-purple-600 font-medium mb-1">Favorites</p>
-              <p className="text-2xl font-bold text-purple-900">{favorites.length}</p>
+              <p className="text-sm text-purple-600 font-medium mb-1">
+                Favorites
+              </p>
+              <p className="text-2xl font-bold text-purple-900">
+                {favorites.length}
+              </p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-              <p className="text-sm text-green-600 font-medium mb-1">Event Types</p>
+              <p className="text-sm text-green-600 font-medium mb-1">
+                Event Types
+              </p>
               <p className="text-2xl font-bold text-green-900">
                 {new Set(allEvents.map((e) => e.type).filter(Boolean)).size}
               </p>
@@ -278,11 +362,17 @@ const TaDashboard = () => {
                 }[e.type] || workshopPlaceholder;
 
               const eventDate = e.startDateTime
-                ? new Date(e.startDateTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                ? new Date(e.startDateTime).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
                 : "";
 
               return (
-                <div key={e._id} className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm overflow-hidden group">
+                <div
+                  key={e._id}
+                  className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm overflow-hidden group"
+                >
                   <div className="h-48 w-full bg-gray-200 relative overflow-hidden">
                     <img
                       src={e.image || fallbackImage}
@@ -300,7 +390,11 @@ const TaDashboard = () => {
                     >
                       <Heart
                         size={18}
-                        className={favorites.includes(e._id) ? "fill-red-500 text-red-500" : "text-gray-600"}
+                        className={
+                          favorites.includes(e._id)
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }
                       />
                     </button>
                     <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
