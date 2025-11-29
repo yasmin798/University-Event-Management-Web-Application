@@ -38,7 +38,9 @@ export default function ProfessorSidebar() {
         {navBtn("Home", <Home size={18} />, () =>
           navigate("/professor/dashboard")
         )}
-
+        {navBtn("Create Workshop", <FileText size={18} />, () =>
+          navigate("/professor/workshops/create")
+        )}
         {navBtn("Workshops", <Calendar size={18} />, () =>
           navigate("/professor/workshops")
         )}
@@ -59,10 +61,6 @@ export default function ProfessorSidebar() {
 
         {navBtn("Loyalty Partners", <Store size={18} />, () =>
           navigate("/professor/loyalty-vendors")
-        )}
-
-        {navBtn("Create Workshop", <FileText size={18} />, () =>
-          navigate("/professor/workshops/create")
         )}
       </nav>
 

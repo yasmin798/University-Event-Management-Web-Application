@@ -9,7 +9,7 @@ exports.getAttendeesReport = async (req, res) => {
   try {
     // Allow admin or staff (event office) to fetch this report. Adjust here if you have a different role name.
     // Allow admin, staff, and the event office role (events_office)
-    const allowed = ["admin", "staff", "events_office"];
+    const allowed = ["admin", "events_office"];
     const role = req?.user?.role;
     // Log the authenticated user role for debugging access issues
     console.log("Attendees report requested by user:", {
@@ -21,7 +21,7 @@ exports.getAttendeesReport = async (req, res) => {
     if (!role || !allowed.includes(role)) {
       // Return the detected role in the response to help debugging (non-sensitive)
       return res.status(403).json({
-        error: "Admin or staff access required",
+        error: "Admin or events office access required",
         allowedRoles: allowed,
         detectedRole: role || null,
         userId: req?.user?._id || null,
@@ -51,12 +51,7 @@ exports.getAttendeesReport = async (req, res) => {
       pipeline.push({
         $project: {
           title: 1,
-          count: {
-            $add: [
-              { $size: { $ifNull: ["$registrations", []] } },
-              { $size: { $ifNull: ["$registeredUsers", []] } },
-            ],
-          },
+          count: { $size: { $ifNull: ["$registrations", []] } },
         },
       });
       const trips = await Trip.aggregate(pipeline);
@@ -87,7 +82,7 @@ exports.getAttendeesReport = async (req, res) => {
       pipeline.push({
         $project: {
           workshopName: 1,
-          count: { $size: { $ifNull: ["$registeredUsers", []] } },
+          count: { $size: { $ifNull: ["$registrations", []] } },
         },
       });
       const workshops = await Workshop.aggregate(pipeline);

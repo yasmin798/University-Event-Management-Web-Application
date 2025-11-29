@@ -52,7 +52,7 @@ export default function AdminAttendeesReport() {
           if (detected) {
             localStorage.removeItem("token");
             setError(
-              `Access denied: your account role is '${detected}'. Please log in as admin or staff to view this page.`
+              `Access denied: your account role is '${detected}'. Please log in as admin or events offiice to view this page.`
             );
             setLoading(false);
             return;
