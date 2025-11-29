@@ -24,24 +24,48 @@ router.post("/apply", protect, async (req, res) => {
       status: "accepted", // Auto-approve vendor applications
     });
 
-    // Create notifications for all verified, active students and professors about the new partner
-    try {
-      const recipients = await User.find({ role: { $in: ["student", "professor"] }, status: "active", isVerified: true }).select("_id");
-      if (recipients.length) {
-        const message = `New GUC Loyalty Partner: ${companyName} — ${discountRate}% off. Promo: ${promoCode}`;
-        const payloads = recipients.map((u) => ({
-          userId: u._id,
-          message,
-          type: "loyalty",
-          unread: true,
-        }));
-        await Notification.insertMany(payloads);
-      }
-    } catch (nerr) {
-      console.error("Failed to notify students about new loyalty partner:", nerr);
-    }
-
     res.status(201).json(app);
+
+    // Create notifications for all verified, active students, professors, and staff about the new partner
+    // NOTE: Running after response to avoid blocking the vendor
+    setImmediate(async () => {
+      try {
+        console.log("🔔 Starting notification creation for new loyalty partner...");
+        
+        const recipients = await User.find({ 
+          role: { $in: ["student", "professor", "staff", "ta"] }, 
+          status: "active", 
+          isVerified: true 
+        }).select("_id role email");
+        
+        console.log(`📩 Found ${recipients.length} eligible users for loyalty notification`);
+        if (recipients.length > 0) {
+          console.log("Users by role:", {
+            students: recipients.filter(u => u.role === "student").length,
+            professors: recipients.filter(u => u.role === "professor").length,
+            staff: recipients.filter(u => u.role === "staff").length,
+            ta: recipients.filter(u => u.role === "ta").length
+          });
+        }
+        
+        if (recipients.length) {
+          const message = `New GUC Loyalty Partner: ${companyName} — ${discountRate}% off. Promo: ${promoCode}`;
+          const payloads = recipients.map((u) => ({
+            userId: u._id,
+            message,
+            type: "loyalty",
+            unread: true,
+          }));
+          
+          const result = await Notification.insertMany(payloads);
+          console.log(`✅ Created ${result.length} loyalty notifications`);
+        } else {
+          console.log("⚠️ No eligible users found for loyalty notifications");
+        }
+      } catch (nerr) {
+        console.error("❌ Failed to notify users about new loyalty partner:", nerr);
+      }
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server Error" });

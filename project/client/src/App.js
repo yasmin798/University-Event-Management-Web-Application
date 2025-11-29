@@ -65,6 +65,7 @@ import StudentLoyaltyVendors from "./pages/StudentLoyaltyVendors";
 import TaLoyaltyVendors from "./pages/TaLoyaltyVendors";
 import ProfessorLoyaltyVendors from "./pages/ProfessorLoyaltyVendors";
 import AdminLoyaltyVendors from "./pages/AdminLoyaltyVendors";
+import StaffLoyaltyVendors from "./pages/StaffLoyaltyVendors";
 
 // Courts
 import CourtsAvailability from "./pages/CourtsAvailability";
@@ -138,6 +139,7 @@ function App() {
         <Route path="/ta/dashboard" element={<TaDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/loyalty-vendors" element={<AdminLoyaltyVendors />} />
+        <Route path="/staff/loyalty-vendors" element={<StaffLoyaltyVendors />} />
         {/* 👨‍🏫 Professor & Workshop */}
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
         <Route path="/professor/loyalty-vendors" element={<ProfessorLoyaltyVendors />} />

@@ -146,6 +146,49 @@ const TaDashboard = () => {
     fetchFavorites();
   }, []);
 
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        
+        const res = await fetch(`/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data);
+        }
+      } catch (err) {
+        console.error("Failed to load notifications", err);
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAsRead = async (notifId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      
+      await fetch(`/api/notifications/${notifId}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === notifId ? { ...n, unread: false } : n))
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
   // Extract unique filter options
   const uniqueLocations = React.useMemo(() => {
     const locations = allEvents
@@ -280,15 +323,53 @@ const TaDashboard = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
-            >
-              <Bell size={20} className="text-[#567c8d]" />
-              {notifications.some((n) => n.unread) && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
+              >
+                <Bell size={20} className="text-[#567c8d]" />
+                {notifications.some((n) => n.unread) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#c8d9e6] z-50 max-h-96 overflow-auto">
+                  <div className="p-4 border-b border-[#c8d9e6]">
+                    <h3 className="font-bold text-[#2f4156]">Notifications</h3>
+                  </div>
+                  <div className="p-2">
+                    {notifications.length === 0 ? (
+                      <p className="text-sm text-[#567c8d] p-4">No notifications yet.</p>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n._id}
+                          className={`p-3 mb-2 rounded-lg border ${
+                            n.unread
+                              ? "bg-blue-50 border-blue-200"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <p className="text-sm text-[#2f4156] flex-1">{n.message}</p>
+                            {n.unread && (
+                              <button
+                                onClick={() => markAsRead(n._id)}
+                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                              >
+                                Mark Read
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
               <User size={20} className="text-[#2f4156]" />
