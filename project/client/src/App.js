@@ -32,6 +32,7 @@ import EventPaymentSuccess from "./pages/EventPaymentSuccess.jsx";
 
 // Events pages
 import EventsHome from "./pages/EventsHome";
+import EventsHomeEventDetails from "./pages/EventsHomeEventDetails";
 import EventList from "./pages/EventList";
 import EventRegistrationForm from "./pages/EventRegistrationForm";
 import RegisteredEvents from "./pages/RegisteredEvents"; // New page
@@ -166,6 +167,7 @@ function App() {
         <Route path="/reports/sales" element={<SalesReport />} />
         {/* 🗓️ Events */}
         <Route path="/events" element={<EventsHome />} />
+        <Route path="/events-home/:id/details" element={<EventsHomeEventDetails />} />
         <Route path="/events/list" element={<EventList />} />
         <Route path="/events/choose-type" element={<ChooseEventType />} />
         <Route path="/favorites" element={<FavoritesList />} />

@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Store, FileText, Users, LogOut, X, IdCard, IdCardIcon } from "lucide-react";
+import EventityLogo from "./EventityLogo";
 
 export default function VendorSidebar({
   isMobileSidebarOpen,
@@ -33,7 +34,9 @@ export default function VendorSidebar({
         {/* LOGO */}
         <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between md:justify-start">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-teal-500" />
+            <div style={{ marginTop: "8px" }}>
+              <EventityLogo size={35} showText={false} />
+            </div>
             <h2 className="text-[22px] font-extrabold">Vendor Hub</h2>
           </div>
 
