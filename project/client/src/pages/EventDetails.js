@@ -544,6 +544,8 @@ const EventDetails = () => {
         <ProfessorSidebar />
       ) : userRole === "ta" ? (
         <TaSidebar />
+      ) : userRole === "staff" ? (
+        <StaffSidebar />
       ) : null}
       <div className="flex-1 ml-[250px]">
         {/* Header */}
