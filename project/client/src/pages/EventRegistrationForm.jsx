@@ -3,9 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios"; // uncomment after testing ui
 //import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
 import "./EventRegistrationForm.css";
-import { ArrowLeft } from "lucide-react";
+import StudentSidebar from "../components/StudentSidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
+import TaSidebar from "../components/TaSidebar";
+import StaffSidebar from "../components/StaffSidebar";
 
-import { Menu, Bell, User, LogOut, Home, Calendar } from "lucide-react";
+import { Bell, User } from "lucide-react";
 const EventRegistrationForm = () => {
   const { eventId } = useParams();
   const [formData, setFormData] = useState({
@@ -21,7 +24,6 @@ const EventRegistrationForm = () => {
   const [success, setSuccess] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false); // newly added
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState("");
   React.useEffect(() => {
     const getUserRole = () => {
@@ -29,7 +31,7 @@ const EventRegistrationForm = () => {
         const token = localStorage.getItem("token");
         if (token) {
           const payload = JSON.parse(atob(token.split(".")[1]));
-          return payload.role || "student";
+          return (payload.role || "student").toLowerCase();
         }
       } catch (error) {
         console.error("Error decoding token:", error);
@@ -134,40 +136,11 @@ const EventRegistrationForm = () => {
       setIsLoading(false);
     }
   };
+
   const handleCancel = () => {
     navigate(-1); // Go back to previous page
   };
-  // Sidebar functions
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
-  const handleDashboard = () => {
-    switch (userRole.toLowerCase()) {
-      case "staff":
-        navigate("/staff/dashboard");
-        break;
-      case "ta":
-        navigate("/ta/dashboard");
-        break;
-      case "professor":
-        navigate("/professor/dashboard");
-        break;
-      default:
-        navigate("/student/dashboard");
-        break;
-    }
-    closeSidebar();
-  };
-  const handleRegisteredEvents = () => {
-    navigate("/events/registered");
-    closeSidebar();
-  };
-
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/");
-    }
-  };
   // Fetch real event details
   /*  useEffect(() => {
     const fetchEventDetails = async () => {
@@ -219,77 +192,22 @@ const EventRegistrationForm = () => {
 
   return (
     <div className="flex h-screen bg-[#f5efeb]">
-      {/* Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeSidebar}
-        ></div>
+      {/* Fixed Sidebar based on role */}
+      {!userRole ? null : userRole === "professor" ? (
+        <ProfessorSidebar />
+      ) : userRole === "staff" ? (
+        <StaffSidebar />
+      ) : userRole === "ta" ? (
+        <TaSidebar />
+      ) : (
+        <StudentSidebar />
       )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#2f4156] text-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#567c8d] rounded-full"></div>
-            <span className="text-xl font-bold">EventHub</span>
-          </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 hover:bg-[#567c8d] rounded-lg transition-colors"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
-
-        {/* Navigation Links */}
-        <div className="flex-1 px-4 mt-4 space-y-2">
-          {/* Dashboard Button */}
-          <button
-            onClick={handleDashboard}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
-          >
-            <Home size={18} />
-            {userRole
-              ? `${
-                  userRole.charAt(0).toUpperCase() + userRole.slice(1)
-                } Dashboard`
-              : "Dashboard"}
-          </button>
-
-          {/* Registered Events Button */}
-          <button
-            onClick={handleRegisteredEvents}
-            className="w-full flex items-center gap-3 bg-[#567c8d] hover:bg-[#45687a] text-white py-3 px-4 rounded-lg transition-colors text-left"
-          >
-            <Calendar size={18} />
-            Registered Events
-          </button>
-
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-[#c88585] hover:bg-[#b87575] text-white py-3 px-4 rounded-lg transition-colors"
-          >
-            <LogOut size={18} /> Logout
-          </button>
-        </div>
-      </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
-        {/* Header with sidebar toggle */}
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
-          >
-            <Menu size={24} className="text-[#2f4156]" />
-          </button>
-
-          <div className="flex items-center gap-2 md:gap-4 ml-4">
+      <div className="flex-1 overflow-auto ml-[260px]">
+        {/* Header */}
+        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-end">
+          <div className="flex items-center gap-2 md:gap-4">
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
               <Bell size={20} className="text-[#567c8d]" />
             </button>
@@ -298,15 +216,6 @@ const EventRegistrationForm = () => {
             </div>
           </div>
         </header>
-        <div className="flex items-center gap-2 mb-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-[#2f4156] hover:text-[#45687a] font-medium"
-          >
-            <ArrowLeft size={18} />
-            Back
-          </button>
-        </div>
 
         {/* Registration Form Content */}
         <div className="event-reg-page">
