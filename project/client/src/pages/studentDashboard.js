@@ -245,7 +245,7 @@ const StudentDashboard = () => {
 
           {/* Search + Filters */}
           <div className="flex flex-col md:flex-row gap-2 flex-1 mx-4">
-            <div className="relative md:w-40">
+            <div className="relative md:w-48 flex-shrink-0">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#567c8d]"
                 size={18}
@@ -259,7 +259,7 @@ const StudentDashboard = () => {
               />
             </div>
 
-            <div className="md:w-40">
+            <div className="md:w-44 flex-shrink-0">
               <SearchableDropdown
                 options={uniqueLocations}
                 value={searchLocation}
@@ -270,7 +270,7 @@ const StudentDashboard = () => {
               />
             </div>
 
-            <div className="md:w-40">
+            <div className="md:w-44 flex-shrink-0">
               <SearchableDropdown
                 options={uniqueProfessors}
                 value={professorFilter}
@@ -281,16 +281,18 @@ const StudentDashboard = () => {
               />
             </div>
 
-            <EventTypeDropdown
-              selected={eventTypeFilter}
-              onChange={setEventTypeFilter}
-            />
+            <div className="flex-shrink-0">
+              <EventTypeDropdown
+                selected={eventTypeFilter}
+                onChange={setEventTypeFilter}
+              />
+            </div>
 
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="px-4 py-2 border border-[#c8d9e6] rounded-lg"
+              className="px-4 py-2 border border-[#c8d9e6] rounded-lg flex-shrink-0"
             />
 
             <button

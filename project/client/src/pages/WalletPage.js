@@ -4,6 +4,7 @@ import { ArrowUpRight, ArrowDownRight, Wallet, History } from "lucide-react";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
+import StaffSidebar from "../components/StaffSidebar";
 
 export default function WalletPage() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function WalletPage() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role || "");
+        setUserRole((payload.role || "student").toLowerCase());
       } catch (e) {
         console.error("Invalid token:", e);
       }
@@ -62,13 +63,15 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f5efeb]">
-      {userRole === "student" ? (
+    <div className="flex h-screen bg-gray-50">
+      {!userRole ? null : userRole === "student" ? (
         <StudentSidebar />
       ) : userRole === "professor" ? (
         <ProfessorSidebar />
       ) : userRole === "ta" ? (
         <TaSidebar />
+      ) : userRole === "staff" ? (
+        <StaffSidebar />
       ) : (
         <StudentSidebar /> // fallback
       )}

@@ -1,5 +1,11 @@
 // client/src/pages/EventsHome.js
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -14,6 +20,8 @@ import {
   Archive, // New Icon
   Download, // New Icon
   Star, // New Icon for ratings
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import NotificationsDropdown from "../components/NotificationsDropdown";
 import SearchableDropdown from "../components/SearchableDropdown";
@@ -114,19 +122,13 @@ export default function EventsHome() {
   const [bazaars, setBazaars] = useState([]);
   const [trips, setTrips] = useState([]);
 
-  // Notifications
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const bellRef = useRef(null);
-
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
   const [professorFilter, setProfessorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [filter, setFilter] = useState("All");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [params] = useSearchParams();
 
   // Debounce
@@ -179,10 +181,8 @@ export default function EventsHome() {
   });
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [docsList, setDocsList] = useState([]);
-  const [docsLoading, setDocsLoading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState("");
-  const [viewerName, setViewerName] = useState("");
 
   const getBackendOrigin = () => {
     try {
@@ -194,7 +194,6 @@ export default function EventsHome() {
       return window.location.origin;
     }
   };
-  const [events, setEvents] = useState([]);
 
   const absoluteUrl = (url) => {
     if (!url) return url;
@@ -249,7 +248,6 @@ export default function EventsHome() {
 
       setDocsModalOpen(false);
       setViewerUrl(blobUrl);
-      setViewerName(name || "Document");
       setViewerOpen(true);
     } catch (err) {
       console.error("Viewer error:", err);
@@ -462,9 +460,8 @@ export default function EventsHome() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
-        setUnreadCount(data.filter((n) => n.unread).length);
+        // const data = await res.json();
+        // Notifications are handled by NotificationsDropdown component
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -505,8 +502,9 @@ export default function EventsHome() {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (bellRef.current && !bellRef.current.contains(e.target)) {
-        setShowNotifications(false);
+      // Notifications are handled by NotificationsDropdown component
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target)) {
+        setCreateMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -517,16 +515,19 @@ export default function EventsHome() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  const allEvents = [
-    ...otherEvents.filter(
-      (e) => !["CONFERENCE", "WORKSHOP", "BAZAAR"].includes(e.type)
-    ),
-    ...conferences,
-    ...workshops,
-    ...booths,
-    ...bazaars,
-    ...trips,
-  ];
+  const allEvents = useMemo(
+    () => [
+      ...otherEvents.filter(
+        (e) => !["CONFERENCE", "WORKSHOP", "BAZAAR"].includes(e.type)
+      ),
+      ...conferences,
+      ...workshops,
+      ...booths,
+      ...bazaars,
+      ...trips,
+    ],
+    [otherEvents, conferences, workshops, booths, bazaars, trips]
+  );
 
   const isLoading = loading || otherLoading;
 
@@ -1037,18 +1038,21 @@ export default function EventsHome() {
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
-              className="btn-outline"
+              className="btn-primary"
               style={{
-                padding: "8px 12px",
+                padding: "10px 20px",
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
-                fontSize: "14px",
+                gap: "8px",
                 borderRadius: "10px",
               }}
-              title="Toggle sort order"
             >
-              {sortOrder === "asc" ? "Newest" : "Oldest"}
+              {sortOrder === "asc" ? (
+                <ArrowUp size={16} />
+              ) : (
+                <ArrowDown size={16} />
+              )}
+              {sortOrder === "asc" ? "Oldest" : "Newest"}
             </button>
           </div>
 
@@ -1066,7 +1070,6 @@ export default function EventsHome() {
             {(userRole === "admin" || userRole === "events_office") && (
               <button
                 onClick={async () => {
-                  setDocsLoading(true);
                   setDocsList([]);
                   try {
                     const token = localStorage.getItem("token");
@@ -1103,8 +1106,6 @@ export default function EventsHome() {
                   } catch (err) {
                     console.error("Error fetching docs:", err);
                     setToast({ open: true, text: "Failed to load documents" });
-                  } finally {
-                    setDocsLoading(false);
                   }
                 }}
                 className="btn-primary"

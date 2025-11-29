@@ -16,6 +16,7 @@ import {
 import "../events.theme.css";
 import Sidebar from "../components/Sidebar";
 
+
 function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
   if (!open) return null;
 
@@ -124,6 +125,65 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
   );
 }
 
+function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
+  const attendeeCount = vendorTarget.raw.attendees?.length || 0;
+
+  return (
+    <div style={popupOverlayStyle}>
+      <div style={popupHeaderStyle}>
+        <div>
+          <h3 style={{ margin: 0 }}>Send QR Codes</h3>
+          <p style={{ color: "#E5E7EB", fontSize: 14 }}>
+            QR Code Distribution to Vendor
+          </p>
+        </div>
+        <button onClick={onClose} style={closeBtnStyle}>
+          ✕
+        </button>
+      </div>
+      <div style={popupContentStyle}>
+        <div style={mailRowStyle}>
+          <b>To:</b> {vendorTarget.vendorEmail}
+        </div>
+        <div style={mailRowStyle}>
+          <b>Subject:</b> QR Codes for Your Bazaar Vendor Application
+        </div>
+        <div style={mailBodyStyle}>
+          <p>Dear {vendorTarget.vendorName},</p>
+          <p>
+            Please find attached a PDF containing QR codes for all attendees 
+            associated with your bazaar vendor application.
+          </p>
+          <p>
+            This document contains {attendeeCount} individual QR codes, one for
+            each attendee registered under your application.
+          </p>
+          <p>
+            These QR codes are required for attendee check-in and verification
+            during the event. Please ensure each attendee has their respective 
+            QR code available.
+          </p>
+          <p>If you have any questions about the QR codes or attendee management, 
+            please contact the admin team.</p>
+          <p>— Event Administration Team</p>
+        </div>
+      </div>
+      <div style={popupFooterStyle}>
+        <button 
+          onClick={onSend} 
+          style={sendBtnStyle} 
+          disabled={sending}
+        >
+          {sending ? "Sending QR Codes..." : "Send QR Codes"}
+        </button>
+        <button onClick={onClose} style={cancelBtnStyle}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function VendorRequests() {
   const { id: bazaarId } = useParams();
   const navigate = useNavigate();
@@ -141,6 +201,9 @@ export default function VendorRequests() {
     title: "",
     body: "",
   });
+  const [sendingQRCodes, setSendingQRCodes] = useState(false);
+const [showQRCodePopup, setShowQRCodePopup] = useState(false);
+const [qrCodeTarget, setQrCodeTarget] = useState(null)
   const [showVendorMailPopup, setShowVendorMailPopup] = useState(false);
   const [vendorTarget, setVendorTarget] = useState(null);
   const [sending, setSending] = useState(false);
@@ -294,6 +357,39 @@ export default function VendorRequests() {
       setProcessingId(null);
     }
   };
+
+  const handleSendQRCodes = async () => {
+  if (!qrCodeTarget) return;
+  
+  setSendingQRCodes(true);
+
+  try {
+    const response = await fetch(`${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        boothId: qrCodeTarget.raw._id, // Using boothId for consistency with booth implementation
+        vendorEmail: qrCodeTarget.vendorEmail,
+        vendorName: qrCodeTarget.vendorName,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
+    } else {
+      throw new Error(result.error || "Failed to send QR codes");
+    }
+  } catch (err) {
+    console.error("Error sending QR codes:", err);
+    alert(`Failed to send QR codes: ${err.message}`);
+  } finally {
+    setSendingQRCodes(false);
+    setShowQRCodePopup(false);
+    setQrCodeTarget(null);
+  }
+};
 
   const openConfirm = (id, status) => {
     setConfirmData({
@@ -520,7 +616,27 @@ export default function VendorRequests() {
                             : "Reject"}
                         </button>
                       </div>
+                      
                     )}
+                    {status === "accepted" && Array.isArray(req.attendees) && req.attendees.length > 0 && (
+    <button
+      onClick={() => {
+        setQrCodeTarget({
+          raw: req,
+          vendorEmail: req.vendorEmail || req.attendees[0]?.email,
+          vendorName: req.vendorName || req.attendees[0]?.name,
+        });
+        setShowQRCodePopup(true);
+      }}
+      disabled={sendingQRCodes}
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+    >
+      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
+        <span style={{ fontSize: 10 }}>QR</span>
+      </div>
+      {sendingQRCodes ? "Sending QR Codes..." : "Send QR Codes"}
+    </button>
+  )}
                   </div>
                 );
               })}
@@ -555,7 +671,14 @@ export default function VendorRequests() {
               setShowVendorMailPopup(true);
             }}
           />
-
+{showQRCodePopup && qrCodeTarget && (
+  <QRCodePopup
+    onClose={() => setShowQRCodePopup(false)}
+    onSend={handleSendQRCodes}
+    sending={sendingQRCodes}
+    vendorTarget={qrCodeTarget}
+  />
+)}
           {showVendorMailPopup && vendorTarget && (
             <VendorMailPopup
               onClose={() => setShowVendorMailPopup(false)}

@@ -1,9 +1,11 @@
 // client/src/pages/EventDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import ProfessorSidebar from "../components/ProfessorSidebar";
 import StudentSidebar from "../components/StudentSidebar";
+import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
+import StaffSidebar from "../components/StaffSidebar";
+
 import {
   Menu,
   Bell,

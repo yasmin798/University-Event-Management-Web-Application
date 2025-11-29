@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 
+
 function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
   if (!open) return null;
 
@@ -118,6 +119,69 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
     </div>
   );
 }
+function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
+  const attendeeCount = vendorTarget.raw.attendees?.length || 0;
+
+  return (
+    <div style={popupOverlayStyle}>
+      <div style={popupHeaderStyle}>
+        <div>
+          <h3 style={{ margin: 0 }}>Send QR Codes</h3>
+          <p style={{ color: "#E5E7EB", fontSize: 14 }}>
+            QR Code Distribution to Vendor
+          </p>
+        </div>
+        <button onClick={onClose} style={closeBtnStyle}>
+          ✕
+        </button>
+      </div>
+      <div style={popupContentStyle}>
+        <div style={mailRowStyle}>
+          <b>To:</b> {vendorTarget.vendorEmail}
+        </div>
+        <div style={mailRowStyle}>
+          <b>Subject:</b> QR Codes for Your Booth Application
+        </div>
+        <div style={mailBodyStyle}>
+          <p>Dear {vendorTarget.vendorName},</p>
+          <p>
+            Please find attached the QR codes for all attendees associated with
+            your booth application.
+          </p>
+          <p>
+            This package contains {attendeeCount} individual QR codes, one for
+            each attendee registered under your booth application.
+          </p>
+          <p>
+            These QR codes are required for attendee check-in and verification
+            during the event.
+          </p>
+          <p>Please ensure each attendee has their respective QR code available.</p>
+          <p>Application Details:</p>
+          <div style={{ margin: "10px 0", padding: "10px", backgroundColor: "#f3f4f6", borderRadius: "6px", fontSize: 13 }}>
+            <strong>Booth ID:</strong> {vendorTarget.raw._id || "N/A"}<br />
+            <strong>Location:</strong> {vendorTarget.raw.location || "Not specified"}<br />
+            <strong>Total Attendees:</strong> {attendeeCount}
+          </div>
+          <p>If you have any questions about the QR codes or attendee management, please contact the admin team.</p>
+          <p>— Event Administration Team</p>
+        </div>
+      </div>
+      <div style={popupFooterStyle}>
+        <button 
+          onClick={onSend} 
+          style={sendBtnStyle} 
+          disabled={sending}
+        >
+          {sending ? "Sending QR Codes..." : "Send QR Codes"}
+        </button>
+        <button onClick={onClose} style={cancelBtnStyle}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function VendorRequestsBooth() {
   const { id: bazaarId } = useParams();
@@ -140,6 +204,9 @@ export default function VendorRequestsBooth() {
   const [showVendorMailPopup, setShowVendorMailPopup] = useState(false);
   const [vendorTarget, setVendorTarget] = useState(null);
   const [sending, setSending] = useState(false);
+  const [sendingQRCodes, setSendingQRCodes] = useState(false);
+const [showQRCodePopup, setShowQRCodePopup] = useState(false);
+const [qrCodeTarget, setQrCodeTarget] = useState(null);
 
   const API_ORIGIN = "http://localhost:3001";
 
@@ -335,7 +402,75 @@ export default function VendorRequestsBooth() {
       setProcessingId(null);
     }
   };
+const handleSendQRCodes = async () => {
+  if (!qrCodeTarget) return;
+  
+  setSendingQRCodes(true);
 
+  try {
+    const requestBody = {
+      boothId: qrCodeTarget.raw._id,
+      vendorEmail: qrCodeTarget.vendorEmail,
+      vendorName: qrCodeTarget.vendorName,
+      applicationId: qrCodeTarget.raw._id,
+    };
+
+    console.log("Making request to send QR codes with payload:", requestBody);
+
+    const response = await fetch(`${API_ORIGIN}/api/booth-applications/admin/send-qr-codes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    // Always read the raw response text first
+    const responseText = await response.text();
+
+    console.log("=== SEND QR CODES RESPONSE DETAILS ===");
+    console.log("Response status:", response.status);
+    console.log("Response status text:", response.statusText);
+    console.log("Response headers:", Array.from(response.headers.entries()));
+    console.log("Raw response text:", responseText);
+    console.log("Response text length:", responseText.length);
+
+    // Check if the response is empty
+    if (!responseText.trim()) {
+      console.error("Server returned an empty response");
+      throw new Error("Server returned an empty response");
+    }
+
+    // Try to parse the response as JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse response as JSON. Raw response content:");
+      console.error(responseText);
+      throw new Error(`Server returned a non-JSON response (status ${response.status}):\n${responseText.substring(0, 2000)}${responseText.length > 2000 ? "\n... (response truncated)" : ""}`);
+    }
+
+    if (response.ok) {
+      console.log("QR codes sent successfully:", result);
+      alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
+    } else {
+      console.error("Server returned an error response:", result);
+      const errorMessage = result.error || result.message || `HTTP ${response.status}`;
+      throw new Error(`Server error: ${errorMessage}`);
+    }
+
+  } catch (err) {
+    console.error("=== ERROR SENDING QR CODES ===");
+    console.error("Full error:", err);
+    console.error("Error message:", err.message);
+    
+    // Only show a simple alert, but all details are in the console
+    alert(`Failed to send QR codes. Check the console for detailed error information.`);
+  } finally {
+    setSendingQRCodes(false);
+    setShowQRCodePopup(false);
+    setQrCodeTarget(null);
+  }
+};
   const openConfirm = (id, status) => {
     setConfirmData({
       requestId: id,
@@ -529,6 +664,26 @@ export default function VendorRequestsBooth() {
                       </button>
                     </div>
                   )}
+
+                  {req.status === "accepted" && req.raw.attendees && req.raw.attendees.length > 0 && (
+    <button
+      onClick={() => {
+        setQrCodeTarget({
+          raw: req.raw,
+          vendorEmail: req.email,
+          vendorName: req.name,
+        });
+        setShowQRCodePopup(true);
+      }}
+      disabled={sendingQRCodes}
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+    >
+      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
+        <span style={{ fontSize: 10 }}>QR</span>
+      </div>
+      {sendingQRCodes ? "Sending QR Codes..." : "Send QR Codes"}
+    </button>
+  )}
                 </div>
               ))}
             </div>
@@ -559,6 +714,14 @@ export default function VendorRequestsBooth() {
               setShowVendorMailPopup(true);
             }}
           />
+          {showQRCodePopup && qrCodeTarget && (
+  <QRCodePopup
+    onClose={() => setShowQRCodePopup(false)}
+    onSend={handleSendQRCodes}
+    sending={sendingQRCodes}
+    vendorTarget={qrCodeTarget}
+  />
+)}
 
           {showVendorMailPopup && vendorTarget && (
             <VendorMailPopup
