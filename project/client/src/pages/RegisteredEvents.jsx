@@ -586,18 +586,7 @@ const RegisteredEvents = () => {
       )}{" "}
       {/* Main content */}
       <div className="flex-1 overflow-auto ml-64">
-        {/* Header with sidebar toggle */}
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2"></div>
-          <div className="flex items-center gap-2 md:gap-4 ml-4">
-            <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
-              <Bell size={20} className="text-[#567c8d]" />
-            </button>
-            <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
-              <User size={20} className="text-[#2f4156]" />
-            </div>
-          </div>
-        </header>
+        
         {/* Registered Events Content */}
         <div className="my-events-page">
           {/* Hero Section with Background */}
