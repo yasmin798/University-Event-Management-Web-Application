@@ -746,16 +746,6 @@ const ProfessorDashboard = () => {
                           >
                             Details
                           </button>
-                          {(e.type === "TRIP" || e.type === "WORKSHOP") && (
-                            <button
-                              className="flex-1 bg-[#c88585] hover:bg-[#b87575] text-white py-2 px-3 rounded-lg transition-colors"
-                              onClick={() =>
-                                navigate(`/events/register/${e._id}`)
-                              }
-                            >
-                              Register
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
