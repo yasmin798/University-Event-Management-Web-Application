@@ -835,6 +835,7 @@ export default function EventsHome() {
             c._id === id ? { ...c, status: data.status || "archived" } : c
           )
         );
+      refreshEvents();
 
       if (rawType === "TRIP")
         setTrips((ts) =>
