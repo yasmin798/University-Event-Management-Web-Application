@@ -5,6 +5,7 @@ import StudentSignup from "./StudentSignup";
 import StaffSignup from "./StaffSignup";
 import VendorSignup from "./VendorSignup";
 import Spline from "@splinetool/react-spline";
+import EventityLogo from "../components/EventityLogo";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -44,6 +45,19 @@ export default function Signup() {
         }}
         className="hidden-mobile"
       >
+        {/* --- LOGO PLACEMENT (Top Left) --- */}
+        <div
+          style={{
+            position: "absolute",
+            top: "40px",
+            left: "60px",
+            zIndex: 10,
+          }}
+        >
+          <EventityLogo />
+        </div>
+        {/* ---------------------------------- */}
+
         <div
           style={{
             flex: 1,

@@ -3,6 +3,7 @@ import React from "react";
 import { LogOut, Store } from "lucide-react";
 import NotificationsDropdown from "./NotificationsDropdown";
 import { useNavigate } from "react-router-dom";
+import EventityLogo from "./EventityLogo";
 
 export default function AdminSidebar() {
   const navigate = useNavigate();
@@ -34,15 +35,26 @@ export default function AdminSidebar() {
         zIndex: 100,
       }}
     >
-      <h2
+      <div
         style={{
+          display: "flex",
+          alignItems: "center",
           marginBottom: "30px",
-          fontSize: "22px",
-          fontWeight: 800,
+          gap: "12px",
         }}
       >
-        Admin Panel
-      </h2>
+        <div style={{ marginTop: "8px" }}>
+          <EventityLogo size={35} showText={false} />
+        </div>
+        <h2
+          style={{
+            fontSize: "22px",
+            fontWeight: 800,
+          }}
+        >
+          Admin Panel
+        </h2>
+      </div>
 
       {/* Notifications bell for admin (shows unread count and dropdown) */}
       <div style={{ marginBottom: 18 }}>

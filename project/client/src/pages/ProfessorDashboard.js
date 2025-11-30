@@ -227,16 +227,16 @@ const ProfessorDashboard = () => {
   // });
 
   const filteredEvents = allEvents
-  .filter((e) => {
-    // Hide archived events
-    if (e.status === "archived") return false;
+    .filter((e) => {
+      // Hide archived events
+      if (e.status === "archived") return false;
 
-    // Always show booths
-    if (e.type === "BOOTH") return true;
+      // Always show booths
+      if (e.type === "BOOTH") return true;
 
-    // Show all non-archived events (past + future)
-    return true;
-  })
+      // Show all non-archived events (past + future)
+      return true;
+    })
 
     .filter((e) => {
       const name = e.title || e.name || e.workshopName || e.bazaarName;
@@ -578,7 +578,7 @@ const ProfessorDashboard = () => {
             <div className="flex items-center gap-4 flex-1">
               {/* Sidebar is fixed; menu button removed */}
 
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#567c8d]"
                   size={22}
@@ -592,7 +592,7 @@ const ProfessorDashboard = () => {
                 />
               </div>
 
-              <div className="w-48">
+              <div className="w-40">
                 <SearchableDropdown
                   options={uniqueLocations}
                   value={searchLocation}
@@ -603,7 +603,7 @@ const ProfessorDashboard = () => {
                 />
               </div>
 
-              <div className="w-48">
+              <div className="w-40">
                 <SearchableDropdown
                   options={uniqueProfessors}
                   value={professorFilter}
@@ -614,10 +614,12 @@ const ProfessorDashboard = () => {
                 />
               </div>
 
-              <EventTypeDropdown
-                selected={eventTypeFilter}
-                onChange={setEventTypeFilter}
-              />
+              <div className="w-36">
+                <EventTypeDropdown
+                  selected={eventTypeFilter}
+                  onChange={setEventTypeFilter}
+                />
+              </div>
               <button
                 onClick={() =>
                   setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
@@ -760,7 +762,9 @@ const ProfessorDashboard = () => {
                 events={allEvents}
                 selectedDate={selectedCalendarDate}
                 onSelectDate={(d) => {
-                  const isSame = selectedCalendarDate && d.toDateString() === selectedCalendarDate.toDateString();
+                  const isSame =
+                    selectedCalendarDate &&
+                    d.toDateString() === selectedCalendarDate.toDateString();
                   setSelectedCalendarDate(isSame ? null : d);
                 }}
               />

@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import EventityLogo from "./EventityLogo";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -69,10 +70,10 @@ export default function Sidebar() {
       {/* LOGO */}
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-teal-500" />
-
+          <div style={{ marginTop: "8px" }}>
+            <EventityLogo size={35} showText={false} />
+          </div>
           <h2 style={{ fontSize: "22px", fontWeight: 800 }}>EventHub</h2>
-          {/* header right area (reserved) */}
         </div>
       </div>
 

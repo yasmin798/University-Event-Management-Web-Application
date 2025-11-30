@@ -11,6 +11,7 @@ import {
   Store,
   Dumbbell,
 } from "lucide-react";
+import EventityLogo from "./EventityLogo";
 
 export default function ProfessorSidebar() {
   const navigate = useNavigate();
@@ -29,7 +30,9 @@ export default function ProfessorSidebar() {
     <aside className="fixed left-0 top-0 h-screen w-[260px] bg-[#2f4156] text-white shadow-lg flex flex-col z-50">
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-teal-500" />
+          <div style={{ marginTop: "8px" }}>
+            <EventityLogo size={35} showText={false} />
+          </div>
           <h2 style={{ fontSize: "22px", fontWeight: 800 }}>Professor</h2>
         </div>
       </div>

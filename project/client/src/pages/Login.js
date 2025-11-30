@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import { loginUser } from "../api/authApi";
-import Spline from '@splinetool/react-spline';
+import Spline from "@splinetool/react-spline";
+import EventityLogo from "../components/EventityLogo";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -76,6 +77,19 @@ export default function Login() {
         }}
         className="hidden-mobile"
       >
+        {/* --- LOGO PLACEMENT (Top Left) --- */}
+        <div
+          style={{
+            position: "absolute",
+            top: "40px",
+            left: "60px",
+            zIndex: 10,
+          }}
+        >
+          <EventityLogo />
+        </div>
+        {/* ---------------------------------- */}
+
         <div
           style={{
             flex: 1,
@@ -107,7 +121,14 @@ export default function Login() {
           >
             Welcome <span style={{ color: "#8caabb" }}>Back.</span>
           </h1>
-          <p style={{ fontSize: "1.1rem", opacity: 0.8, lineHeight: "1.6", color: "white" }}>
+          <p
+            style={{
+              fontSize: "1.1rem",
+              opacity: 0.8,
+              lineHeight: "1.6",
+              color: "white",
+            }}
+          >
             Log in to access your dashboard, manage upcoming events, and stay
             connected with the campus community.
           </p>

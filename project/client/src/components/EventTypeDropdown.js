@@ -5,7 +5,7 @@ const EventTypeDropdown = ({ selected, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative ml-2 w-48">
+    <div className="relative ml-2 w-32">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full py-2 px-3 border border-[#c8d9e6] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#567c8d] bg-white text-[#2f4156] flex justify-between items-center"

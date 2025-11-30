@@ -1,9 +1,18 @@
 // client/src/pages/VendorsPage.js
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, LogOut, User as UserIcon, Menu, X, IdCard, IdCardIcon } from "lucide-react";
+import {
+  Search,
+  LogOut,
+  User as UserIcon,
+  Menu,
+  X,
+  IdCard,
+  IdCardIcon,
+} from "lucide-react";
 import bazaarImg from "../images/Arabbazaarisolatedonwhitebackground_FreeVector.jpeg"; // Reuse from EventsHome imports
 import { Calendar, Store, FileText, Users } from "lucide-react";
+import EventityLogo from "../components/EventityLogo";
 
 const VendorsPage = () => {
   const navigate = useNavigate();
@@ -96,7 +105,9 @@ const VendorsPage = () => {
         {/* LOGO */}
         <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between md:justify-start">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-teal-500" />
+            <div style={{ marginTop: "8px" }}>
+              <EventityLogo size={35} showText={false} />
+            </div>
             <h2 className="text-[22px] font-extrabold">Vendor Hub</h2>
           </div>
 

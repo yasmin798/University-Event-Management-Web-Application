@@ -11,6 +11,7 @@ import {
   LogOut,
   BadgeCheck,
 } from "lucide-react";
+import EventityLogo from "./EventityLogo";
 
 export default function FixedSidebarAdmin() {
   const navigate = useNavigate();
@@ -38,11 +39,11 @@ export default function FixedSidebarAdmin() {
     >
       {/* Logo / title */}
       <div className="px-6 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-          {/* Add your logo here */}
-          <img src="/path-to-your-logo.png" alt="Logo" className="w-8 h-8" />
+        <div className="flex items-center gap-3">
+          <div style={{ marginTop: "8px" }}>
+            <EventityLogo size={35} showText={false} />
+          </div>
           <h1 className="text-xl font-bold tracking-wide">Admin</h1>
-          
         </div>
       </div>
 
@@ -130,14 +131,17 @@ export default function FixedSidebarAdmin() {
         </button>
 
         <button
-  onClick={() => navigate("/admin/vendor-requests-booths")}
-  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-    ${isActive("/admin/vendor-requests-booths") ? "bg-white/15" : "hover:bg-white/5"}`}
->
-  <Store size={18} />
-  <span>Vendor Requests Booths</span>
-</button>
-
+          onClick={() => navigate("/admin/vendor-requests-booths")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+    ${
+      isActive("/admin/vendor-requests-booths")
+        ? "bg-white/15"
+        : "hover:bg-white/5"
+    }`}
+        >
+          <Store size={18} />
+          <span>Vendor Requests Booths</span>
+        </button>
       </nav>
 
       {/* Logout */}
