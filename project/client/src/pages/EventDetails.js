@@ -739,7 +739,6 @@ const EventDetails = () => {
               {event?.allowedRoles?.length > 0 &&
                 !userIsAllowed &&
                 !isEventsOffice &&
-                !isConference &&
                 !isBazaar &&
                 !isBooth && (
                   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
@@ -760,7 +759,9 @@ const EventDetails = () => {
                             .join(", ")}
                         </p>
                         <p className="text-yellow-700 text-sm mt-1">
-                          Only selected roles can register for this event.
+                          {isConference
+                            ? "Only selected roles can attend this event."
+                            : "Only selected roles can register for this event."}
                         </p>
                       </div>
                     </div>

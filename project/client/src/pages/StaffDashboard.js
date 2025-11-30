@@ -258,10 +258,10 @@ const StaffDashboard = () => {
           console.log("⚠️ No token found, cannot fetch notifications");
           return;
         }
-        
+
         console.log("📞 Fetching notifications from /api/notifications");
         const res = await fetch(`/api/notifications`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.ok) {
@@ -269,7 +269,10 @@ const StaffDashboard = () => {
           console.log(`✅ Received ${data.length} notifications:`, data);
           setNotifications(data);
         } else {
-          console.error("❌ Failed to fetch notifications, status:", res.status);
+          console.error(
+            "❌ Failed to fetch notifications, status:",
+            res.status
+          );
         }
       } catch (err) {
         console.error("❌ Failed to load notifications", err);
@@ -278,7 +281,7 @@ const StaffDashboard = () => {
 
     console.log("🔄 Setting up notifications fetch...");
     fetchNotifications();
-    
+
     // Poll every 10 seconds for new notifications
     const interval = setInterval(() => {
       console.log("🔄 Polling for new notifications...");
@@ -293,12 +296,12 @@ const StaffDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      
+
       await fetch(`/api/notifications/${notifId}/read`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       setNotifications((prev) =>
         prev.map((n) => (n._id === notifId ? { ...n, unread: false } : n))
       );
@@ -669,6 +672,21 @@ const StaffDashboard = () => {
                           <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                             <Clock size={16} className="flex-shrink-0" />
                             <span>{eventDate}</span>
+                          </div>
+                        )}
+
+                        {e.allowedRoles && e.allowedRoles.length > 0 && (
+                          <div
+                            style={{
+                              padding: "6px 10px",
+                              background: "#e3f2fd",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🔒 Restricted to: {e.allowedRoles.join(", ")}
                           </div>
                         )}
                       </div>

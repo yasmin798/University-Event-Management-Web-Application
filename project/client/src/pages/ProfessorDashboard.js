@@ -741,6 +741,21 @@ const ProfessorDashboard = () => {
                             e.startDateTime || e.startDate || e.date
                           )}
                         </p>
+                        {e.allowedRoles && e.allowedRoles.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: "8px",
+                              padding: "6px 10px",
+                              background: "#e3f2fd",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🔒 Restricted to: {e.allowedRoles.join(", ")}
+                          </div>
+                        )}
                         <div className="flex gap-2 mt-4">
                           <button
                             className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"

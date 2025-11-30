@@ -152,9 +152,9 @@ const TaDashboard = () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        
+
         const res = await fetch(`/api/notifications`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.ok) {
@@ -175,12 +175,12 @@ const TaDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      
+
       await fetch(`/api/notifications/${notifId}/read`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       setNotifications((prev) =>
         prev.map((n) => (n._id === notifId ? { ...n, unread: false } : n))
       );
@@ -341,7 +341,9 @@ const TaDashboard = () => {
                   </div>
                   <div className="p-2">
                     {notifications.length === 0 ? (
-                      <p className="text-sm text-[#567c8d] p-4">No notifications yet.</p>
+                      <p className="text-sm text-[#567c8d] p-4">
+                        No notifications yet.
+                      </p>
                     ) : (
                       notifications.map((n) => (
                         <div
@@ -353,7 +355,9 @@ const TaDashboard = () => {
                           }`}
                         >
                           <div className="flex justify-between items-start gap-2">
-                            <p className="text-sm text-[#2f4156] flex-1">{n.message}</p>
+                            <p className="text-sm text-[#2f4156] flex-1">
+                              {n.message}
+                            </p>
                             {n.unread && (
                               <button
                                 onClick={() => markAsRead(n._id)}
@@ -498,6 +502,20 @@ const TaDashboard = () => {
                         <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                           <Clock size={16} />
                           <span>{eventDate}</span>
+                        </div>
+                      )}
+                      {e.allowedRoles && e.allowedRoles.length > 0 && (
+                        <div
+                          style={{
+                            padding: "6px 10px",
+                            background: "#e3f2fd",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            color: "#1976d2",
+                            fontWeight: "500",
+                          }}
+                        >
+                          🔒 Restricted to: {e.allowedRoles.join(", ")}
                         </div>
                       )}
                     </div>

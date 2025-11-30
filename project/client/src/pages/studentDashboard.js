@@ -521,6 +521,21 @@ const StudentDashboard = () => {
                           <span>{eventDate}</span>
                         </div>
                       )}
+
+                      {e.allowedRoles && e.allowedRoles.length > 0 && (
+                        <div
+                          style={{
+                            padding: "6px 10px",
+                            background: "#e3f2fd",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            color: "#1976d2",
+                            fontWeight: "500",
+                          }}
+                        >
+                          🔒 Restricted to: {e.allowedRoles.join(", ")}
+                        </div>
+                      )}
                     </div>
 
                     <button

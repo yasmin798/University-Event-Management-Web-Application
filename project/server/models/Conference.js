@@ -24,6 +24,13 @@ const ConferenceSchema = new mongoose.Schema(
     fundingSource: { type: String, required: true, enum: ["GUC", "external"] },
     extraResources: { type: String, trim: true },
 
+    // Role restrictions - specify which roles can access this conference
+    allowedRoles: {
+      type: [String],
+      default: [],
+      enum: ["student", "professor", "ta", "staff"],
+    },
+
     status: {
       type: String,
       enum: ["draft", "published", "cancelled", "archived"],

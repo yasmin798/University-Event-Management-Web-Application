@@ -264,6 +264,9 @@ export default function EventsHome() {
     currentRoles: [],
   });
 
+  // Track recently updated events to prevent overwriting local changes
+  const [recentlyUpdatedEvents, setRecentlyUpdatedEvents] = useState(new Set());
+
   const {
     events: otherEvents,
     loading: otherLoading,
@@ -451,14 +454,18 @@ export default function EventsHome() {
       }));
     setConferences((prevConferences) => {
       // Merge with existing state to preserve any local updates (like restrictions)
+      // but skip recently updated events to prevent overwrites
       return normalizedConferences.map((newConf) => {
         const existing = prevConferences.find((c) => c._id === newConf._id);
-        return existing
-          ? { ...newConf, allowedRoles: existing.allowedRoles }
-          : newConf;
+        if (recentlyUpdatedEvents.has(newConf._id)) {
+          // Don't overwrite recently updated items, keep the existing state
+          return existing || newConf;
+        }
+        // For all other items, use the new data from server (which includes allowedRoles)
+        return newConf;
       });
     });
-  }, [otherEvents]);
+  }, [otherEvents, recentlyUpdatedEvents]);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -671,7 +678,15 @@ export default function EventsHome() {
         setToast({ open: true, text: "Unknown event type: " + eventType });
         return;
       }
-      const res = await fetch(`/api/${path}/${eventId}`, {
+      const url = `/api/${path}/${eventId}`;
+      console.log("Updating restrictions:", {
+        url,
+        currentRoles,
+        eventType,
+        eventId,
+      });
+
+      const res = await fetch(url, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -679,8 +694,14 @@ export default function EventsHome() {
         },
         body: JSON.stringify({ allowedRoles: currentRoles }),
       });
+
+      const data = await res.json();
+      console.log("Update response:", { status: res.status, data });
+
       if (!res.ok) {
-        setToast({ open: true, text: "Failed to update restrictions" });
+        const errorMsg = data?.error || "Failed to update restrictions";
+        console.error("Update failed:", errorMsg);
+        setToast({ open: true, text: errorMsg });
         return;
       }
       setToast({ open: true, text: "Restrictions updated successfully!" });
@@ -690,6 +711,17 @@ export default function EventsHome() {
         eventType: null,
         currentRoles: [],
       });
+
+      // Mark event as recently updated to prevent overwrites during next refresh
+      setRecentlyUpdatedEvents((prev) => new Set(prev).add(eventId));
+      // Clear the recently updated marker after 15 seconds
+      setTimeout(() => {
+        setRecentlyUpdatedEvents((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(eventId);
+          return newSet;
+        });
+      }, 15000);
 
       // Update local state to reflect the restriction change immediately
       if (eventType === "WORKSHOP") {
@@ -724,7 +756,8 @@ export default function EventsHome() {
         );
       }
     } catch (e) {
-      setToast({ open: true, text: "Network error" });
+      console.error("Restriction update error:", e);
+      setToast({ open: true, text: "Network error: " + e.message });
     }
   };
 

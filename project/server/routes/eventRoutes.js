@@ -589,6 +589,7 @@ router.get("/all", async (req, res) => {
       startDateTime: doc.startDateTime || doc.startDate || doc.date,
       endDateTime: doc.endDateTime || doc.startDateTime,
       image: doc.image || "",
+      allowedRoles: doc.allowedRoles || [],
     });
 
     let allEvents = [
