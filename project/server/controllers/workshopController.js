@@ -5,6 +5,7 @@ const User = require("../models/User"); // Add this import
 
 const nodemailer = require("nodemailer");
 const PDFDocument = require("pdfkit");
+const sendCertificateEmail = require("../utils/mailer");
 
 // CREATE Workshop
 // CREATE Workshop + SEND NOTIFICATIONS TO BOTH SIDES
@@ -288,127 +289,7 @@ exports.getParticipants = async (req, res) => {
 };
 
 // NEW: POST send-certificates controller
-exports.sendCertificates = async (req, res) => {
-  try {
-    const { attendedUserIds } = req.body; // Array of user _id strings
-    if (!Array.isArray(attendedUserIds) || attendedUserIds.length === 0) {
-      return res.status(400).json({ message: "No users selected" });
-    }
 
-    const workshop = await Workshop.findById(req.params.id).populate(
-      "createdBy",
-      "name"
-    ); // FIXED: Use 'name'
-
-    if (!workshop) {
-      return res.status(404).json({ message: "Workshop not found" });
-    }
-
-    if (workshop.createdBy._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    // Validate users are in registeredUsers (fetch populated for check)
-    const populatedWorkshop = await Workshop.findById(req.params.id).populate(
-      "registeredUsers",
-      "_id"
-    );
-    const invalidUsers = attendedUserIds.filter(
-      (id) =>
-        !populatedWorkshop.registeredUsers.some((u) => u._id.toString() === id)
-    );
-    if (invalidUsers.length > 0) {
-      return res.status(400).json({ message: "Some users not registered" });
-    }
-
-    // Setup nodemailer transporter (configure with your SMTP, e.g., Gmail)
-    const transporter = nodemailer.createTransporter({
-      service: "gmail", // Or your provider
-      auth: {
-        user: process.env.EMAIL_USER, // Env var
-        pass: process.env.EMAIL_PASS, // App password
-      },
-    });
-
-    const attendedObjs = []; // To push to attendedUsers
-
-    for (const userIdStr of attendedUserIds) {
-      const user = await User.findById(userIdStr).select("name email role"); // FIXED: Use 'name'
-      if (!user) continue; // Skip invalid
-
-      // Generate PDF certificate
-      const doc = new PDFDocument();
-      const chunks = [];
-      doc.on("data", (chunk) => chunks.push(chunk));
-      doc.on("end", async () => {
-        const pdfBuffer = Buffer.concat(chunks);
-
-        // Send email
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: user.email,
-          subject: `Certificate of Attendance: ${workshop.workshopName}`,
-          text: `Dear ${
-            user.name
-          },\n\nYou have successfully completed the workshop "${
-            workshop.workshopName
-          }" on ${new Date(
-            workshop.startDateTime
-          ).toLocaleDateString()}.\n\nPlease find your certificate attached.\n\nBest regards,\nWorkshop Team`, // FIXED: Use 'name'
-          attachments: [
-            {
-              filename: `Certificate_${
-                workshop.workshopName
-              }_${user.name.replace(/\s+/g, "_")}.pdf`, // FIXED: Use 'name'
-              content: pdfBuffer,
-            },
-          ],
-        });
-      });
-
-      // Build PDF content (simple template)
-      doc.fontSize(20).text("Certificate of Attendance", 100, 100);
-      doc.fontSize(12).text(`This certifies that`, 100, 150);
-      doc.fontSize(16).text(user.name, 100, 170); // FIXED: Use 'name'
-      doc.text(`${user.role.toUpperCase()}`, 100, 190);
-      doc.text(`has attended and completed the workshop`, 100, 220);
-      doc.fontSize(18).text(workshop.workshopName, 100, 240);
-      doc.text(
-        `Held on: ${new Date(
-          workshop.startDateTime
-        ).toLocaleDateString()} - ${new Date(
-          workshop.endDateTime
-        ).toLocaleDateString()}`,
-        100,
-        270
-      );
-      doc.text(`Location: ${workshop.location}`, 100, 290);
-      doc.text(`Issued on: ${new Date().toLocaleDateString()}`, 100, 320);
-      // Add signature/space or image if needed
-      doc.end();
-
-      attendedObjs.push(user._id);
-    }
-
-    // Update workshop: remove from registered, add to attended
-    workshop.registeredUsers = workshop.registeredUsers.filter(
-      (u) => !attendedUserIds.includes(u._id.toString())
-    );
-    workshop.attendedUsers.push(...attendedObjs);
-    await workshop.save();
-
-    // Repopulate for response
-    await workshop.populate("attendedUsers", "name email role"); // FIXED: Use 'name'
-
-    res.json({
-      message: `Certificates sent to ${attendedUserIds.length} users`,
-      updatedAttendedCount: workshop.attendedUsers.length,
-    });
-  } catch (error) {
-    console.error("Error sending certificates:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 // controllers/workshopController.js
 // controllers/workshopController.js
@@ -487,13 +368,61 @@ exports.sendBatchCertificates = async (req, res) => {
     console.log("✅ Sending certificates to:", participantIds);
     console.log("✅ Workshop:", workshopId);
 
-    // ✅ TEMP SAFE RESPONSE (NO EMAIL YET)
+    // ✅ Get workshop
+    const workshop = await Workshop.findById(workshopId);
+    if (!workshop) {
+      return res.status(404).json({ error: "Workshop not found" });
+    }
+
+    let sentCount = 0;
+
+    for (const userId of participantIds) {
+      const user = await User.findById(userId).select("name email role");
+      if (!user || !user.email) continue;
+
+      // ✅ Generate PDF
+      const pdfBuffer = await new Promise((resolve) => {
+        const doc = new PDFDocument({ size: "A4" });
+        const buffers = [];
+
+        doc.on("data", (data) => buffers.push(data));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        doc.fontSize(26).text("Certificate of Attendance", { align: "center" });
+        doc.moveDown(2);
+        doc.fontSize(18).text("This certifies that", { align: "center" });
+        doc.moveDown();
+        doc.fontSize(22).text(user.name, { align: "center" });
+        doc.moveDown();
+        doc.fontSize(16).text("has successfully attended the workshop", {
+          align: "center",
+        });
+        doc.moveDown();
+        doc.fontSize(18).text(workshop.workshopName, { align: "center" });
+        doc.moveDown(2);
+        doc.fontSize(12).text(
+          `Issued on: ${new Date().toDateString()}`,
+          { align: "center" }
+        );
+
+        doc.end();
+      });
+
+      // ✅ Send REAL email
+      await sendCertificateEmail(user.email, pdfBuffer);
+
+      sentCount++;
+      console.log(`✅ Sent to ${user.email}`);
+    }
+
     return res.status(200).json({
-      sentCount: participantIds.length,
-      message: "Certificates sent successfully (mock)",
+      sentCount,
+      message: "✅ Certificates sent successfully via email",
     });
+
   } catch (err) {
     console.error("❌ Certificate Error:", err);
     return res.status(500).json({ error: "Failed to send certificates" });
   }
 };
+
