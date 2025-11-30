@@ -44,8 +44,38 @@ Known Issues / Limitations:
 - Folder structure follows Node.js MVC methodology.
 
 ## 4. Screenshots
-Screenshots of the system interface will be added later.  
-A minimum of five screenshots will be included to meet rubric requirements.
+Screenshots located in:  
+`/assets/screenshots/`
+
+### 1. Signup Page
+![Signup](assets/screenshots/sss1.png)
+
+### 2. Login Page
+![Login](assets/screenshots/sss2.png)
+
+### 3. Discover Events
+![Discover Events](assets/screenshots/sss3.png)
+
+### 4. Event Details
+![Event Details](assets/screenshots/sss4.png)
+
+### 5. Event Registration Form
+![Event Registration](assets/screenshots/sss5.png)
+
+### 6. Favorites Page
+![Favorites](assets/screenshots/sss6.png)
+
+### 7. Wallet Page
+![Wallet](assets/screenshots/sss7.png)
+
+### 8. Vendor Booth Application
+![Vendor Application](assets/screenshots/sss8.png)
+
+### 9. Vendor Accepted Applications
+![Vendor Accepted](assets/screenshots/ss8.png)
+
+### 10. Payment Page
+![Payment Page](assets/screenshots/ss9.png)
 
 ## 5. Technologies and Frameworks Used
 Backend:
@@ -220,6 +250,54 @@ CLIENT_URL=http://localhost:3001
 ## 9. API References
 
 ### Authentication
+POST /api/auth/signup
+POST /api/auth/login
+POST /api/auth/logout
+GET /api/auth/me
+
+
+---
+
+### Events
+GET /api/all
+GET /api/events/:eventId
+POST /api/events/:eventId/register
+
+
+---
+
+### Workshops
+POST /api/workshops/create
+GET /api/workshops/my-workshops
+
+
+---
+
+### Vendors
+POST /api/vendor/apply
+GET /api/vendor/my-requests
+
+
+---
+
+### Payments (Stripe)
+POST /api/payments/create-session
+POST /api/payments/pay-event
+POST /api/payments/refund-event
+POST /api/payments/confirm
+POST /api/payments/confirm-event-payment
+POST /api/payments/confirm-event-payment-and-email
+
+
+---
+
+### Reports
+GET /api/reports/attendance
+GET /api/reports/sales
+
+
+
+### Authentication
 ```
 POST /auth/register
 POST /auth/login
@@ -255,11 +333,28 @@ GET /workshops/my-workshops
 Postman was used for testing.  
 At least five test screenshots will be added, including:
 
-- Registration  
-- Login  
-- Event registration  
-- Stripe payment  
-- Vendor request  
+Screenshots stored under `/assets/screenshots/`.
+
+### 1. Signup Test
+![Signup Test](assets/screenshots/ss1.png)
+
+### 2. Login Test
+![Login Test](assets/screenshots/ss2.png)
+
+### 3. Get All Events
+![Get Events](assets/screenshots/ss3.png)
+
+### 4. Search Events
+![Search Events](assets/screenshots/ss4.png)
+
+### 5. Filter Events
+![Filter Events](assets/screenshots/ss5.png)
+
+### 6. Profile (Protected Route)
+![Profile Test](assets/screenshots/ss6.png)
+
+### 7. Logout Test
+![Logout Test](assets/screenshots/ss7.png)  
 
 ## 11. Contribute
 Contributions may be made through issues or pull requests.  
