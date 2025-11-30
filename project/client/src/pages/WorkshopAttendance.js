@@ -219,7 +219,7 @@ export default function WorkshopAttendance() {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2f4156]">
-                          {student.name || "Unknown Student"}
+                          {(student.firstName + " " + student.lastName) || "Unkown Student"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-[#567c8d]">
                           {student.email || "No email"}
