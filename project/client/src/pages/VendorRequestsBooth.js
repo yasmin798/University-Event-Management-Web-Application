@@ -295,29 +295,25 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null);
   }, [bazaarId]);
 
   // ---------- PATCH STATUS ----------
-  const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
-    const urls = [
-      `${API_ORIGIN}/api/admin/booth-vendor-requests/${appId}`,
-      `${API_ORIGIN}/api/booth-applications/${appId}`,
-      `${API_ORIGIN}/api/booth-vendor-requests/${appId}`,
-    ];
-
-    const payload = { status: newStatus, ...extraPayload };
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) return true;
-      } catch (e) {
-        console.log("Failed endpoint:", url);
-      }
+const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
+  const res = await fetch(
+    `${API_ORIGIN}/api/booth-applications/${appId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus, ...extraPayload }),
     }
-    throw new Error("All endpoints failed");
-  };
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("PATCH failed:", err);
+    throw new Error("Failed to update booth application");
+  }
+
+  return true;
+};
+
 
   const handleSendVendorMail = async () => {
     if (!vendorTarget) return;

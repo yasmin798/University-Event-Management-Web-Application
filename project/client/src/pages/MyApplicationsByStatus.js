@@ -27,7 +27,7 @@ export default function MyApplicationsByStatus() {
   const [loadingPayment, setLoadingPayment] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
+  
   // ================== Cancel Application ==================
   const handleCancel = async (appId, type) => {
     if (!window.confirm("Are you sure you want to cancel this application?"))
@@ -180,10 +180,15 @@ export default function MyApplicationsByStatus() {
   const ApplicationCard = ({ app, type }) => {
     const statusColors = getStatusColors(app.status);
     const price = calculatePrice(app, type);
-    const isPaymentEligible =
-      app.status === "accepted" &&
-      !app.paid &&
-      (!app.paymentDeadline || new Date() <= new Date(app.paymentDeadline));
+    const deadline = app.paymentDeadline ? new Date(app.paymentDeadline) : null;
+const now = new Date();
+
+const isPastDeadline = deadline && now > deadline;
+
+const isPaymentEligible =
+  app.status === "accepted" &&
+  !app.paid &&
+  !isPastDeadline;
 
     return (
       <div
@@ -258,23 +263,47 @@ export default function MyApplicationsByStatus() {
               </p>
             </div>
           )}
+          {app.paymentDeadline && (
+  <p className="text-blue-600 text-sm mt-1">
+    Time left:{" "}
+    {Math.max(
+      0,
+      Math.ceil(
+        (new Date(app.paymentDeadline) - new Date()) /
+          (1000 * 60 * 60 * 24)
+      )
+    )}{" "}
+    days
+  </p>
+)}
+
 
           {/* Actions */}
           <div className="flex gap-3 mt-6">
             {isPaymentEligible ? (
               <>
                 <button
-                  onClick={() => handlePayment(app._id, type)}
-                  disabled={loadingPayment === app._id}
-                  className={`flex-1 py-3 px-6 rounded-xl font-semibold text-white text-sm shadow-md transition-all duration-200
-                    bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
-                    hover:shadow-lg transform hover:-translate-y-0.5
-                    ${
-                      loadingPayment === app._id
-                        ? "opacity-60 cursor-not-allowed"
-                        : ""
-                    }`}
-                >
+  onClick={() => handlePayment(app._id, type)}
+  disabled={loadingPayment === app._id || isPastDeadline}
+  className={`flex-1 py-3 px-6 rounded-xl font-semibold text-white text-sm shadow-md transition-all duration-200
+    bg-gradient-to-r from-green-500 to-green-600
+    ${
+      isPastDeadline
+        ? "opacity-40 cursor-not-allowed"
+        : "hover:from-green-600 hover:to-green-700 hover:shadow-lg transform hover:-translate-y-0.5"
+    }
+  `}
+>
+   {isPastDeadline
+    ? "Payment Window Expired"
+    : loadingPayment === app._id
+    ? (
+        <span className="flex items-center justify-center gap-2">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          Processing...
+        </span>
+      )
+    : `Pay ${price} EGP`}
                   {loadingPayment === app._id ? (
                     <span className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

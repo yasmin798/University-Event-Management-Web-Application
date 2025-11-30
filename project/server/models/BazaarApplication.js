@@ -37,8 +37,12 @@ const BazaarApplicationSchema = new mongoose.Schema(
     },
     paid: { type: Boolean, default: false },
   paymentDeadline: { type: Date }, // ← ADD THIS
-  },
-  { timestamps: true }
+  
+acceptedAt: { type: Date },
+},
+  
+  { timestamps: true },
+  
 );
 
 // Validator: 1–5 attendees
