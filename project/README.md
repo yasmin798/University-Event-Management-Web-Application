@@ -351,10 +351,10 @@ Screenshots stored under `/assets/screenshots/`.
 ![Get Events](assets/screenshots/ss6.png)
 
 ### 4. Search Events
-![Search Events](assets/screenshots/sss9.png)
+![Search Events](assets/screenshots/sss9.PNG)
 
 ### 5. Filter Events
-![Filter Events](assets/screenshots/ssss1.png)
+![Filter Events](assets/screenshots/ssss1.PNG)
 
 ### 6. Logout Test
 ![Logout Test](assets/screenshots/ss7.png)  
