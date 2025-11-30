@@ -408,8 +408,15 @@ exports.sendBatchCertificates = async (req, res) => {
         doc.end();
       });
 
-      // ✅ Send REAL email
-      await sendCertificateEmail(user.email, pdfBuffer);
+      // ✅ Send REAL 
+      
+     await sendCertificateEmail(
+  user.email,
+  user.name,
+  workshop.workshopName,
+  pdfBuffer
+);
+
 
       sentCount++;
       console.log(`✅ Sent to ${user.email}`);
