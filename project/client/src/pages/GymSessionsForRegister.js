@@ -315,6 +315,7 @@ export default function GymManager({ SidebarComponent = null }) {
         {/* Debug info - remove after testing */}
         <p style={{ fontSize: "12px", color: "#666" }}>{debugInfo}</p>
 
+        {/* Month Header */}
         <div
           style={{
             display: "flex",
@@ -327,32 +328,32 @@ export default function GymManager({ SidebarComponent = null }) {
           <button
             onClick={() => setWeekStart(addDays(weekStart, -7))}
             style={{
-              padding: "8px 16px",
-              background: "#6C63FF",
-              color: "white",
+              background: "none",
               border: "none",
-              borderRadius: "6px",
+              fontSize: "22px",
               cursor: "pointer",
             }}
           >
-            ← Previous Week
+            ❮
           </button>
-          <span style={{ fontSize: "18px", fontWeight: "600" }}>
-            Week of {days[0].dateNum}–{days[6].dateNum},{" "}
-            {days[0].label.toUpperCase()}
-          </span>
+
+          <h2 style={{ margin: 0 }}>
+            {weekStart.toLocaleString("en-US", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h2>
+
           <button
             onClick={() => setWeekStart(addDays(weekStart, 7))}
             style={{
-              padding: "8px 16px",
-              background: "#6C63FF",
-              color: "white",
+              background: "none",
               border: "none",
-              borderRadius: "6px",
+              fontSize: "22px",
               cursor: "pointer",
             }}
           >
-            Next Week →
+            ❯
           </button>
         </div>
 
