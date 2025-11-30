@@ -300,11 +300,13 @@ router.patch("/:id", async (req, res) => {
     };
 
     if (status.toLowerCase() === "accepted") {
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + 14);
-      updateFields.paymentDeadline = deadline;
-      paymentDeadline = deadline;
-    }
+  const now = new Date();
+  const deadline = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  updateFields.acceptedAt = now;
+  updateFields.paymentDeadline = deadline;
+}
+
 
     // Use direct MongoDB update to bypass Mongoose validation
     await BazaarApplication.collection.updateOne(

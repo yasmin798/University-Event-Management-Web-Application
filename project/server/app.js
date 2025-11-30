@@ -267,16 +267,24 @@ app.post("/api/register", async (req, res) => {
 
     const saved = await newUser.save();
 
-    res.status(201).json({
-      success: true,
-      message,
-      user: {
-        id: saved._id,
-        email: saved.email,
-        role: saved.role,
-        isVerified: saved.isVerified,
-      },
-    });
+   // 🔑 Create JWT just like in /api/login
+const token = jwt.sign(
+  { id: saved._id, role: saved.role, email: saved.email },
+  process.env.JWT_SECRET || "your_jwt_secret",
+  { expiresIn: "1h" }
+);
+
+res.status(201).json({
+  success: true,
+  message,
+  token, // 👈 important
+  user: {
+    id: saved._id,
+    email: saved.email,
+    role: saved.role,
+    isVerified: saved.isVerified,
+  },
+});
   } catch (err) {
     console.error("❌ Signup error:", err);
     res

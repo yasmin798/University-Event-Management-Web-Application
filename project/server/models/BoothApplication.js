@@ -37,7 +37,8 @@ const BoothApplicationSchema = new mongoose.Schema(
     },
     paid: { type: Boolean, default: false },
     paymentDeadline: { type: Date },
-
+    acceptedAt: { type: Date },
+    
     bazaar: { type: mongoose.Schema.Types.ObjectId, ref: "Bazaar" },
 
     // ADD THIS: Reviews from visitors who visited this booth

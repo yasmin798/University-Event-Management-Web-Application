@@ -141,17 +141,31 @@ router.get("/bazaar/:bazaarId", async (req, res) => {
 // Update application status (admin)
 router.patch("/:id", /* adminOnly, */ async (req, res) => {
   try {
-    const { id } = req.params;
+   const { id } = req.params;
     const { status } = req.body;
+
     if (!status) return res.status(400).json({ error: "status is required" });
     const s = String(status).toLowerCase();
-    if (!["pending","accepted","rejected"].includes(s)) return res.status(400).json({ error: "invalid status" });
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "invalid id" });
+
+    if (!["pending", "accepted", "rejected"].includes(s))
+      return res.status(400).json({ error: "invalid status" });
+
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ error: "invalid id" });
 
     const doc = await BoothApplication.findById(id);
     if (!doc) return res.status(404).json({ error: "Application not found" });
 
+    // update status
     doc.status = s;
+
+    // ADD DEADLINE WHEN ACCEPTED
+    if (s === "accepted") {
+      let now = new Date();
+      doc.acceptedAt = now;
+      doc.paymentDeadline = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    }
+
     await doc.save();
 
     // ======================================================
