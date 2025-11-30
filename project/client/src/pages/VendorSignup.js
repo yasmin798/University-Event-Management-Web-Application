@@ -1,6 +1,8 @@
-// Updated VendorSignup.js
+// Updated VendorSignup.js (both tax card & logo required)
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+const API_BASE = "http://localhost:3001";
 
 export default function VendorSignup() {
   const navigate = useNavigate();
@@ -9,77 +11,140 @@ export default function VendorSignup() {
     email: "",
     password: "",
   });
+
+  const [taxCardFile, setTaxCardFile] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!formData.companyName || !formData.email || !formData.password) {
-      setMessage("⚠️ Please fill in all fields correctly.");
-      setIsError(true);
+  setMessage("");
+  setIsError(false);
+
+  const { companyName, email, password } = formData;
+
+  if (!companyName || !email || !password) {
+    setMessage("⚠️ Please fill in all fields correctly.");
+    setIsError(true);
+    return;
+  }
+
+  // both required
+  if (!taxCardFile || !logoFile) {
+    setMessage("⚠️ Please upload both your tax card and company logo.");
+    setIsError(true);
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // 1) REGISTER vendor (no token here)
+    const registerRes = await fetch(`${API_BASE}/api/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        companyName,
+        email,
+        password,
+        role: "vendor",
+      }),
+    });
+
+    const registerData = await registerRes.json();
+
+    if (!registerRes.ok) {
+      if (registerData.error === "Email already registered") {
+        setMessage(
+          <>
+            Email already registered.{" "}
+            <span
+              style={{
+                color: "#10B981",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+              onClick={() => navigate("/login")}
+            >
+              Go to Login page
+            </span>
+          </>
+        );
+        setIsError(true);
+      } else {
+        throw new Error(registerData.error || "Signup failed");
+      }
       return;
     }
 
-    try {
-      const response = await fetch("http://localhost:3000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          companyName: formData.companyName, // ✅ send companyName
-          email: formData.email,
-          password: formData.password,
-          role: "vendor",
-        }),
-      });
+    // 2) LOGIN to get token
+    const loginRes = await fetch(`${API_BASE}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.error === "Email already registered") {
-          setMessage(
-            <span>
-              Email already registered.{" "}
-              <a
-                href="/login"
-                style={{
-                  color: "#10B981",
-                  textDecoration: "underline",
-                  cursor: "pointer",
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/login");
-                }}
-              >
-                Go to Login page
-              </a>
-            </span>
-          );
-          setIsError(true);
-        } else {
-          throw new Error(data.error || "Signup failed");
-        }
-        return;
-      }
-
-      setMessage("✅ Signup successful! Redirecting to login page...");
-      setIsError(false);
-      setFormData({ companyName: "", email: "", password: "" });
-
-      setTimeout(() => navigate("/login"), 1500);
-    } catch (error) {
-      setMessage(`⚠️ Error: ${error.message}`);
-      setIsError(true);
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) {
+      throw new Error(loginData.error || "Login failed after signup");
     }
-  };
+
+    const token = loginData.token;
+    if (!token) {
+      throw new Error("No token returned from login");
+    }
+
+    localStorage.setItem("token", token);
+
+    // 3) UPLOAD documents with token
+    const form = new FormData();
+    form.append("taxCard", taxCardFile);
+    form.append("logo", logoFile);
+
+    const docsRes = await fetch(`${API_BASE}/api/vendors/me/documents`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: form,
+    });
+
+    const docsData = await docsRes.json();
+    if (!docsRes.ok) {
+      throw new Error(docsData.error || "Failed to upload documents");
+    }
+
+    // 4) Done
+    setMessage(
+      "✅ Signup successful!"
+    );
+    setIsError(false);
+
+    setFormData({ companyName: "", email: "", password: "" });
+    setTaxCardFile(null);
+    setLogoFile(null);
+
+    setTimeout(() => navigate("/login"), 2000);
+  } catch (error) {
+    console.error(error);
+    setMessage(`⚠️ Error: ${error.message}`);
+    setIsError(true);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div style={formContainerStyle}>
@@ -98,7 +163,7 @@ export default function VendorSignup() {
         <input
           type="email"
           name="email"
-          placeholder="Email"
+          placeholder="Business Email"
           value={formData.email}
           onChange={handleChange}
           style={inputStyle}
@@ -113,8 +178,40 @@ export default function VendorSignup() {
           style={inputStyle}
         />
 
-        <button type="submit" style={buttonStyle}>
-          Sign Up
+        {/* Tax Card (required) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontSize: "0.9rem", color: "#374151" }}>
+            Tax Card (required)
+          </label>
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(e) => setTaxCardFile(e.target.files[0] || null)}
+            style={fileInputStyle}
+          />
+          <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+            Upload a clear image or PDF of your official tax card.
+          </span>
+        </div>
+
+        {/* Logo (required) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontSize: "0.9rem", color: "#374151" }}>
+            Company Logo (required)
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setLogoFile(e.target.files[0] || null)}
+            style={fileInputStyle}
+          />
+          <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+            Upload your brand logo (PNG/JPEG) to appear on the platform.
+          </span>
+        </div>
+
+        <button type="submit" style={buttonStyle} disabled={loading}>
+          {loading ? "Signing up..." : "Sign Up"}
         </button>
       </form>
 
@@ -134,7 +231,7 @@ export default function VendorSignup() {
   );
 }
 
-// Styles - Adjusted for card integration
+// Styles
 const formContainerStyle = {
   width: "100%",
   maxWidth: "100%",
@@ -146,7 +243,7 @@ const formContainerStyle = {
 
 const titleStyle = {
   textAlign: "center",
-  fontSize: "2.2rem", // Slightly bigger
+  fontSize: "2.2rem",
   color: "#111827",
   marginBottom: "30px",
   fontWeight: "700",
@@ -155,27 +252,35 @@ const titleStyle = {
 const formStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "20px", // More gap for better spacing
+  gap: "20px",
   width: "100%",
 };
 
 const inputStyle = {
-  padding: "15px 20px", // Bigger padding
-  borderRadius: "12px", // Rounder
-  border: "2px solid #D1D5DB", // Thicker border
-  fontSize: "1.1rem", // Larger text
+  padding: "15px 20px",
+  borderRadius: "12px",
+  border: "2px solid #D1D5DB",
+  fontSize: "1.1rem",
   outline: "none",
   transition: "border-color 0.3s ease",
+};
+
+const fileInputStyle = {
+  padding: "10px 12px",
+  borderRadius: "10px",
+  border: "2px solid #D1D5DB",
+  fontSize: "0.95rem",
+  backgroundColor: "#F9FAFB",
 };
 
 const buttonStyle = {
   backgroundColor: "#567c8d",
   color: "white",
-  padding: "15px", // Bigger
+  padding: "15px",
   border: "none",
   borderRadius: "12px",
   cursor: "pointer",
   fontWeight: "600",
-  fontSize: "1.1rem", // Larger
+  fontSize: "1.1rem",
   transition: "all 0.3s ease",
 };
