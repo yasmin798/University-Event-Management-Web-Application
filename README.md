@@ -91,7 +91,8 @@ Frontend:
 - ReactJS  
 - Axios  
 - React Router  
-- Context API  
+- Context API
+- Spline
 
 Other:
 - Stripe CLI
@@ -462,11 +463,16 @@ The maintainers will review your PR before merging.
 If you follow these guidelines, your contribution will be reviewed and merged efficiently.
 
 ## 12. Credits
-- Stripe Documentation  
-- Nodemailer Documentation  
-- MongoDB Documentation  
-- StackOverflow  
-- YouTube tutorials related to Node.js and React
+- Stripe Documentation : [https://link-to-template](https://docs.stripe.com)
+- Nodemailer Documentation : [https://link-to-template](https://nodemailer.com)
+- MongoDB Documentation : [https://link-to-template](https://www.mongodb.com/docs/manual/core/databases-and-collections/)
+- YouTube tutorials related to Node.js and React :
+      -[https://link-to-video](https://youtu.be/Wa9KDiB7C_I?si=qwQdlOTMYWc0Uajg)
+      -[https://link-to-video](https://youtu.be/lY6icfhap2o?si=E1JaLtEgPP9_gFLr)
+      -[https://link-to-video](https://youtu.be/kk_JmicFVjE?si=J8fdW6vS0lAsIt1u)
+- This project uses a modified version of a template created by [milicodes] on the Spline Community.
+Original template: [https://link-to-template](https://app.spline.design/community/file/00b224f9-f286-4d99-bf6c-0c77496602ba)
+Created/edited using Spline (https://spline.design).
 
 ## 13. License
-This project is licensed under the MIT License.
+This project is licensed under the Apache 2.0 License.
