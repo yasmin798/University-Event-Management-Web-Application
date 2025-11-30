@@ -337,8 +337,6 @@ GET /workshops/my-workshops
 
 ## 10. Tests
 Postman was used for testing.  
-At least five test screenshots will be added, including:
-
 Screenshots stored under `/assets/screenshots/`.
 
 ### 1. Signup Test
@@ -360,8 +358,108 @@ Screenshots stored under `/assets/screenshots/`.
 ![Logout Test](assets/screenshots/ss7.png)  
 
 ## 11. Contribute
-Contributions may be made through issues or pull requests.  
-All contributors should follow the project’s structure and naming conventions.
+
+Contributions are welcome and encouraged to help improve Eventity.  
+Please follow the contribution guidelines below to maintain code quality and consistency across the project.
+
+### 1. Fork the Repository
+Start by creating your own copy of the project:
+- Click **Fork** on GitHub
+- Clone your fork locally
+
+git clone https://github.com/<your-username>/Eventity.git
+
+
+---
+
+### 2. Create a Feature Branch
+All new work must be done on a dedicated feature branch.  
+This keeps the `main` branch clean and stable.
+
+git checkout -b feature/<feature-name>
+
+
+Examples:
+- `feature/vendor-qr-generation`
+- `feature/enhanced-event-filtering`
+- `feature/fix-stripe-webhooks`
+
+---
+
+### 3. Follow the Coding Style
+To maintain code consistency:
+
+- Use **camelCase** for variables & functions  
+- Use **PascalCase** for models & components  
+- Keep controllers modular and clean  
+- Separate logic into controllers, routes, and services  
+- Avoid bulky functions; break into helpers where needed  
+- Remove unused imports and commented-out code before submitting  
+
+---
+
+### 4. Commit With Clear Messages
+Write meaningful commit messages describing what you changed.
+
+Examples:
+git commit -m "Add: new event sorting by popularity"
+git commit -m "Fix: vendor application validation error"
+git commit -m "Update: improved email template for workshop approval"
+
+
+---
+
+### 5. Test Your Changes Before Submitting
+Ensure that:
+
+#### Backend Tests:
+- Server runs without errors  
+- All major flows still work (login, signup, event creation, vendor apply, payments)  
+- Postman tests succeed  
+
+#### Frontend Tests:
+- App builds & loads properly  
+- UI updates reflect new features  
+- No console errors  
+
+---
+
+### 6. Submit a Pull Request (PR)
+Once your feature is ready:
+
+1. Push your branch:
+git push origin feature/<feature-name>
+
+
+1. Open a Pull Request describing:
+   - The feature or fix  
+   - Screenshots if UI-related  
+   - Postman tests if backend-related  
+   - Any issues resolved  
+
+The maintainers will review your PR before merging.
+
+---
+
+### Important Contribution Rules
+- Do NOT commit `.env` files or secrets  
+- Do NOT commit to the `main` branch directly  
+- Avoid adding large images or binaries outside `/assets/`  
+- Ensure your branch is up to date with main before submitting a PR  
+
+---
+
+### Examples of Good Contributions
+- Adding additional event filters or sorting 
+- Improving UI responsiveness  
+- Enhancing vendor workflows  
+- Expanding Postman test coverage  
+- Fixing validation or form errors  
+- Improving Stripe payment flow reliability  
+
+---
+
+If you follow these guidelines, your contribution will be reviewed and merged efficiently.
 
 ## 12. Credits
 - Stripe Documentation  
