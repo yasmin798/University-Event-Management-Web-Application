@@ -22,36 +22,77 @@ export default function CreatePollFromBooths() {
     fetchConflictingApplications();
   }, []);
 
-  const fetchConflictingApplications = async () => {
-    try {
-      const res = await fetch("/api/booth-applications");
-      const apps = await res.json();
+ const fetchConflictingApplications = async () => {
+  try {
+    const res = await fetch("/api/booth-applications");
+    const apps = await res.json();
 
-      const pending = apps.filter((a) => a.status === "pending");
+    const pending = apps.filter((a) => a.status === "pending");
 
-      // group by slot + duration
-      const map = {};
-      pending.forEach((app) => {
-        const key = `${app.platformSlot}-${app.durationWeeks}`;
-        if (!map[key]) map[key] = [];
-        map[key].push({
-          id: app._id,
-          vendorName: app.attendees[0]?.name || "Unknown Vendor",
-          attendees: app.attendees,
-          boothSize: app.boothSize,
-          durationWeeks: app.durationWeeks,
-          platformSlot: app.platformSlot,
-        });
-      });
+    // Group by slot only
+    const slotGroups = {};
+    pending.forEach((app) => {
+      const slot = app.platformSlot;
+      if (!slotGroups[slot]) slotGroups[slot] = [];
+      slotGroups[slot].push(app);
+    });
 
-      const conflicts = Object.values(map).filter((g) => g.length > 1);
-      setGroups(conflicts);
-      setLoading(false);
-    } catch (err) {
-      alert("Failed to load booth applications");
-      setLoading(false);
-    }
-  };
+    const conflicts = [];
+
+    // Check conflicts inside each slot
+    Object.values(slotGroups).forEach((appsInSlot) => {
+      // If only 1 app in slot → no conflict possible
+      if (appsInSlot.length < 2) return;
+
+      const conflictGroup = [];
+
+      for (let i = 0; i < appsInSlot.length; i++) {
+        const a = appsInSlot[i];
+        const aStart = new Date(a.startDateTime);
+        const aEnd = new Date(a.endDateTime);
+
+        for (let j = i + 1; j < appsInSlot.length; j++) {
+          const b = appsInSlot[j];
+          const bStart = new Date(b.startDateTime);
+          const bEnd = new Date(b.endDateTime);
+
+          // ✔ DATE RANGE OVERLAP CHECK
+          const datesOverlap =
+            aStart < bEnd && aEnd > bStart;
+
+          if (datesOverlap) {
+            if (!conflictGroup.includes(a)) conflictGroup.push(a);
+            if (!conflictGroup.includes(b)) conflictGroup.push(b);
+          }
+        }
+      }
+
+      if (conflictGroup.length > 1) {
+        // Convert to your frontend format
+        conflicts.push(
+          conflictGroup.map((app) => ({
+            id: app._id,
+            vendorName: app.attendees[0]?.name || "Unknown Vendor",
+            attendees: app.attendees,
+            boothSize: app.boothSize,
+            durationWeeks: app.durationWeeks,
+            platformSlot: app.platformSlot,
+            startDateTime: app.startDateTime,
+            endDateTime: app.endDateTime,
+          }))
+        );
+      }
+    });
+
+    setGroups(conflicts);
+    setLoading(false);
+
+  } catch (err) {
+    alert("Failed to load booth applications");
+    setLoading(false);
+  }
+};
+
 
   const handleCreatePoll = async () => {
     if (!selectedGroup || !pollTitle || !endDate) {
@@ -133,9 +174,7 @@ export default function CreatePollFromBooths() {
                   How it works
                 </h3>
                 <p className="text-blue-800">
-                  Automatically detect booths with multiple vendor requests for
-                  the same slot and duration. Create a poll to let students vote
-                  on which vendor should get the booth space.
+                  Automatically detect booth applications requesting the same platform slot during overlapping date ranges. Create a poll to let students vote on which vendor should receive the booth space.
                 </p>
               </div>
             </div>
