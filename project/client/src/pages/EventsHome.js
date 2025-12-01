@@ -1368,6 +1368,7 @@ export default function EventsHome() {
 
               // Helper to close specific menu
               const closeMenu = () => setActiveCardMenu(null);
+              
 
               return (
                 <article

@@ -538,6 +538,46 @@ const EventDetails = () => {
       </div>
     </div>
   );
+  const AttendeesSection = ({ attendees, title }) => {
+  if (!attendees || attendees.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+        <div className="w-8 h-8 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-lg flex items-center justify-center">
+          <Users size={18} className="text-white" />
+        </div>
+        {title}
+      </h2>
+
+      <div className="space-y-4">
+        {attendees.map((a, i) => (
+          <div
+            key={i}
+            className="p-4 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-200"
+          >
+            <p className="text-lg font-semibold text-gray-900">
+              {a.name || "Unnamed"}
+            </p>
+
+            {a.email && (
+              <p className="text-gray-600 text-sm">
+                <strong>Email:</strong> {a.email}
+              </p>
+            )}
+
+            {a.phone && (
+              <p className="text-gray-600 text-sm">
+                <strong>Phone:</strong> {a.phone}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
@@ -1004,6 +1044,25 @@ const EventDetails = () => {
                   )}
                 </div>
               </div>
+              {isBooth && (
+  <AttendeesSection
+    attendees={event.attendees}
+    title="Booth Attendees"
+  />
+)}
+{isBazaar && event.booths?.length > 0 && (
+  <div className="space-y-8">
+    {event.booths.map((b, index) => (
+      <AttendeesSection
+        key={index}
+        attendees={b.attendees}
+        title={`Booth Attendees – ${b.title || "Booth"}`}
+      />
+    ))}
+  </div>
+)}
+
+
 
               {/* Reviews Section */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
