@@ -36,7 +36,8 @@ const upload = multer({ storage });
 // Expects multipart/form-data with `attendees` (JSON string) and `idFiles` array
 router.post("/", upload.array("idFiles", 5), async (req, res) => {
   try {
-    const { boothSize, durationWeeks, platformSlot } = req.body;
+    const { boothSize, durationWeeks, platformSlot, startDateTime } = req.body;
+
     let attendees = req.body.attendees;
     if (typeof attendees === "string") {
       try {
@@ -71,6 +72,12 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
       a.idDocument = `/uploads/ids/${path.basename(file.path)}`;
       a.attendingEntireDuration = true;
     }
+    // Calculate end date automatically
+let start = startDateTime ? new Date(startDateTime) : null;
+let end = start
+  ? new Date(start.getTime() + Number(durationWeeks) * 7 * 24 * 60 * 60 * 1000)
+  : null;
+
 
     const doc = new BoothApplication({
       attendees: attendees.map(a => ({
@@ -82,6 +89,8 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
       boothSize,
       durationWeeks,
       platformSlot,
+       startDateTime: start,
+  endDateTime: end,
     });
 
     const saved = await doc.save();

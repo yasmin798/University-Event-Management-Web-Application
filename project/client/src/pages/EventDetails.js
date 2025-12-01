@@ -302,6 +302,10 @@ const EventDetails = () => {
           durationWeeks: b.durationWeeks,
           platformSlot: b.platformSlot,
           status: b.status,
+          // 🔥 THE FIX — include real booth schedule!
+  startDateTime: b.startDateTime,
+  endDateTime: b.endDateTime,
+  
           description: b.description || "",
           registeredUsers: b.registeredUsers || [],
           registrations: b.registrations || [],
