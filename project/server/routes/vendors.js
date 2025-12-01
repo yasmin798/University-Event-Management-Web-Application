@@ -134,4 +134,27 @@ router.put(
   }
 );
 
+// =========================
+// GET: All Vendors (Admin / Events Office)
+// =========================
+router.get("/", protect, async (req, res) => {
+  try {
+    // Allow only admin or events office
+    if (!["admin", "events_office"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const vendors = await User.find({ role: "vendor" })
+      .select("firstName lastName companyName email taxCardUrl logoUrl vendorVerificationStatus")
+      .lean();
+
+    res.json({ vendors });
+  } catch (err) {
+    console.error("Error fetching vendors:", err);
+    res.status(500).json({ error: "Failed to fetch vendor list" });
+  }
+});
+
+
+
 module.exports = router;

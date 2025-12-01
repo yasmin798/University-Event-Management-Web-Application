@@ -15,6 +15,7 @@ const BoothApplicationForm = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [startDate, setStartDate] = useState("");
 
   const addAttendee = () => {
     if (attendees.length < 5)
@@ -69,6 +70,10 @@ const BoothApplicationForm = () => {
       form.append("durationWeeks", durationWeeks);
       form.append("boothSize", boothSize);
       form.append("attendees", JSON.stringify(attendees));
+      form.append("startDateTime", new Date(startDate).toISOString());
+
+
+
       idFiles.forEach((f) => form.append("idFiles", f));
 
       const res = await fetch("http://localhost:3001/api/booth-applications", {
@@ -162,6 +167,7 @@ const BoothApplicationForm = () => {
             </div>
           </div>
 
+
           {/* ================== DURATION ================== */}
           <div className="mb-6">
             <label className="font-semibold block mb-2">Duration (weeks)</label>
@@ -176,7 +182,18 @@ const BoothApplicationForm = () => {
               <option value="4">4 weeks</option>
             </select>
           </div>
-
+          <div className="mb-6">
+  <label className="font-semibold block mb-2">
+    Booth Start Date
+  </label>
+  <input
+    type="datetime-local"
+    className="border p-2 rounded w-full"
+    value={startDate}
+    onChange={(e) => setStartDate(e.target.value)}
+    required
+  />
+</div>
           {/* ================== BOOTH SIZE ================== */}
           <div className="mb-6">
             <label className="font-semibold block mb-2">Booth Size</label>

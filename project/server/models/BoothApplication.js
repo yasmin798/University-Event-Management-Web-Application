@@ -29,7 +29,10 @@ const BoothApplicationSchema = new mongoose.Schema(
       enum: ["B1", "B2", "B3", "B4", "B5"],
       required: true,
     },
-
+     // NEW FIELDS
+    startDateTime: { type: Date },
+    endDateTime: { type: Date },
+    
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected", "archived"],

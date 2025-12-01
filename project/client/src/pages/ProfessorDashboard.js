@@ -71,9 +71,11 @@ const ProfessorDashboard = () => {
         title: b.attendees?.[0]?.name || `Booth ${b._id}`,
         image: b.image || boothPlaceholder, // ✅ use boothPlaceholder instead of workshopPlaceholder
         description: b.description || "",
-        startDateTime: now.toISOString(),
-        startDate: now.toISOString(),
-        date: now.toISOString(),
+         // 🔥 Use REAL booth dates from DB
+  startDateTime: b.startDateTime,
+  endDateTime: b.endDateTime,
+  startDate: b.startDateTime,
+  date: b.startDateTime,
       }));
 
       setBooths(normalizedBooths);

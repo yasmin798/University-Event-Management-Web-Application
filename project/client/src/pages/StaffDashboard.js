@@ -607,6 +607,70 @@ const StaffDashboard = () => {
                       day: "numeric",
                     })
                   : "";
+                  if (e.type === "BOOTH") {
+  return (
+    <div
+      key={e._id}
+      className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+    >
+      <div className="h-40 w-full bg-gray-200 relative">
+        <img
+          src={e.image || boothPlaceholder}
+          alt={e.title}
+          className="h-full w-full object-cover"
+          onError={(target) => {
+            target.target.src = boothPlaceholder;
+          }}
+        />
+
+        <button
+          onClick={(ev) => {
+            ev.stopPropagation();
+            toggleFavorite(e._id);
+          }}
+          className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
+        >
+          <Heart
+            size={18}
+            className={
+              favorites.includes(e._id)
+                ? "fill-red-500 text-red-500"
+                : "text-gray-600"
+            }
+          />
+        </button>
+      </div>
+
+      <div className="p-4">
+        <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+          {e.attendees?.[0]?.name || e.title || "Booth"}
+        </h3>
+
+        <p className="text-sm text-[#567c8d] truncate">Type: BOOTH</p>
+
+        <p className="text-sm text-[#567c8d] truncate">
+          Date: {new Date(e.startDateTime).toLocaleDateString()}
+        </p>
+
+        {e.location && (
+          <p className="text-sm text-[#567c8d] truncate">
+            Location: {e.location}
+          </p>
+        )}
+
+        <div className="flex gap-2 mt-4">
+          <button
+            className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
+            onClick={() => handleDetails(e)}
+          >
+            Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
                 return (
                   <div

@@ -7,6 +7,7 @@ import {
   FileText,
   BarChart2,
   Users,
+  BarChartHorizontal
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import EventityLogo from "./EventityLogo";
@@ -30,6 +31,7 @@ export default function Sidebar() {
     ["Vendor Booths", "/vendor-requests-booths", Store],
     ["Attendees Report", "/reports/attendees", FileText],
     ["Sales Report", "/reports/sales", BarChart2],
+    ["Poll Results", "/poll-results", BarChartHorizontal],
   ];
 
   const [navigationMenu, setNavigationMenu] = useState(baseNavigation);

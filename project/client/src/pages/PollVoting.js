@@ -235,10 +235,9 @@ export default function PollVoting() {
                     fontSize: "1.1rem",
                   }}
                 >
-                  <strong>Slot:</strong> {poll.candidates[0]?.platformSlot} •
-                  <strong> Size:</strong> {poll.candidates[0]?.boothSize} •
-                  <strong> Duration:</strong>{" "}
-                  {poll.candidates[0]?.durationWeeks} weeks
+                  <strong>Slot:</strong> {poll.candidates[0]?.platformSlot} 
+               
+                  
                   <div
                     style={{
                       marginTop: "10px",
