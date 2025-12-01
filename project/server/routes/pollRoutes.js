@@ -39,16 +39,30 @@ router.post("/from-booths", async (req, res) => {
   }
 });
 
-// Get all polls
+// ==================== GET ALL POLLS WITH totalVotes ====================
 router.get("/", async (req, res) => {
   try {
-    const polls = await Poll.find();
-    res.json(polls);
+    const polls = await Poll.find().lean();
+
+    const enriched = polls.map((poll) => {
+      const totalVotes = poll.candidates.reduce(
+        (sum, c) => sum + (c.votes || 0),
+        0
+      );
+
+      return {
+        ...poll,
+        totalVotes,
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     console.error("Get polls error:", err);
     res.status(500).json({ error: "Failed to fetch polls" });
   }
 });
+
 
 router.post("/:id/vote", async (req, res) => {
   try {
