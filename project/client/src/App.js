@@ -99,6 +99,8 @@ import WorkshopAttendance from "./pages/WorkshopAttendance";
 
 import VendorDocumentsPage from "./pages/VendorDocumentsPage";
 
+import PollResults from "./pages/PollResults.js";
+
 // Simple 404
 function NotFound() {
   return <div style={{ padding: 24 }}>Page not found.</div>;
@@ -270,6 +272,7 @@ function App() {
         <Route path="/poll-voting" element={<PollVoting />} />{" "}
         <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         <Route path="/vendor-documents" element={<VendorDocumentsPage />} />
+        <Route path="/poll-results" element={<PollResults />} />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
