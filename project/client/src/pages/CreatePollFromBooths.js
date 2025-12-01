@@ -261,6 +261,8 @@ export default function CreatePollFromBooths() {
                             <span>Booth: {v.boothSize}</span>
                             <span>Duration: {v.durationWeeks} weeks</span>
                             <span>Slot: {v.platformSlot}</span>
+                            <span>Start Date: {v.startDateTime ? new Date(v.startDateTime).toLocaleDateString() : "N/A"}</span>
+
                           </div>
                         </div>
                       </div>
