@@ -54,8 +54,24 @@ const StudentDashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   const [userId, setUserId] = useState(null);
+  const debouncedSearch = useDebounce(searchTerm, 400);
+const debouncedLocation = useDebounce(searchLocation, 400);
+const debouncedProfessor = useDebounce(professorFilter, 400);
+const debouncedEventType = useDebounce(eventTypeFilter, 400);
+const debouncedDate = useDebounce(dateFilter, 400);
+
 
   /* ---------------------- Fetch Events ---------------------- */
+function useDebounce(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debounced;
+}
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -63,11 +79,12 @@ const StudentDashboard = () => {
       try {
         const params = new URLSearchParams();
 
-        if (searchTerm) params.append("search", searchTerm);
-        if (searchLocation) params.append("location", searchLocation);
-        if (professorFilter) params.append("professor", professorFilter);
-        if (eventTypeFilter !== "All") params.append("type", eventTypeFilter);
-        if (dateFilter) params.append("date", dateFilter);
+        if (debouncedSearch) params.append("search", debouncedSearch);
+if (debouncedLocation) params.append("location", debouncedLocation);
+if (debouncedProfessor) params.append("professor", debouncedProfessor);
+if (debouncedEventType !== "All") params.append("type", debouncedEventType);
+if (debouncedDate) params.append("date", debouncedDate);
+
 
         params.append("sort", "startDateTime");
         params.append("order", sortOrder === "asc" ? "desc" : "asc");
@@ -112,14 +129,15 @@ setAllEvents(normalized);
 
     fetchEvents();
   }, [
-    searchTerm,
-    searchLocation,
-    professorFilter,
-    eventTypeFilter,
-    dateFilter,
-    sortOrder,
-    API,
-  ]);
+  debouncedSearch,
+  debouncedLocation,
+  debouncedProfessor,
+  debouncedEventType,
+  debouncedDate,
+  sortOrder,
+  API,
+]
+);
 
   /* ---------------------- Extract Unique Filter Options ---------------------- */
   const uniqueLocations = React.useMemo(() => {
