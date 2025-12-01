@@ -212,7 +212,7 @@ export default function CreatePollFromBooths() {
                     <option value="">Choose a conflict group...</option>
                     {groups.map((g, i) => (
                       <option key={i} value={i}>
-                        Slot {g[0].platformSlot} • {g[0].durationWeeks} weeks •{" "}
+                        Slot {g[0].platformSlot} •{" "}
                         {g.length} vendors competing
                       </option>
                     ))}
