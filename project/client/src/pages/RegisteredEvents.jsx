@@ -577,12 +577,12 @@ const RegisteredEvents = () => {
                   })()}
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3">
                   {/* STRIPE BUTTON */}
                   <button
                     onClick={() => handlePay("stripe")}
                     disabled={paying}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-70 shadow-md hover:shadow-lg"
                   >
                     <CreditCard size={18} />
                     Pay with Card
@@ -592,7 +592,7 @@ const RegisteredEvents = () => {
                   <button
                     onClick={() => handlePay("wallet")}
                     disabled={paying || walletBalance < price}
-                    className={`font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 ${
+                    className={`w-full font-medium py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${
                       walletBalance >= price
                         ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                         : "bg-gray-400 text-gray-700 cursor-not-allowed"
@@ -640,7 +640,6 @@ const RegisteredEvents = () => {
       )}{" "}
       {/* Main content */}
       <div className="flex-1 overflow-auto ml-64">
-        
         {/* Registered Events Content */}
         <div className="my-events-page">
           {/* Hero Section with Background */}
