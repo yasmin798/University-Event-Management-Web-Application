@@ -1143,44 +1143,88 @@ export default function EventsHome() {
             {(userRole === "admin" || userRole === "events_office") && (
               <button
                 onClick={async () => {
-                  setDocsList([]);
-                  try {
-                    const token = localStorage.getItem("token");
+  setDocsList([]);
+  try {
+    const token = localStorage.getItem("token");
 
-                    const [bRes, boRes] = await Promise.all([
-                      fetch("/api/bazaar-applications", {
-                        headers: { Authorization: `Bearer ${token}` },
-                      }),
-                      fetch("/api/booth-applications", {
-                        headers: { Authorization: `Bearer ${token}` },
-                      }),
-                    ]);
+    // Fetch attendee docs
+    const [bRes, boRes, vRes] = await Promise.all([
+      fetch("/api/bazaar-applications", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch("/api/booth-applications", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch("/api/vendors", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
 
-                    const bJson = await (bRes.ok ? bRes.json() : []);
-                    const boJson = await (boRes.ok ? boRes.json() : []);
+    const bJson = bRes.ok ? await bRes.json() : [];
+    const boJson = boRes.ok ? await boRes.json() : [];
+    const vJson = vRes.ok ? await vRes.json() : { vendors: [] };
 
-                    const gather = (arr) => {
-                      if (!Array.isArray(arr)) return [];
-                      return arr.flatMap((r) =>
-                        (r.attendees || [])
-                          .filter((a) => a?.idDocument)
-                          .map((a) => ({
-                            name: a.name || "No Name",
-                            email: a.email || "",
-                            url: a.idDocument.startsWith("/")
-                              ? `${window.location.origin}${a.idDocument}`
-                              : a.idDocument,
-                          }))
-                      );
-                    };
+    // Extract attendee docs
+    const gatherAttendeeDocs = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr.flatMap((r) =>
+        (r.attendees || [])
+          .filter((a) => a?.idDocument)
+          .map((a) => ({
+            name: a.name || "No Name",
+            email: a.email || "",
+            url: a.idDocument.startsWith("/")
+              ? `${window.location.origin}${a.idDocument}`
+              : a.idDocument,
+            type: "Attendee",
+          }))
+      );
+    };
 
-                    setDocsList([...gather(bJson), ...gather(boJson)]);
-                    setDocsModalOpen(true);
-                  } catch (err) {
-                    console.error("Error fetching docs:", err);
-                    setToast({ open: true, text: "Failed to load documents" });
-                  }
-                }}
+    // Extract vendor docs
+    const gatherVendorDocs = (vendors) => {
+      if (!Array.isArray(vendors)) return [];
+
+      return vendors.flatMap((v) => {
+        const docs = [];
+
+        if (v.taxCardUrl) {
+          docs.push({
+            name: v.companyName || v.email,
+            label: "Tax Card",
+            url: `${window.location.origin}${v.taxCardUrl}`,
+            type: "Vendor",
+          });
+        }
+
+        if (v.logoUrl) {
+          docs.push({
+            name: v.companyName || v.email,
+            label: "Company Logo",
+            url: `${window.location.origin}${v.logoUrl}`,
+            type: "Vendor",
+          });
+        }
+
+        return docs;
+      });
+    };
+
+    const attendeeDocs = [
+      ...gatherAttendeeDocs(bJson),
+      ...gatherAttendeeDocs(boJson),
+    ];
+
+    const vendorDocs = gatherVendorDocs(vJson.vendors);
+
+    setDocsList([...vendorDocs, ...attendeeDocs]);
+    setDocsModalOpen(true);
+  } catch (err) {
+    console.error("Error fetching docs:", err);
+    setToast({ open: true, text: "Failed to load documents" });
+  }
+}}
+
                 className="btn-primary"
                 style={{
                   padding: "10px 20px",
@@ -1876,7 +1920,13 @@ export default function EventsHome() {
                     borderBottom: "1px solid #eee",
                   }}
                 >
-                  <span>{d.name}</span>
+                  <div>
+  <strong>{d.name}</strong>
+  <div style={{ fontSize: "12px", color: "#777" }}>
+    {d.type === "Vendor" ? `Vendor – ${d.label}` : "Attendee"}
+  </div>
+</div>
+
                   <div>
                     <button
                       onClick={() => openViewer(d.url, d.name)}
@@ -1910,48 +1960,102 @@ export default function EventsHome() {
         </div>
       )}
       {viewerOpen && (
-        <div
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.6)",
+      backdropFilter: "blur(4px)",
+      zIndex: 9999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px",
+    }}
+  >
+    {/* Main Modal Window */}
+    <div
+      style={{
+        width: "85%",
+        height: "85%",
+        background: "#fff",
+        borderRadius: "14px",
+        boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        animation: "fadeIn 0.2s ease-out",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "14px 20px",
+          background: "#f5f7fa",
+          borderBottom: "1px solid #e2e2e2",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontWeight: 600,
+          color: "#222",
+        }}
+      >
+        <span>Document Viewer</span>
+        <button
+          onClick={() => setViewerOpen(false)}
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            background: "none",
+            border: "none",
+            fontSize: "22px",
+            cursor: "pointer",
+            color: "#444",
           }}
         >
-          <div
+          ✕
+        </button>
+      </div>
+
+      {/* Content Area */}
+      <div
+        style={{
+          flex: 1,
+          background: "#fafafa",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "auto",
+          padding: "20px",
+        }}
+      >
+        {/* Detect image vs PDF */}
+        {viewerUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? (
+          <img
+            src={viewerUrl}
+            alt="Document"
             style={{
-              width: "80%",
-              height: "80%",
-              background: "white",
-              position: "relative",
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: "8px",
+              boxShadow: "0 0 10px rgba(0,0,0,0.15)",
             }}
-          >
-            <button
-              onClick={() => setViewerOpen(false)}
-              style={{
-                position: "absolute",
-                top: -30,
-                right: 0,
-                color: "white",
-                background: "none",
-                border: "none",
-                fontSize: "20px",
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
-            <iframe
-              src={viewerUrl}
-              style={{ width: "100%", height: "100%", border: "none" }}
-              title="Doc Viewer"
-            />
-          </div>
-        </div>
-      )}
+          />
+        ) : (
+          <iframe
+            src={viewerUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            title="Document Viewer"
+          />
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
       {toast.open && (
         <div className="eo-toast" role="status">
           <span className="eo-toast-text">{toast.text}</span>

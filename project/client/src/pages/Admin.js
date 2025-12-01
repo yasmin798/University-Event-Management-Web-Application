@@ -755,48 +755,95 @@ export default function Admin() {
   };
 
   const openDocsModal = async () => {
-    setDocsLoading(true);
-    setDocsList([]);
-    setDocsTitle("Vendor Documents");
+  setDocsList([]);
+  setDocsLoading(true);
 
-    try {
-      const bazaars = await tryFetchJson(
-        `${API_ORIGIN}/api/bazaar-applications`
+  try {
+    const token = localStorage.getItem("token");
+
+    // Fetch attendee & vendor docs EXACTLY like Events Office
+    const [bRes, boRes, vRes] = await Promise.all([
+      fetch(`${API_ORIGIN}/api/bazaar-applications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch(`${API_ORIGIN}/api/booth-applications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch(`${API_ORIGIN}/api/vendors`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
+
+    const bJson = bRes.ok ? await bRes.json() : [];
+    const boJson = boRes.ok ? await boRes.json() : [];
+    const vJson = vRes.ok ? await vRes.json() : { vendors: [] };
+
+    // --- Extract attendee docs (same as Events Office) ---
+    const gatherAttendeeDocs = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr.flatMap((r) =>
+        (r.attendees || [])
+          .filter((a) => a?.idDocument)
+          .map((a) => ({
+            name: a.name || "No Name",
+            email: a.email || "",
+            url: a.idDocument.startsWith("/")
+              ? `${window.location.origin}${a.idDocument}`
+              : a.idDocument,
+            type: "Attendee",
+          }))
       );
-      const booths = await tryFetchJson(`${API_ORIGIN}/api/booth-applications`);
+    };
 
-      const gather = (arr) => {
-        if (!arr || !Array.isArray(arr)) return [];
-        return arr.flatMap((r) => {
-          const attendees = Array.isArray(r.attendees) ? r.attendees : [];
-          return attendees
-            .filter((a) => a && a.idDocument)
-            .map((a) => ({
-              name: a.name || a.fullName || "Unnamed",
-              email: a.email || a.emailAddress || "",
-              url: String(a.idDocument).startsWith("/")
-                ? `${API_ORIGIN}${a.idDocument}`
-                : String(a.idDocument),
-              source: r.vendorName || r._id || "vendor",
-            }));
-        });
-      };
+    // --- Extract vendor docs (same as Events Office) ---
+    const gatherVendorDocs = (vendors) => {
+      if (!Array.isArray(vendors)) return [];
 
-      const bazList =
-        bazaars.ok && Array.isArray(bazaars.data) ? gather(bazaars.data) : [];
-      const boothList =
-        booths.ok && Array.isArray(booths.data) ? gather(booths.data) : [];
+      return vendors.flatMap((v) => {
+        const docs = [];
 
-      const combined = [...bazList, ...boothList];
-      setDocsList(combined);
-      setDocsModalOpen(true);
-    } catch (err) {
-      console.error("Error fetching documents:", err);
-      setMessage("❌ Could not fetch documents. Check server.");
-    } finally {
-      setDocsLoading(false);
-    }
-  };
+        if (v.taxCardUrl) {
+          docs.push({
+            name: v.companyName || v.email,
+            label: "Tax Card",
+            url: `${window.location.origin}${v.taxCardUrl}`,
+            type: "Vendor",
+          });
+        }
+
+        if (v.logoUrl) {
+          docs.push({
+            name: v.companyName || v.email,
+            label: "Company Logo",
+            url: `${window.location.origin}${v.logoUrl}`,
+            type: "Vendor",
+          });
+        }
+
+        return docs;
+      });
+    };
+
+    const attendeeDocs = [
+      ...gatherAttendeeDocs(bJson),
+      ...gatherAttendeeDocs(boJson),
+    ];
+
+    const vendorDocs = gatherVendorDocs(vJson.vendors);
+
+    // Final combined list
+    setDocsList([...vendorDocs, ...attendeeDocs]);
+
+    setDocsModalOpen(true);
+  } catch (err) {
+    console.error("Error fetching docs:", err);
+    setMessage("❌ Failed to load documents.");
+  } finally {
+    setDocsLoading(false);
+  }
+};
+
+
 
   const getBackendOrigin = () => {
     try {
@@ -911,7 +958,7 @@ export default function Admin() {
                   setCreateUserRole("admin");
                   setShowCreateUserPopup(true);
                 }}
-                style={createBtnStyle}
+                style={{...createBtnStyle, backgroundColor: "#3B82F6",}}
               >
                 Create Admin
               </button>
@@ -920,7 +967,7 @@ export default function Admin() {
                   setCreateUserRole("events_office");
                   setShowCreateUserPopup(true);
                 }}
-                style={createBtnStyle}
+                style={{...createBtnStyle, backgroundColor: "#3B82F6",}}
               >
                 Create Events Officer
               </button>
@@ -1008,7 +1055,7 @@ export default function Admin() {
                   <div>
                     <h3 style={{ margin: 0 }}>{docsTitle}</h3>
                     <p style={{ color: "#E5E7EB", fontSize: 14 }}>
-                      Uploaded IDs
+                      Documents
                     </p>
                   </div>
                   <button
@@ -1034,72 +1081,68 @@ export default function Admin() {
                       No uploaded documents found.
                     </div>
                   ) : (
-                    <table
-                      style={{ width: "100%", borderCollapse: "collapse" }}
-                    >
-                      <thead>
-                        <tr
-                          style={{
-                            textAlign: "left",
-                            borderBottom: "1px solid #E5E7EB",
-                          }}
-                        >
-                          <th style={{ padding: 8 }}>Name</th>
-                          <th style={{ padding: 8 }}>Email</th>
-                          <th style={{ padding: 8 }}>Source</th>
-                          <th style={{ padding: 8 }}>Document</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {docsList.map((d, i) => (
-                          <tr
-                            key={i}
-                            style={{ borderBottom: "1px solid #F3F4F6" }}
-                          >
-                            <td style={{ padding: 8 }}>{d.name}</td>
-                            <td style={{ padding: 8 }}>{d.email}</td>
-                            <td style={{ padding: 8 }}>{d.source}</td>
-                            <td
-                              style={{
-                                padding: 8,
-                                display: "flex",
-                                gap: 8,
-                                justifyContent: "center",
-                              }}
-                            >
-                              <button
-                                onClick={() => openViewer(d.url, d.name)}
-                                style={{
-                                  background: "transparent",
-                                  border: "1px solid #2563EB",
-                                  color: "#2563EB",
-                                  padding: "6px 10px",
-                                  borderRadius: 6,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={() =>
-                                  downloadFile(d.url, `${d.name || "document"}`)
-                                }
-                                style={{
-                                  background: "#2563EB",
-                                  border: "none",
-                                  color: "white",
-                                  padding: "6px 10px",
-                                  borderRadius: 6,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                Download
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+  {docsList.map((d, i) => (
+    <div
+      key={i}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "14px 12px",
+        background: "#ffffff",
+        borderRadius: "10px",
+        border: "1px solid #e5e7eb",
+        boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+      }}
+    >
+      <div>
+        <strong style={{ fontSize: "15px" }}>{d.name}</strong>
+
+        <div style={{ fontSize: "12px", color: "#6b7280" }}>
+          {d.type === "Vendor"
+            ? `Vendor — ${d.label}`
+            : d.email
+            ? d.email
+            : "Attendee Document"}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: "10px" }}>
+        <button
+          onClick={() => openViewer(d.url, d.name)}
+          style={{
+            background: "transparent",
+            border: "1px solid #2563eb",
+            color: "#2563eb",
+            padding: "6px 12px",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: 500,
+          }}
+        >
+          View
+        </button>
+
+        <button
+          onClick={() => downloadFile(d.url, d.name)}
+          style={{
+            background: "#2563eb",
+            border: "none",
+            color: "white",
+            padding: "6px 12px",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: 500,
+          }}
+        >
+          Download
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
+
                   )}
                 </div>
                 <div style={popupFooterStyle}>
@@ -1113,112 +1156,98 @@ export default function Admin() {
               </div>
             )}
             {viewerOpen && (
-              <div
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  background: "rgba(0,0,0,0.45)",
-                  zIndex: 9999,
-                }}
-              >
-                <div
-                  style={{
-                    background: "white",
-                    padding: 0,
-                    width: "80%",
-                    maxWidth: 1000,
-                    height: "90vh",
-                    borderRadius: 10,
-                    boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
-                    display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      ...popupHeaderStyle,
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <h3 style={{ margin: 0 }}>{viewerName}</h3>
-                      <p style={{ color: "#E5E7EB", fontSize: 14, margin: 0 }}>
-                        Preview
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setViewerOpen(false)}
-                      style={{ marginLeft: "auto", ...closeBtnStyle }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      padding: 0,
-                      background: "#f8fafc",
-                      minHeight: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    {viewerUrl &&
-                    (viewerUrl.endsWith(".pdf") ||
-                      !viewerUrl.match(/\.(jpg|jpeg|png|gif|bmp)$/i)) ? (
-                      <iframe
-                        src={viewerUrl}
-                        title={viewerName}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          border: "none",
-                          display: "block",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          flex: 1,
-                          minHeight: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: 12,
-                        }}
-                      >
-                        <img
-                          src={viewerUrl}
-                          alt={viewerName}
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "100%",
-                            width: "auto",
-                            height: "auto",
-                            objectFit: "contain",
-                            display: "block",
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ ...popupFooterStyle, margin: 0 }}>
-                    <button
-                      onClick={() => setViewerOpen(false)}
-                      style={cancelBtnStyle}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.6)",
+      backdropFilter: "blur(4px)",
+      zIndex: 9999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px",
+    }}
+  >
+    <div
+      style={{
+        width: "85%",
+        height: "85%",
+        background: "#fff",
+        borderRadius: "14px",
+        boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        animation: "fadeIn 0.2s ease-out",
+      }}
+    >
+      <div
+        style={{
+          padding: "14px 20px",
+          background: "#f5f7fa",
+          borderBottom: "1px solid #e2e2e2",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontWeight: 600,
+          color: "#222",
+        }}
+      >
+        <span>Document Viewer</span>
+        <button
+          onClick={() => setViewerOpen(false)}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: "22px",
+            cursor: "pointer",
+            color: "#444",
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          background: "#fafafa",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "auto",
+          padding: "20px",
+        }}
+      >
+        {viewerUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? (
+          <img
+            src={viewerUrl}
+            alt="Document"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: "8px",
+              boxShadow: "0 0 10px rgba(0,0,0,0.15)",
+            }}
+          />
+        ) : (
+          <iframe
+            src={viewerUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            title="Document Viewer"
+          />
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
           </div>
 
           {viewEvent && (
