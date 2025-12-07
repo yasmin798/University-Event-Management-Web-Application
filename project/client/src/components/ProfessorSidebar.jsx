@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Store,
   Dumbbell,
+  Wallet,
 } from "lucide-react";
 import EventityLogo from "./EventityLogo";
 
@@ -60,6 +61,11 @@ export default function ProfessorSidebar() {
 
         {navBtn("Gym Sessions", <Dumbbell size={18} />, () =>
           navigate("/gym-sessions-register")
+        )}
+
+         {/* 👇 New Wallet button */}
+        {navBtn("Wallet", <Wallet size={18} />, () =>
+          navigate("/wallet")
         )}
 
         {navBtn("Loyalty Partners", <Store size={18} />, () =>
