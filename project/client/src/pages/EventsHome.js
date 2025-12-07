@@ -7,6 +7,8 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { handleVoiceCommand } from "../utils/VoiceCommands";
+import { Mic } from "lucide-react";
 
 import {
   Search,
@@ -62,6 +64,7 @@ const menuBtnStyle = {
   color: "var(--navy)",
   transition: "background 0.2s",
 };
+
 
 const dropdownMenuStyle = {
   position: "absolute",
@@ -125,6 +128,33 @@ export default function EventsHome() {
     const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
     return () => clearTimeout(t);
   }, [dateFilter]);
+  
+const startVoiceRecognition = () => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Voice recognition not supported in this browser.");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.start();
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    console.log("Voice heard:", transcript);
+    handleVoiceCommand(transcript, navigate, setSearchTerm);
+  };
+
+  recognition.onerror = (err) => {
+    console.error("Voice recognition error:", err);
+  };
+};
 
   // Click outside to close menus
   useEffect(() => {
@@ -1028,7 +1058,26 @@ export default function EventsHome() {
             top: 0,
             zIndex: 10,
           }}
+          
         >
+        <button
+  onClick={startVoiceRecognition}
+  style={{
+    background: "#567c8d",
+    color: "white",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    cursor: "pointer"
+  }}
+>
+  <Mic size={18} />
+  Voice Command
+</button>
+
           {/* LEFT: Search & Filters (Grouped Tightly) */}
           <div
             style={{
