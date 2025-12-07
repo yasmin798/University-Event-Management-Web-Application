@@ -235,7 +235,7 @@ router.post("/admin/send-qr-codes", async (req, res) => {
   let pdfPath;
 
   try {
-    const { boothId, vendorEmail, vendorName } = req.body;
+    const { boothId, vendorEmail, vendorName, subject, body } = req.body;
 
     if (!boothId || !vendorEmail) {
       return res.status(400).json({ error: "Missing required fields: boothId and vendorEmail" });
@@ -324,11 +324,8 @@ router.post("/admin/send-qr-codes", async (req, res) => {
     // Verify the transporter configuration
     await transporter.verify();
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: vendorEmail,
-      subject: `QR Codes for Your Booth Application ${boothId}`,
-      text: `Dear ${vendorName},
+    const emailDefaultSubject = `QR Codes for Your Booth Application ${boothId}`;
+    const emailDefaultBody = `Dear ${vendorName},
 
 Please find attached a PDF containing QR codes for all attendees associated with your booth application.
 
@@ -339,7 +336,13 @@ These QR codes are required for attendee check-in and verification during the ev
 If you have any questions regarding the QR codes or attendee management, please contact the event administration team.
 
 Thank you,
-Event Administration Team`,
+Event Administration Team`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: vendorEmail,
+      subject: subject || emailDefaultSubject, // use custom subject if provided
+      text: body || emailDefaultBody,         // use custom body if provided
       attachments: [
         {
           filename: `QR_Codes_Booth_${boothId}.pdf`,
@@ -350,24 +353,23 @@ Event Administration Team`,
 
     const emailResult = await transporter.sendMail(mailOptions);
 
-    // Clean up the temporary PDF file
     if (fs.existsSync(pdfPath)) {
       fs.unlinkSync(pdfPath);
     }
 
-    console.log(`QR codes email successfully sent to ${vendorEmail} for booth ${boothId}, Message ID: ${emailResult.messageId}`);
+    console.log(
+      `QR codes email successfully sent to ${vendorEmail} for booth ${boothId}, Message ID: ${emailResult.messageId}`
+    );
 
     res.json({
       success: true,
       message: `QR codes have been successfully sent to ${vendorEmail}`,
       attendeeCount: attendees.length,
-      messageId: emailResult.messageId
+      messageId: emailResult.messageId,
     });
-
   } catch (error) {
     console.error("Error in send-qr-codes endpoint:", error);
-    
-    // Clean up temporary file if it exists
+
     if (pdfPath && fs.existsSync(pdfPath)) {
       try {
         fs.unlinkSync(pdfPath);

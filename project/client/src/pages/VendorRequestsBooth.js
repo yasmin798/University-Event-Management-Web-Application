@@ -67,12 +67,43 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
   const isAccepted = vendorTarget.newStatus === "accepted";
   const typeCapitalized =
     vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
+
   let detailsString = "";
   if (vendorTarget.type === "booth") {
-    detailsString = `Booth ID: ${vendorTarget.details.boothId}\nLocation: ${
-      vendorTarget.details.location
-    }\nDuration: ${vendorTarget.details.duration || "N/A"}`;
+    detailsString = `Booth ID: ${vendorTarget.details.boothId}
+Location: ${vendorTarget.details.location}
+Duration: ${vendorTarget.details.duration || "N/A"}`;
   }
+
+  const defaultSubject = `Your ${typeCapitalized} Vendor Request Has Been ${
+    isAccepted ? "Accepted" : "Rejected"
+  }`;
+
+  const defaultBody = `Dear ${vendorTarget.vendorName},
+
+Your ${vendorTarget.type} vendor request has been ${vendorTarget.newStatus} by the admin.
+
+Details:
+${detailsString}
+
+${
+  isAccepted
+    ? "We look forward to your participation!"
+    : "If you have any questions, please contact support."
+}
+
+— Admin Team`;
+
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+
+  // Reset when vendorTarget changes
+  useEffect(() => {
+    setSubject(defaultSubject);
+    setBody(defaultBody);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorTarget]);
+
   return (
     <div style={popupOverlayStyle}>
       <div style={popupHeaderStyle}>
@@ -84,32 +115,55 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
           ✕
         </button>
       </div>
+
       <div style={popupContentStyle}>
         <div style={mailRowStyle}>
           <b>To:</b> {vendorTarget.vendorEmail}
         </div>
+
         <div style={mailRowStyle}>
-          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been{" "}
-          {isAccepted ? "Accepted" : "Rejected"}
+          <b>Subject:</b>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            style={{
+              width: "100%",
+              marginTop: 4,
+              padding: "6px 8px",
+              borderRadius: 4,
+              border: "1px solid #D1D5DB",
+              fontSize: 14,
+            }}
+          />
         </div>
+
         <div style={mailBodyStyle}>
-          <p>Dear {vendorTarget.vendorName},</p>
-          <p>
-            Your {vendorTarget.type} vendor request has been{" "}
-            {vendorTarget.newStatus} by the admin.
-          </p>
-          <p>Details:</p>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{detailsString}</pre>
-          {isAccepted ? (
-            <p>We look forward to your participation!</p>
-          ) : (
-            <p>If you have any questions, please contact support.</p>
-          )}
-          <p>— Admin Team</p>
+          <b>Message:</b>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            style={{
+              width: "100%",
+              marginTop: 4,
+              padding: "8px",
+              borderRadius: 4,
+              border: "1px solid #D1D5DB",
+              fontSize: 14,
+              resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
         </div>
       </div>
+
       <div style={popupFooterStyle}>
-        <button onClick={onSend} style={sendBtnStyle} disabled={sending}>
+        <button
+          onClick={() => onSend({ subject, body })}
+          style={sendBtnStyle}
+          disabled={sending}
+        >
           {sending ? "Sending..." : "Send"}
         </button>
         <button onClick={onClose} style={cancelBtnStyle}>
@@ -119,8 +173,37 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
     </div>
   );
 }
+
 function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
   const attendeeCount = vendorTarget.raw.attendees?.length || 0;
+
+  const defaultSubject = "QR Codes for Your Booth Application";
+
+  const defaultBody = `Dear ${vendorTarget.vendorName},
+
+Please find attached the QR codes for all attendees associated with your booth application.
+
+This package contains ${attendeeCount} individual QR codes, one for each attendee registered under your booth application.
+
+These QR codes are required for attendee check-in and verification during the event. Please ensure each attendee has their respective QR code available.
+
+Application Details:
+- Booth ID: ${vendorTarget.raw._id || "N/A"}
+- Location: ${vendorTarget.raw.location || "Not specified"}
+- Total Attendees: ${attendeeCount}
+
+If you have any questions about the QR codes or attendee management, please contact the admin team.
+
+— Event Administration Team`;
+
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+
+  useEffect(() => {
+    setSubject(defaultSubject);
+    setBody(defaultBody);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorTarget]);
 
   return (
     <div style={popupOverlayStyle}>
@@ -135,42 +218,53 @@ function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
           ✕
         </button>
       </div>
+
       <div style={popupContentStyle}>
         <div style={mailRowStyle}>
           <b>To:</b> {vendorTarget.vendorEmail}
         </div>
+
         <div style={mailRowStyle}>
-          <b>Subject:</b> QR Codes for Your Booth Application
+          <b>Subject:</b>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            style={{
+              width: "100%",
+              marginTop: 4,
+              padding: "6px 8px",
+              borderRadius: 4,
+              border: "1px solid #D1D5DB",
+              fontSize: 14,
+            }}
+          />
         </div>
+
         <div style={mailBodyStyle}>
-          <p>Dear {vendorTarget.vendorName},</p>
-          <p>
-            Please find attached the QR codes for all attendees associated with
-            your booth application.
-          </p>
-          <p>
-            This package contains {attendeeCount} individual QR codes, one for
-            each attendee registered under your booth application.
-          </p>
-          <p>
-            These QR codes are required for attendee check-in and verification
-            during the event.
-          </p>
-          <p>Please ensure each attendee has their respective QR code available.</p>
-          <p>Application Details:</p>
-          <div style={{ margin: "10px 0", padding: "10px", backgroundColor: "#f3f4f6", borderRadius: "6px", fontSize: 13 }}>
-            <strong>Booth ID:</strong> {vendorTarget.raw._id || "N/A"}<br />
-            <strong>Location:</strong> {vendorTarget.raw.location || "Not specified"}<br />
-            <strong>Total Attendees:</strong> {attendeeCount}
-          </div>
-          <p>If you have any questions about the QR codes or attendee management, please contact the admin team.</p>
-          <p>— Event Administration Team</p>
+          <b>Message:</b>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            style={{
+              width: "100%",
+              marginTop: 4,
+              padding: "8px",
+              borderRadius: 4,
+              border: "1px solid #D1D5DB",
+              fontSize: 14,
+              resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
         </div>
       </div>
+
       <div style={popupFooterStyle}>
-        <button 
-          onClick={onSend} 
-          style={sendBtnStyle} 
+        <button
+          onClick={() => onSend({ subject, body })}
+          style={sendBtnStyle}
           disabled={sending}
         >
           {sending ? "Sending QR Codes..." : "Send QR Codes"}
@@ -182,6 +276,7 @@ function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
     </div>
   );
 }
+
 
 export default function VendorRequestsBooth() {
   const { id: bazaarId } = useParams();
@@ -315,92 +410,90 @@ const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
 };
 
 
-  const handleSendVendorMail = async () => {
-    if (!vendorTarget) return;
-    setSending(true);
-    setProcessingId(vendorTarget.requestId);
+  const handleSendVendorMail = async ({ subject, body }) => {
+  if (!vendorTarget) return;
+  setSending(true);
+  setProcessingId(vendorTarget.requestId);
 
-    try {
-      // 1. Update status + add payment deadline (only on accept)
-      const updatePayload = {
-        status: vendorTarget.newStatus,
-      };
+  try {
+    const updatePayload = {
+      status: vendorTarget.newStatus,
+    };
 
-      // ONLY ADD DEADLINE IF ACCEPTED
-      if (vendorTarget.newStatus === "accepted") {
-        const deadline = new Date();
-        deadline.setDate(deadline.getDate() + 3); // 3 days from now
-        updatePayload.paymentDeadline = deadline.toISOString();
-      }
-
-      // Try multiple endpoints (same as before)
-      await updateStatusOnServer(
-        vendorTarget.requestId,
-        vendorTarget.newStatus,
-        updatePayload
-      );
-
-      // 2. Send email notification
-      const mailRes = await fetch(
-        `${API_ORIGIN}/api/admin/send-vendor-notification`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: vendorTarget.vendorEmail,
-            requestId: vendorTarget.requestId,
-            status: vendorTarget.newStatus,
-            type: vendorTarget.type,
-            details: vendorTarget.details,
-          }),
-        }
-      );
-
-      const mailData = await mailRes.json();
-
-      if (mailRes.ok) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r._id === vendorTarget.requestId
-              ? {
-                  ...r,
-                  status: vendorTarget.newStatus,
-                  paymentDeadline:
-                    vendorTarget.newStatus === "accepted"
-                      ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-                      : r.paymentDeadline,
-                }
-              : r
-          )
-        );
-        alert(
-          `Vendor request ${vendorTarget.newStatus} and notification sent!`
-        );
-
-        // If accepted, show friendly reminder
-        if (vendorTarget.newStatus === "accepted") {
-          alert("Payment deadline set: 3 days from now");
-        }
-      } else {
-        alert(
-          `Request ${vendorTarget.newStatus}, but email failed: ${
-            mailData.error || "Unknown"
-          }`
-        );
-      }
-    } catch (err) {
-      console.error("Error:", err);
-      alert("Server error");
-    } finally {
-      setSending(false);
-      setShowVendorMailPopup(false);
-      setVendorTarget(null);
-      setProcessingId(null);
+    if (vendorTarget.newStatus === "accepted") {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 3);
+      updatePayload.paymentDeadline = deadline.toISOString();
     }
-  };
-const handleSendQRCodes = async () => {
+
+    await updateStatusOnServer(
+      vendorTarget.requestId,
+      vendorTarget.newStatus,
+      updatePayload
+    );
+
+    const mailRes = await fetch(
+      `${API_ORIGIN}/api/admin/send-vendor-notification`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: vendorTarget.vendorEmail,
+          requestId: vendorTarget.requestId,
+          status: vendorTarget.newStatus,
+          type: vendorTarget.type,
+          details: vendorTarget.details,
+          subject,   // <--- new
+          body,      // <--- new
+        }),
+      }
+    );
+
+    const mailData = await mailRes.json();
+
+    if (mailRes.ok) {
+      setRequests((prev) =>
+        prev.map((r) =>
+          r._id === vendorTarget.requestId
+            ? {
+                ...r,
+                status: vendorTarget.newStatus,
+                paymentDeadline:
+                  vendorTarget.newStatus === "accepted"
+                    ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+                    : r.paymentDeadline,
+              }
+            : r
+        )
+      );
+      alert(
+        `Vendor request ${vendorTarget.newStatus} and notification sent!`
+      );
+
+      if (vendorTarget.newStatus === "accepted") {
+        alert("Payment deadline set: 3 days from now");
+      }
+    } else {
+      alert(
+        `Request ${vendorTarget.newStatus}, but email failed: ${
+          mailData.error || "Unknown"
+        }`
+      );
+    }
+  } catch (err) {
+    console.error("Error:", err);
+    alert("Server error");
+  } finally {
+    setSending(false);
+    setShowVendorMailPopup(false);
+    setVendorTarget(null);
+    setProcessingId(null);
+  }
+};
+
+const handleSendQRCodes = async ({ subject, body }) => {
   if (!qrCodeTarget) return;
-  
+
   setSendingQRCodes(true);
 
   try {
@@ -409,64 +502,62 @@ const handleSendQRCodes = async () => {
       vendorEmail: qrCodeTarget.vendorEmail,
       vendorName: qrCodeTarget.vendorName,
       applicationId: qrCodeTarget.raw._id,
+      subject, // <--- new
+      body,    // <--- new
     };
 
     console.log("Making request to send QR codes with payload:", requestBody);
 
-    const response = await fetch(`${API_ORIGIN}/api/booth-applications/admin/send-qr-codes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${API_ORIGIN}/api/booth-applications/admin/send-qr-codes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
-    // Always read the raw response text first
     const responseText = await response.text();
-
-    console.log("=== SEND QR CODES RESPONSE DETAILS ===");
-    console.log("Response status:", response.status);
-    console.log("Response status text:", response.statusText);
-    console.log("Response headers:", Array.from(response.headers.entries()));
     console.log("Raw response text:", responseText);
-    console.log("Response text length:", responseText.length);
 
-    // Check if the response is empty
     if (!responseText.trim()) {
-      console.error("Server returned an empty response");
       throw new Error("Server returned an empty response");
     }
 
-    // Try to parse the response as JSON
     let result;
     try {
       result = JSON.parse(responseText);
     } catch (parseError) {
-      console.error("Failed to parse response as JSON. Raw response content:");
-      console.error(responseText);
-      throw new Error(`Server returned a non-JSON response (status ${response.status}):\n${responseText.substring(0, 2000)}${responseText.length > 2000 ? "\n... (response truncated)" : ""}`);
+      throw new Error(
+        `Server returned a non-JSON response (status ${response.status}):\n` +
+          responseText.substring(0, 2000) +
+          (responseText.length > 2000 ? "\n... (response truncated)" : "")
+      );
     }
 
     if (response.ok) {
       console.log("QR codes sent successfully:", result);
-      alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
+      alert(
+        `QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`
+      );
     } else {
-      console.error("Server returned an error response:", result);
-      const errorMessage = result.error || result.message || `HTTP ${response.status}`;
+      const errorMessage =
+        result.error || result.message || `HTTP ${response.status}`;
       throw new Error(`Server error: ${errorMessage}`);
     }
-
   } catch (err) {
     console.error("=== ERROR SENDING QR CODES ===");
     console.error("Full error:", err);
-    console.error("Error message:", err.message);
-    
-    // Only show a simple alert, but all details are in the console
-    alert(`Failed to send QR codes. Check the console for detailed error information.`);
+    alert(
+      "Failed to send QR codes. Check the console for detailed error information."
+    );
   } finally {
     setSendingQRCodes(false);
     setShowQRCodePopup(false);
     setQrCodeTarget(null);
   }
 };
+
   const openConfirm = (id, status) => {
     setConfirmData({
       requestId: id,

@@ -811,7 +811,16 @@ router.get("/events/:id", async (req, res) => {
 /* ------------------- SEND VENDOR NOTIFICATION ------------------- */
 router.post("/admin/send-vendor-notification", async (req, res) => {
   try {
-    const { email, requestId, status, type, details } = req.body;
+    const {
+      email,
+      requestId,
+      status,
+      type,
+      details = {},
+      subject,
+      body,
+      vendorName, // optional, if you decide to send it from frontend
+    } = req.body;
 
     // Validate input
     if (!email || !status || !type) {
@@ -827,38 +836,45 @@ router.post("/admin/send-vendor-notification", async (req, res) => {
       },
     });
 
-    // Email content
     const isAccepted = status === "accepted";
     const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1);
-    let detailsString = Object.entries(details)
-      .map(
-        ([key, value]) =>
-          `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`
-      )
-      .join("\n");
+
+    // Build default details string safely
+    let detailsString = "";
+    if (details && typeof details === "object") {
+      detailsString = Object.entries(details)
+        .map(
+          ([key, value]) =>
+            `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`
+        )
+        .join("\n");
+    }
+
+    // Default subject/body used only if frontend didn't send custom ones
+    const defaultSubject = `Your ${typeCapitalized} Vendor Request Has Been ${
+      isAccepted ? "Accepted" : "Rejected"
+    }`;
+
+    const defaultBody = `Dear ${vendorName || "Vendor"},
+
+Your ${type} vendor request (ID: ${requestId}) has been ${status}.
+
+Details:
+${detailsString}
+
+${
+  isAccepted
+    ? "We look forward to your participation!"
+    : "If you have any questions, please contact support."
+}
+
+— Admin Team`;
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: `Your ${typeCapitalized} Vendor Request Has Been ${
-        isAccepted ? "Accepted" : "Rejected"
-      }`,
-      text: `
-        Dear Vendor,
-
-        Your ${type} vendor request (ID: ${requestId}) has been ${status}.
-
-        Details:
-        ${detailsString}
-
-        ${
-          isAccepted
-            ? "We look forward to your participation!"
-            : "If you have any questions, please contact support."
-        }
-
-        — Admin Team
-      `,
+      subject: subject || defaultSubject, // ✅ use custom subject if provided
+      text: body || defaultBody,         // ✅ use custom body if provided
     };
 
     // Send email
@@ -870,5 +886,6 @@ router.post("/admin/send-vendor-notification", async (req, res) => {
     res.status(500).json({ error: "Failed to send notification" });
   }
 });
+
 
 module.exports = router;
