@@ -7,7 +7,8 @@ import {
   FileText,
   BarChart2,
   Users,
-  BarChartHorizontal
+  BarChartHorizontal,
+  MessageCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import EventityLogo from "./EventityLogo";
@@ -29,6 +30,7 @@ export default function Sidebar() {
   const baseNavigation = [
     ["Gym Sessions", "/gym-sessions", Dumbbell],
     ["Vendor Booths", "/vendor-requests-booths", Store],
+    ["Student Suggestions", "/events-office/suggestions", MessageCircle],
     ["Attendees Report", "/reports/attendees", FileText],
     ["Sales Report", "/reports/sales", BarChart2],
     ["Poll Results", "/poll-results", BarChartHorizontal],

@@ -39,6 +39,8 @@ const reviewsRouter = require("./routes/reviews"); // or whatever the file is ca
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 
+const suggestionsRoutes = require("./routes/suggestions");
+
 const { startEventReminderLoop } = require("./jobs/eventReminderLoop");
 
 
@@ -96,6 +98,10 @@ app.use("/api/booth-applications", adminBoothRequestsRoute);
 app.use("/api/vendor/applications", vendorApplicationsRoute);
 app.use("/api/vendors", vendorsRoute);
 app.use("/api/booths", require("./routes/booths"));
+
+// 🔹 Student suggestions
+app.use("/api/suggestions", suggestionsRoutes);
+
 
 // Events routes (keep generic last)
 app.use("/api/events", eventRoutes);

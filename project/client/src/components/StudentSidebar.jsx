@@ -69,6 +69,12 @@ export default function StudentSidebar() {
           navigate("/student/loyalty-vendors")
         )}
 
+         {/* 👇 New Suggestions button */}
+       {navBtn("Suggestions", <Users size={18} />, () =>
+          navigate("/suggestions")
+        )}
+
+
         {navBtn("Wallet", <User size={18} />, () => navigate("/wallet"))}
       </nav>
 
