@@ -18,6 +18,7 @@ const BazaarApplicationForm = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [vendorDescription, setVendorDescription] = useState(""); // ✅ NEW
 
   // Fetch bazaar
   useEffect(() => {
@@ -73,6 +74,11 @@ const BazaarApplicationForm = () => {
 
     if (!["2x2", "4x4"].includes(boothSize)) return "Invalid booth size";
 
+    // ✅ You can enforce description as required if you want:
+    // if (!vendorDescription.trim()) {
+    //   return "Please describe your company and what you will offer.";
+    // }
+
     return null;
   };
 
@@ -96,6 +102,7 @@ const BazaarApplicationForm = () => {
       form.append("bazaar", bazaarId);
       form.append("boothSize", boothSize);
       form.append("attendees", JSON.stringify(attendees));
+      form.append("vendorDescription", vendorDescription); // ✅ NEW
       idFiles.forEach((f) => form.append("idFiles", f));
 
       const res = await fetch("http://localhost:3001/api/bazaar-applications", {
@@ -159,6 +166,19 @@ const BazaarApplicationForm = () => {
           )}
 
           <form onSubmit={handleSubmit}>
+            {/* ✅ Company / Offer Description */}
+            <div className="mb-4">
+              <label className="block font-medium mb-2">
+                Company Description / What you will offer
+              </label>
+              <textarea
+                value={vendorDescription}
+                onChange={(e) => setVendorDescription(e.target.value)}
+                placeholder="Describe your brand, what you do, and what you will offer at this bazaar..."
+                className="w-full p-2 border rounded min-h-[100px] text-sm"
+              />
+            </div>
+
             {/* Attendees */}
             <div className="mb-4">
               <label className="block font-medium mb-2">
@@ -242,7 +262,9 @@ const BazaarApplicationForm = () => {
             </div>
 
             {error && <p className="text-red-500 mb-2">{error}</p>}
-            {successMsg && <p className="text-green-600 mb-2">{successMsg}</p>}
+            {successMsg && (
+              <p className="text-green-600 mb-2">{successMsg}</p>
+            )}
 
             <div className="flex gap-3 mt-4">
               <button
@@ -254,7 +276,7 @@ const BazaarApplicationForm = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/vendors")}
                 className="px-4 py-2 border rounded"
               >
                 Cancel

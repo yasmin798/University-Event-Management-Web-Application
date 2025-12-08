@@ -16,7 +16,6 @@ import {
 import "../events.theme.css";
 import Sidebar from "../components/Sidebar";
 
-
 function ConfirmModal({ open, title, body, onCancel, onConfirm }) {
   if (!open) return null;
 
@@ -202,8 +201,8 @@ export default function VendorRequests() {
     body: "",
   });
   const [sendingQRCodes, setSendingQRCodes] = useState(false);
-const [showQRCodePopup, setShowQRCodePopup] = useState(false);
-const [qrCodeTarget, setQrCodeTarget] = useState(null)
+  const [showQRCodePopup, setShowQRCodePopup] = useState(false);
+  const [qrCodeTarget, setQrCodeTarget] = useState(null);
   const [showVendorMailPopup, setShowVendorMailPopup] = useState(false);
   const [vendorTarget, setVendorTarget] = useState(null);
   const [sending, setSending] = useState(false);
@@ -359,37 +358,37 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null)
   };
 
   const handleSendQRCodes = async () => {
-  if (!qrCodeTarget) return;
+    if (!qrCodeTarget) return;
   
-  setSendingQRCodes(true);
-
-  try {
-    const response = await fetch(`${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        boothId: qrCodeTarget.raw._id, // Using boothId for consistency with booth implementation
-        vendorEmail: qrCodeTarget.vendorEmail,
-        vendorName: qrCodeTarget.vendorName,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
-    } else {
-      throw new Error(result.error || "Failed to send QR codes");
+    setSendingQRCodes(true);
+  
+    try {
+      const response = await fetch(`${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          boothId: qrCodeTarget.raw._id,
+          vendorEmail: qrCodeTarget.vendorEmail,
+          vendorName: qrCodeTarget.vendorName,
+        }),
+      });
+  
+      const result = await response.json();
+  
+      if (response.ok) {
+        alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
+      } else {
+        throw new Error(result.error || "Failed to send QR codes");
+      }
+    } catch (err) {
+      console.error("Error sending QR codes:", err);
+      alert(`Failed to send QR codes: ${err.message}`);
+    } finally {
+      setSendingQRCodes(false);
+      setShowQRCodePopup(false);
+      setQrCodeTarget(null);
     }
-  } catch (err) {
-    console.error("Error sending QR codes:", err);
-    alert(`Failed to send QR codes: ${err.message}`);
-  } finally {
-    setSendingQRCodes(false);
-    setShowQRCodePopup(false);
-    setQrCodeTarget(null);
-  }
-};
+  };
 
   const openConfirm = (id, status) => {
     setConfirmData({
@@ -537,6 +536,12 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null)
 
                 const status = (req.status || "pending").toLowerCase();
 
+                // ✅ NEW: vendor description from DB
+                const vendorDescription =
+                  req.vendorDescription && req.vendorDescription.trim()
+                    ? req.vendorDescription
+                    : "";
+
                 return (
                   <div
                     key={req._id}
@@ -559,6 +564,18 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null)
                       </div>
                       {getStatusBadge(status)}
                     </div>
+
+                    {/* ✅ Vendor Description block */}
+                    {vendorDescription && (
+                      <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-500 mb-1">
+                          Vendor Description
+                        </p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line">
+                          {vendorDescription}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Description */}
                     <div className="mb-4">
@@ -616,27 +633,32 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null)
                             : "Reject"}
                         </button>
                       </div>
-                      
                     )}
-                    {status === "accepted" && Array.isArray(req.attendees) && req.attendees.length > 0 && (
-    <button
-      onClick={() => {
-        setQrCodeTarget({
-          raw: req,
-          vendorEmail: req.vendorEmail || req.attendees[0]?.email,
-          vendorName: req.vendorName || req.attendees[0]?.name,
-        });
-        setShowQRCodePopup(true);
-      }}
-      disabled={sendingQRCodes}
-      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-    >
-      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
-        <span style={{ fontSize: 10 }}>QR</span>
-      </div>
-      {sendingQRCodes ? "Sending QR Codes..." : "Send QR Codes"}
-    </button>
-  )}
+                    {status === "accepted" &&
+                      Array.isArray(req.attendees) &&
+                      req.attendees.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setQrCodeTarget({
+                              raw: req,
+                              vendorEmail:
+                                req.vendorEmail || req.attendees[0]?.email,
+                              vendorName:
+                                req.vendorName || req.attendees[0]?.name,
+                            });
+                            setShowQRCodePopup(true);
+                          }}
+                          disabled={sendingQRCodes}
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        >
+                          <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
+                            <span style={{ fontSize: 10 }}>QR</span>
+                          </div>
+                          {sendingQRCodes
+                            ? "Sending QR Codes..."
+                            : "Send QR Codes"}
+                        </button>
+                      )}
                   </div>
                 );
               })}
@@ -671,14 +693,14 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null)
               setShowVendorMailPopup(true);
             }}
           />
-{showQRCodePopup && qrCodeTarget && (
-  <QRCodePopup
-    onClose={() => setShowQRCodePopup(false)}
-    onSend={handleSendQRCodes}
-    sending={sendingQRCodes}
-    vendorTarget={qrCodeTarget}
-  />
-)}
+          {showQRCodePopup && qrCodeTarget && (
+            <QRCodePopup
+              onClose={() => setShowQRCodePopup(false)}
+              onSend={handleSendQRCodes}
+              sending={sendingQRCodes}
+              vendorTarget={qrCodeTarget}
+            />
+          )}
           {showVendorMailPopup && vendorTarget && (
             <VendorMailPopup
               onClose={() => setShowVendorMailPopup(false)}

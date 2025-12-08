@@ -29,6 +29,12 @@ const BoothApplicationSchema = new mongoose.Schema(
       enum: ["B1", "B2", "B3", "B4", "B5"],
       required: true,
     },
+
+     // ✅ NEW: what the company does / will offer at this booth
+    vendorDescription: {
+      type: String,
+      trim: true,
+    },
      // NEW FIELDS
     startDateTime: { type: Date },
     endDateTime: { type: Date },

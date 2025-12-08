@@ -9,10 +9,10 @@ const BazaarApplication = require("../models/BazaarApplication");
 const Bazaar = require("../models/Bazaar");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
-const QRCode = require('qrcode');
-const PDFDocument = require('pdfkit');
-const nodemailer = require('nodemailer');
-const archiver = require('archiver');
+const QRCode = require("qrcode");
+const PDFDocument = require("pdfkit");
+const nodemailer = require("nodemailer");
+const archiver = require("archiver");
 
 // Ensure uploads directory exists
 const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "ids");
@@ -35,13 +35,10 @@ const upload = multer({ storage });
 
 // CREATE BAZAAR APPLICATION
 // Expects multipart/form-data with `attendees` (JSON string) and `idFiles` array of files
-// Add this route to your boothApplications.js file, preferably after the existing routes
-
-
 router.post("/", upload.array("idFiles", 5), async (req, res) => {
   try {
     // attendees may be sent as JSON string in multipart requests
-    const { bazaar, boothSize } = req.body;
+    const { bazaar, boothSize, vendorDescription } = req.body; // ✅ add vendorDescription
     let attendees = req.body.attendees;
     if (typeof attendees === "string") {
       try {
@@ -71,12 +68,10 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
 
     // Require an ID file for each attendee (vendors must upload IDs for entire duration)
     if (files.length !== attendees.length) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "An ID file must be uploaded for every attendee (field name 'idFiles').",
-        });
+      return res.status(400).json({
+        error:
+          "An ID file must be uploaded for every attendee (field name 'idFiles').",
+      });
     }
 
     if (!["2x2", "4x4"].includes(boothSize)) {
@@ -130,6 +125,9 @@ router.post("/", upload.array("idFiles", 5), async (req, res) => {
         attendingEntireDuration: !!a.attendingEntireDuration,
       })),
       boothSize,
+      vendorDescription: vendorDescription
+        ? vendorDescription.trim()
+        : undefined, // ✅ store description
     });
     const savedApp = await appDoc.save();
 
@@ -228,6 +226,7 @@ router.get("/:bazaarId", async (req, res) => {
       .json({ error: "Failed to fetch applications for this bazaar" });
   }
 });
+
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -300,13 +299,12 @@ router.patch("/:id", async (req, res) => {
     };
 
     if (status.toLowerCase() === "accepted") {
-  const now = new Date();
-  const deadline = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const deadline = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  updateFields.acceptedAt = now;
-  updateFields.paymentDeadline = deadline;
-}
-
+      updateFields.acceptedAt = now;
+      updateFields.paymentDeadline = deadline;
+    }
 
     // Use direct MongoDB update to bypass Mongoose validation
     await BazaarApplication.collection.updateOne(
@@ -396,6 +394,7 @@ Eventity Team`;
     res.status(500).json({ error: "Server error updating vendor request" });
   }
 });
+
 router.post("/admin/send-qr-codes", async (req, res) => {
   let pdfPath;
 
@@ -403,7 +402,9 @@ router.post("/admin/send-qr-codes", async (req, res) => {
     const { boothId, vendorEmail, vendorName, subject, body } = req.body;
 
     if (!boothId || !vendorEmail) {
-      return res.status(400).json({ error: "Missing required fields: boothId and vendorEmail" });
+      return res
+        .status(400)
+        .json({ error: "Missing required fields: boothId and vendorEmail" });
     }
 
     // Use BazaarApplication instead of BoothApplication
@@ -413,23 +414,27 @@ router.post("/admin/send-qr-codes", async (req, res) => {
     }
 
     if (bazaarApplication.status !== "accepted") {
-      return res.status(400).json({ error: "QR codes can only be sent for accepted bazaar applications" });
+      return res.status(400).json({
+        error: "QR codes can only be sent for accepted bazaar applications",
+      });
     }
 
     const attendees = bazaarApplication.attendees || [];
     if (attendees.length === 0) {
-      return res.status(400).json({ error: "No attendees found for this bazaar application" });
+      return res.status(400).json({
+        error: "No attendees found for this bazaar application",
+      });
     }
 
     // Create temporary directory
-    const tempDir = path.join(__dirname, '..', 'temp');
+    const tempDir = path.join(__dirname, "..", "temp");
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
     // Generate PDF with QR codes
     pdfPath = path.join(tempDir, `qr-codes-${boothId}.pdf`);
-    
+
     const doc = new PDFDocument({ margin: 50 });
     const writeStream = fs.createWriteStream(pdfPath);
     doc.pipe(writeStream);
@@ -444,7 +449,7 @@ router.post("/admin/send-qr-codes", async (req, res) => {
 
     for (let i = 0; i < attendees.length; i++) {
       const attendee = attendees[i];
-      
+
       if (currentY + rowHeight > doc.page.height - 80) {
         doc.addPage();
         currentY = 30;
@@ -454,9 +459,26 @@ router.post("/admin/send-qr-codes", async (req, res) => {
       const qrData = `attendee:${attendee.email}|id:${attendee._id}`;
       const qrDataUrl = await QRCode.toDataURL(qrData, { width: qrSize });
 
-      doc.image(qrDataUrl, currentX, currentY, { width: qrSize, height: qrSize });
-      doc.fontSize(12).fillColor('#1F2937').text(`Email: ${attendee.email}`, currentX + qrSize + 20, currentY);
-      doc.fontSize(10).fillColor('#6B7280').text(`Name: ${attendee.name}`, currentX + qrSize + 20, currentY + 25);
+      doc.image(qrDataUrl, currentX, currentY, {
+        width: qrSize,
+        height: qrSize,
+      });
+      doc
+        .fontSize(12)
+        .fillColor("#1F2937")
+        .text(
+          `Email: ${attendee.email}`,
+          currentX + qrSize + 20,
+          currentY
+        );
+      doc
+        .fontSize(10)
+        .fillColor("#6B7280")
+        .text(
+          `Name: ${attendee.name}`,
+          currentX + qrSize + 20,
+          currentY + 25
+        );
 
       currentX += qrSize + 180;
       if ((i + 1) % itemsPerRow === 0 || currentX + qrSize > pageWidth) {
@@ -467,21 +489,38 @@ router.post("/admin/send-qr-codes", async (req, res) => {
 
     // Add instructions page
     doc.addPage();
-    doc.fontSize(12).fillColor('#374151').text('QR Code Instructions:', 30, 30);
-    doc.fontSize(10).text('Each QR code is associated with a specific attendee and contains their unique identification information.', 30, 55);
-    doc.text('Present the appropriate QR code at check-in stations to verify attendee presence.', 30, 70);
-    doc.text(`This document contains QR codes for ${attendees.length} attendees associated with bazaar application ${boothId}.`, 30, 90);
+    doc
+      .fontSize(12)
+      .fillColor("#374151")
+      .text("QR Code Instructions:", 30, 30);
+    doc
+      .fontSize(10)
+      .text(
+        "Each QR code is associated with a specific attendee and contains their unique identification information.",
+        30,
+        55
+      );
+    doc.text(
+      "Present the appropriate QR code at check-in stations to verify attendee presence.",
+      30,
+      70
+    );
+    doc.text(
+      `This document contains QR codes for ${attendees.length} attendees associated with bazaar application ${boothId}.`,
+      30,
+      90
+    );
 
     doc.end();
 
     await new Promise((resolve, reject) => {
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
     });
 
     // Create nodemailer transporter
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -506,7 +545,7 @@ Event Administration Team`;
       from: process.env.EMAIL_USER,
       to: vendorEmail,
       subject: subject || emailDefaultSubject, // use custom subject if provided
-      text: body || emailDefaultBody,         // use custom body if provided
+      text: body || emailDefaultBody, // use custom body if provided
       attachments: [
         {
           filename: `QR_Codes_Booth_${boothId}.pdf`,
@@ -538,7 +577,10 @@ Event Administration Team`;
       try {
         fs.unlinkSync(pdfPath);
       } catch (cleanupError) {
-        console.error("Error cleaning up temporary PDF file:", cleanupError);
+        console.error(
+          "Error cleaning up temporary PDF file:",
+          cleanupError
+        );
       }
     }
 

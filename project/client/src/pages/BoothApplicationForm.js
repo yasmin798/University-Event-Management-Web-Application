@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Menu, X, Search, LogOut, User as UserIcon } from "lucide-react";
 import VendorSidebar from "../components/VendorSidebar";
+
 const BoothApplicationForm = () => {
   const navigate = useNavigate();
 
@@ -16,6 +17,7 @@ const BoothApplicationForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
+  const [vendorDescription, setVendorDescription] = useState(""); // ✅ NEW
 
   const addAttendee = () => {
     if (attendees.length < 5)
@@ -47,6 +49,10 @@ const BoothApplicationForm = () => {
       if (!/^\S+@\S+\.\S+$/.test(attendees[i].email))
         return `Invalid email for attendee ${i + 1}`;
     }
+    // ✅ Optional: enforce description
+    // if (!vendorDescription.trim()) {
+    //   return "Please describe your company and what you will offer at this booth.";
+    // }
     return null;
   };
 
@@ -71,8 +77,7 @@ const BoothApplicationForm = () => {
       form.append("boothSize", boothSize);
       form.append("attendees", JSON.stringify(attendees));
       form.append("startDateTime", new Date(startDate).toISOString());
-
-
+      form.append("vendorDescription", vendorDescription); // ✅ NEW
 
       idFiles.forEach((f) => form.append("idFiles", f));
 
@@ -123,6 +128,19 @@ const BoothApplicationForm = () => {
           onSubmit={submitForm}
           className="bg-white rounded-xl p-8 shadow-md"
         >
+          {/* ✅ COMPANY DESCRIPTION */}
+          <div className="mb-6">
+            <label className="font-semibold block mb-2">
+              Company Description / What you will offer
+            </label>
+            <textarea
+              className="border p-2 rounded w-full min-h-[100px] text-sm"
+              placeholder="Describe your brand, what you do, and what you will offer at this booth..."
+              value={vendorDescription}
+              onChange={(e) => setVendorDescription(e.target.value)}
+            />
+          </div>
+
           {/* ================= PLATFORM MAP + SLOT SELECT ================= */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* LEFT: platform map image */}
@@ -167,10 +185,11 @@ const BoothApplicationForm = () => {
             </div>
           </div>
 
-
           {/* ================== DURATION ================== */}
           <div className="mb-6">
-            <label className="font-semibold block mb-2">Duration (weeks)</label>
+            <label className="font-semibold block mb-2">
+              Duration (weeks)
+            </label>
             <select
               className="border p-2 rounded w-full"
               value={durationWeeks}
@@ -182,18 +201,20 @@ const BoothApplicationForm = () => {
               <option value="4">4 weeks</option>
             </select>
           </div>
+
           <div className="mb-6">
-  <label className="font-semibold block mb-2">
-    Booth Start Date
-  </label>
-  <input
-    type="datetime-local"
-    className="border p-2 rounded w-full"
-    value={startDate}
-    onChange={(e) => setStartDate(e.target.value)}
-    required
-  />
-</div>
+            <label className="font-semibold block mb-2">
+              Booth Start Date
+            </label>
+            <input
+              type="datetime-local"
+              className="border p-2 rounded w-full"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />
+          </div>
+
           {/* ================== BOOTH SIZE ================== */}
           <div className="mb-6">
             <label className="font-semibold block mb-2">Booth Size</label>
