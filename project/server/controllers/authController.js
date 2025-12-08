@@ -6,16 +6,27 @@ const jwt = require("jsonwebtoken");
 // ================= Signup =================
 exports.signup = async (req, res) => {
   try {
-    const { firstName, lastName, companyName, email, password, role, roleSpecificId } = req.body;
+    const {
+      firstName,
+      lastName,
+      companyName,
+      email,
+      password,
+      role,
+      roleSpecificId,
+    } = req.body;
 
     // Check role restrictions
     if (role !== "vendor" && companyName) {
-      return res.status(400).json({ message: "Company name is only for vendors" });
+      return res
+        .status(400)
+        .json({ message: "Company name is only for vendors" });
     }
 
     // Check for existing user
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already exists" });
+    if (existingUser)
+      return res.status(400).json({ message: "Email already exists" });
 
     const newUser = new User({
       firstName,
@@ -31,7 +42,9 @@ exports.signup = async (req, res) => {
 
     // TODO: Send verification email for Student/Staff/TA/Professor if needed
 
-    res.status(201).json({ message: "Signup successful! Await verification if required." });
+    res
+      .status(201)
+      .json({ message: "Signup successful! Await verification if required." });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -61,7 +74,9 @@ exports.login = async (req, res) => {
     // Block check: Reject if status is blocked
     if (user.status === "blocked") {
       console.log(`Blocked user login attempt: ${email}`);
-      return res.status(403).json({ error: "Account is blocked. Please contact admin." });
+      return res
+        .status(403)
+        .json({ error: "Account is blocked. Please contact admin." });
     }
 
     // Check password
@@ -71,9 +86,16 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Incorrect password" });
     }
 
-    // Create JWT token
+    // Create JWT token (include roleSpecificId for auto-fill)
     const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
+      {
+        id: user._id,
+        role: user.role,
+        email: user.email,
+        roleSpecificId: user.roleSpecificId || "",
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -88,6 +110,7 @@ exports.login = async (req, res) => {
         lastName: user.lastName,
         role: user.role,
         email: user.email,
+        roleSpecificId: user.roleSpecificId || "",
       },
     });
   } catch (err) {

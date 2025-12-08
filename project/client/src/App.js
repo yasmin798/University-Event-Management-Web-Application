@@ -72,6 +72,7 @@ import StaffLoyaltyVendors from "./pages/StaffLoyaltyVendors";
 import CourtsAvailability from "./pages/CourtsAvailability";
 import ReserveCourt from "./pages/ReserveCourt";
 import CourtsAvailabilityWrapper from "./pages/CourtsAvailabilityWrapper";
+import EquipmentReservation from "./pages/EquipmentReservation.jsx";
 
 import BazaarApplicationForm from "./pages/BazaarApplicationForm";
 import BoothApplicationForm from "./pages/BoothApplicationForm";
@@ -104,7 +105,6 @@ import PollResults from "./pages/PollResults.js";
 import StudentSuggestions from "./pages/StudentSuggestions";
 
 import EventsOfficeSuggestions from "./pages/EventsOfficeSuggestions";
-
 
 // Simple 404
 function NotFound() {
@@ -245,6 +245,10 @@ function App() {
           path="/courts-availability"
           element={<CourtsAvailabilityWrapper />}
         />
+        <Route
+          path="/equipment-reservation"
+          element={<EquipmentReservation />}
+        />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/wallet/success" element={<WalletSuccess />} /> ← ADD THIS
         <Route path="/payment" element={<PaymentPage />} />
@@ -282,9 +286,10 @@ function App() {
         <Route path="/vendor-documents" element={<VendorDocumentsPage />} />
         <Route path="/poll-results" element={<PollResults />} />
         <Route path="/suggestions" element={<StudentSuggestions />} />
-        <Route path="/events-office/suggestions"element={<EventsOfficeSuggestions />}/>
-
-
+        <Route
+          path="/events-office/suggestions"
+          element={<EventsOfficeSuggestions />}
+        />
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

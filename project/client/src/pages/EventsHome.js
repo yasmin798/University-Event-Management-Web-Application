@@ -65,7 +65,6 @@ const menuBtnStyle = {
   transition: "background 0.2s",
 };
 
-
 const dropdownMenuStyle = {
   position: "absolute",
   right: "0",
@@ -128,33 +127,33 @@ export default function EventsHome() {
     const t = setTimeout(() => setDebouncedDate(dateFilter), 300);
     return () => clearTimeout(t);
   }, [dateFilter]);
-  
-const startVoiceRecognition = () => {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if (!SpeechRecognition) {
-    alert("Voice recognition not supported in this browser.");
-    return;
-  }
+  const startVoiceRecognition = () => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+    if (!SpeechRecognition) {
+      alert("Voice recognition not supported in this browser.");
+      return;
+    }
 
-  recognition.start();
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    console.log("Voice heard:", transcript);
-    handleVoiceCommand(transcript, navigate, setSearchTerm);
+    recognition.start();
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      console.log("Voice heard:", transcript);
+      handleVoiceCommand(transcript, navigate, setSearchTerm);
+    };
+
+    recognition.onerror = (err) => {
+      console.error("Voice recognition error:", err);
+    };
   };
-
-  recognition.onerror = (err) => {
-    console.error("Voice recognition error:", err);
-  };
-};
 
   // Click outside to close menus
   useEffect(() => {
@@ -1058,25 +1057,24 @@ const startVoiceRecognition = () => {
             top: 0,
             zIndex: 10,
           }}
-          
         >
-        <button
-  onClick={startVoiceRecognition}
-  style={{
-    background: "#567c8d",
-    color: "white",
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    cursor: "pointer"
-  }}
->
-  <Mic size={18} />
-  Voice Command
-</button>
+          <button
+            onClick={startVoiceRecognition}
+            style={{
+              background: "#567c8d",
+              color: "white",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer",
+            }}
+          >
+            <Mic size={18} />
+            Voice Command
+          </button>
 
           {/* LEFT: Search & Filters (Grouped Tightly) */}
           <div
@@ -1192,88 +1190,87 @@ const startVoiceRecognition = () => {
             {(userRole === "admin" || userRole === "events_office") && (
               <button
                 onClick={async () => {
-  setDocsList([]);
-  try {
-    const token = localStorage.getItem("token");
+                  setDocsList([]);
+                  try {
+                    const token = localStorage.getItem("token");
 
-    // Fetch attendee docs
-    const [bRes, boRes, vRes] = await Promise.all([
-      fetch("/api/bazaar-applications", {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-      fetch("/api/booth-applications", {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-      fetch("/api/vendors", {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-    ]);
+                    // Fetch attendee docs
+                    const [bRes, boRes, vRes] = await Promise.all([
+                      fetch("/api/bazaar-applications", {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }),
+                      fetch("/api/booth-applications", {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }),
+                      fetch("/api/vendors", {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }),
+                    ]);
 
-    const bJson = bRes.ok ? await bRes.json() : [];
-    const boJson = boRes.ok ? await boRes.json() : [];
-    const vJson = vRes.ok ? await vRes.json() : { vendors: [] };
+                    const bJson = bRes.ok ? await bRes.json() : [];
+                    const boJson = boRes.ok ? await boRes.json() : [];
+                    const vJson = vRes.ok ? await vRes.json() : { vendors: [] };
 
-    // Extract attendee docs
-    const gatherAttendeeDocs = (arr) => {
-      if (!Array.isArray(arr)) return [];
-      return arr.flatMap((r) =>
-        (r.attendees || [])
-          .filter((a) => a?.idDocument)
-          .map((a) => ({
-            name: a.name || "No Name",
-            email: a.email || "",
-            url: a.idDocument.startsWith("/")
-              ? `${window.location.origin}${a.idDocument}`
-              : a.idDocument,
-            type: "Attendee",
-          }))
-      );
-    };
+                    // Extract attendee docs
+                    const gatherAttendeeDocs = (arr) => {
+                      if (!Array.isArray(arr)) return [];
+                      return arr.flatMap((r) =>
+                        (r.attendees || [])
+                          .filter((a) => a?.idDocument)
+                          .map((a) => ({
+                            name: a.name || "No Name",
+                            email: a.email || "",
+                            url: a.idDocument.startsWith("/")
+                              ? `${window.location.origin}${a.idDocument}`
+                              : a.idDocument,
+                            type: "Attendee",
+                          }))
+                      );
+                    };
 
-    // Extract vendor docs
-    const gatherVendorDocs = (vendors) => {
-      if (!Array.isArray(vendors)) return [];
+                    // Extract vendor docs
+                    const gatherVendorDocs = (vendors) => {
+                      if (!Array.isArray(vendors)) return [];
 
-      return vendors.flatMap((v) => {
-        const docs = [];
+                      return vendors.flatMap((v) => {
+                        const docs = [];
 
-        if (v.taxCardUrl) {
-          docs.push({
-            name: v.companyName || v.email,
-            label: "Tax Card",
-            url: `${window.location.origin}${v.taxCardUrl}`,
-            type: "Vendor",
-          });
-        }
+                        if (v.taxCardUrl) {
+                          docs.push({
+                            name: v.companyName || v.email,
+                            label: "Tax Card",
+                            url: `${window.location.origin}${v.taxCardUrl}`,
+                            type: "Vendor",
+                          });
+                        }
 
-        if (v.logoUrl) {
-          docs.push({
-            name: v.companyName || v.email,
-            label: "Company Logo",
-            url: `${window.location.origin}${v.logoUrl}`,
-            type: "Vendor",
-          });
-        }
+                        if (v.logoUrl) {
+                          docs.push({
+                            name: v.companyName || v.email,
+                            label: "Company Logo",
+                            url: `${window.location.origin}${v.logoUrl}`,
+                            type: "Vendor",
+                          });
+                        }
 
-        return docs;
-      });
-    };
+                        return docs;
+                      });
+                    };
 
-    const attendeeDocs = [
-      ...gatherAttendeeDocs(bJson),
-      ...gatherAttendeeDocs(boJson),
-    ];
+                    const attendeeDocs = [
+                      ...gatherAttendeeDocs(bJson),
+                      ...gatherAttendeeDocs(boJson),
+                    ];
 
-    const vendorDocs = gatherVendorDocs(vJson.vendors);
+                    const vendorDocs = gatherVendorDocs(vJson.vendors);
 
-    setDocsList([...vendorDocs, ...attendeeDocs]);
-    setDocsModalOpen(true);
-  } catch (err) {
-    console.error("Error fetching docs:", err);
-    setToast({ open: true, text: "Failed to load documents" });
-  }
-}}
-
+                    setDocsList([...vendorDocs, ...attendeeDocs]);
+                    setDocsModalOpen(true);
+                  } catch (err) {
+                    console.error("Error fetching docs:", err);
+                    setToast({ open: true, text: "Failed to load documents" });
+                  }
+                }}
                 className="btn-primary"
                 style={{
                   padding: "10px 20px",
@@ -1288,10 +1285,10 @@ const startVoiceRecognition = () => {
               </button>
             )}
 
-            {/* UNIFIED CREATE BUTTON */}
+            {/* CREATE EVENT BUTTON */}
             <div style={{ position: "relative" }} ref={createMenuRef}>
               <button
-                onClick={() => setCreateMenuOpen(!createMenuOpen)}
+                onClick={() => setChooseOpen(true)}
                 className="btn-primary"
                 style={{
                   padding: "10px 20px",
@@ -1302,40 +1299,8 @@ const startVoiceRecognition = () => {
                 }}
               >
                 <Plus size={18} />
-                <span>Create New</span>
+                <span>Create Event</span>
               </button>
-
-              {createMenuOpen && (
-                <div style={dropdownMenuStyle}>
-                  <button
-                    style={dropdownItemStyle}
-                    onClick={() => {
-                      setChooseOpen(true);
-                      setCreateMenuOpen(false);
-                    }}
-                  >
-                    <Calendar size={16} /> Event
-                  </button>
-                  <button
-                    style={dropdownItemStyle}
-                    onClick={() => {
-                      navigate("/gym-manager");
-                      setCreateMenuOpen(false);
-                    }}
-                  >
-                    <span style={{ fontSize: "16px" }}>💪</span> Gym Class
-                  </button>
-                  <button
-                    style={dropdownItemStyle}
-                    onClick={() => {
-                      navigate("/create-poll");
-                      setCreateMenuOpen(false);
-                    }}
-                  >
-                    <span style={{ fontSize: "16px" }}>📊</span> Poll
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </header>
@@ -1417,7 +1382,6 @@ const startVoiceRecognition = () => {
 
               // Helper to close specific menu
               const closeMenu = () => setActiveCardMenu(null);
-              
 
               return (
                 <article
@@ -1971,11 +1935,11 @@ const startVoiceRecognition = () => {
                   }}
                 >
                   <div>
-  <strong>{d.name}</strong>
-  <div style={{ fontSize: "12px", color: "#777" }}>
-    {d.type === "Vendor" ? `Vendor – ${d.label}` : "Attendee"}
-  </div>
-</div>
+                    <strong>{d.name}</strong>
+                    <div style={{ fontSize: "12px", color: "#777" }}>
+                      {d.type === "Vendor" ? `Vendor – ${d.label}` : "Attendee"}
+                    </div>
+                  </div>
 
                   <div>
                     <button
@@ -2010,101 +1974,101 @@ const startVoiceRecognition = () => {
         </div>
       )}
       {viewerOpen && (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.6)",
-      backdropFilter: "blur(4px)",
-      zIndex: 9999,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px",
-    }}
-  >
-    {/* Main Modal Window */}
-    <div
-      style={{
-        width: "85%",
-        height: "85%",
-        background: "#fff",
-        borderRadius: "14px",
-        boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        animation: "fadeIn 0.2s ease-out",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          padding: "14px 20px",
-          background: "#f5f7fa",
-          borderBottom: "1px solid #e2e2e2",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontWeight: 600,
-          color: "#222",
-        }}
-      >
-        <span>Document Viewer</span>
-        <button
-          onClick={() => setViewerOpen(false)}
+        <div
           style={{
-            background: "none",
-            border: "none",
-            fontSize: "22px",
-            cursor: "pointer",
-            color: "#444",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "40px",
           }}
         >
-          ✕
-        </button>
-      </div>
+          {/* Main Modal Window */}
+          <div
+            style={{
+              width: "85%",
+              height: "85%",
+              background: "#fff",
+              borderRadius: "14px",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              animation: "fadeIn 0.2s ease-out",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "14px 20px",
+                background: "#f5f7fa",
+                borderBottom: "1px solid #e2e2e2",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontWeight: 600,
+                color: "#222",
+              }}
+            >
+              <span>Document Viewer</span>
+              <button
+                onClick={() => setViewerOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "22px",
+                  cursor: "pointer",
+                  color: "#444",
+                }}
+              >
+                ✕
+              </button>
+            </div>
 
-      {/* Content Area */}
-      <div
-        style={{
-          flex: 1,
-          background: "#fafafa",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "auto",
-          padding: "20px",
-        }}
-      >
-        {/* Detect image vs PDF */}
-        {viewerUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? (
-          <img
-            src={viewerUrl}
-            alt="Document"
-            style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
-              objectFit: "contain",
-              borderRadius: "8px",
-              boxShadow: "0 0 10px rgba(0,0,0,0.15)",
-            }}
-          />
-        ) : (
-          <iframe
-            src={viewerUrl}
-            style={{
-              width: "100%",
-              height: "100%",
-              border: "none",
-            }}
-            title="Document Viewer"
-          />
-        )}
-      </div>
-    </div>
-  </div>
-)}
+            {/* Content Area */}
+            <div
+              style={{
+                flex: 1,
+                background: "#fafafa",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "auto",
+                padding: "20px",
+              }}
+            >
+              {/* Detect image vs PDF */}
+              {viewerUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? (
+                <img
+                  src={viewerUrl}
+                  alt="Document"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    objectFit: "contain",
+                    borderRadius: "8px",
+                    boxShadow: "0 0 10px rgba(0,0,0,0.15)",
+                  }}
+                />
+              ) : (
+                <iframe
+                  src={viewerUrl}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                  }}
+                  title="Document Viewer"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast.open && (
         <div className="eo-toast" role="status">

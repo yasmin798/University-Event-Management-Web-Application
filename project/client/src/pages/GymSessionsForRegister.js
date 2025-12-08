@@ -1,41 +1,32 @@
-// client/src/pages/GymSessionsForRegister.js (corrected with role normalization, better debugging, and ensured enforcement)
+// client/src/pages/GymSessionsForRegister.js (updated with same-sized boxes)
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import "../events.theme.css";
 import axios from "axios";
+import "../events.theme.css";
 import Sidebar from "../components/Sidebar";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
-// Accept an optional SidebarComponent prop so other pages (professor)
-// can reuse the registration UI but render a different sidebar.
-export default function GymManager({ SidebarComponent = null }) {
+
+export default function GymSessionsForRegister({ SidebarComponent = null }) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [sessions, setSessions] = useState([]);
   const [userRole, setUserRole] = useState("");
-  const [debugInfo, setDebugInfo] = useState(""); // Temporary for debugging
-
-  const fetchSessions = async () => {
-    try {
-      const res = await axios.get("http://localhost:3000/api/gym");
-      setSessions(res.data);
-      console.log(
-        "Fetched sessions:",
-        res.data.map((s) => ({ id: s._id, allowedRoles: s.allowedRoles }))
-      );
-    } catch (err) {
-      console.error("Error fetching sessions:", err);
-    }
-  };
+  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
-    fetchSessions();
+    (async () => {
+      try {
+        const res = await axios.get("http://localhost:3000/api/gym");
+        setSessions(res.data);
+      } catch (err) {
+        console.error("Error fetching sessions:", err);
+      }
+    })();
   }, [navigate]);
 
-  // Get user's role from token (normalize to lowercase)
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -43,16 +34,8 @@ export default function GymManager({ SidebarComponent = null }) {
         const payload = JSON.parse(atob(token.split(".")[1]));
         const role = (payload.role || "").toLowerCase();
         setUserRole(role);
-        setDebugInfo(`Role loaded: ${role}`); // Debug
-        console.log("User role:", role);
-        // Only events_office users should use the manager UI
-        // Staff, students, professors, and TAs can register for gym sessions
-        if (
-          role === "events_office" ||
-          role === "events-office" ||
-          role === "eventsoffice"
-        ) {
-          // events office users should use the manager UI
+        setDebugInfo(`Role loaded: ${role}`);
+        if (["events_office", "events-office", "eventsoffice"].includes(role)) {
           navigate("/gym-manager");
           return;
         }
@@ -62,11 +45,9 @@ export default function GymManager({ SidebarComponent = null }) {
       }
     } else {
       setDebugInfo("No token found");
-      console.warn("No token in localStorage");
     }
   }, [navigate]);
 
-  // Week navigation
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -74,12 +55,16 @@ export default function GymManager({ SidebarComponent = null }) {
     return new Date(today.setDate(diff));
   });
 
-  const formatDate = (d) => d.toISOString().split("T")[0];
-
+  const formatDate = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${da}`;
+  };
   const addDays = (date, days) => {
-    const newDate = new Date(date);
-    newDate.setDate(newDate.getDate() + days);
-    return newDate;
+    const nd = new Date(date);
+    nd.setDate(nd.getDate() + days);
+    return nd;
   };
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -94,13 +79,11 @@ export default function GymManager({ SidebarComponent = null }) {
   const timeSlots = Array.from(
     new Set(sessions.map((s) => s.time?.slice(0, 5) || ""))
   ).sort();
-
   const timetable = {};
   days.forEach((d) => {
     timetable[d.label] = {};
     timeSlots.forEach((t) => (timetable[d.label][t] = null));
   });
-
   sessions.forEach((s) => {
     const iso = formatDate(new Date(s.date));
     const time = s.time?.slice(0, 5) || "";
@@ -109,68 +92,40 @@ export default function GymManager({ SidebarComponent = null }) {
   });
 
   const registerSession = async (sessionId) => {
-    console.log(
-      "Register attempt for session:",
-      sessionId,
-      "User role:",
-      userRole
-    );
-    // Get email
     let email = null;
     try {
       const raw =
         localStorage.getItem("user") || localStorage.getItem("currentUser");
-      if (raw) {
-        const u = JSON.parse(raw);
-        email = u?.email;
-        console.log("Email from storage:", email);
-      }
-    } catch (e) {
-      console.warn("Error reading email from localStorage:", e);
-    }
-
+      if (raw) email = JSON.parse(raw)?.email;
+    } catch {}
     if (!email) {
       alert("No email found. Please log in again.");
       return;
     }
 
-    // Frontend role check (normalize roles to lowercase)
     const session = sessions.find((s) => s._id === sessionId);
-    if (!session) {
-      alert("Session not found");
-      return;
-    }
+    if (!session) return alert("Session not found");
     const normalizedAllowedRoles = (session.allowedRoles || []).map((r) =>
       r.toLowerCase()
     );
     const isOpenToAll = normalizedAllowedRoles.length === 0;
-    console.log(
-      "Session allowedRoles (normalized):",
-      normalizedAllowedRoles,
-      "User role:",
-      userRole
-    );
     if (!isOpenToAll && !normalizedAllowedRoles.includes(userRole)) {
       const allowedDisplay = normalizedAllowedRoles
-        .map((r) => {
-          if (r === "ta") return "TAs";
-          return r.charAt(0).toUpperCase() + r.slice(1) + "s";
-        })
+        .map((r) =>
+          r === "ta" ? "TAs" : r.charAt(0).toUpperCase() + r.slice(1) + "s"
+        )
         .join(", ");
-      alert(
+      return alert(
         `This gym session is intended for ${allowedDisplay}! Your role: ${userRole}`
       );
-      return;
     }
 
-    // Backend call
     try {
       const res = await axios.post("http://localhost:3000/api/gym/register", {
         sessionId,
         email,
       });
       alert(res.data.message || "Registered successfully!");
-      fetchSessions();
     } catch (err) {
       console.error("Registration error:", err.response?.data || err);
       alert(err.response?.data?.error || "Error registering. Check console.");
@@ -182,27 +137,20 @@ export default function GymManager({ SidebarComponent = null }) {
       r.toLowerCase()
     );
     const isOpenToAll = normalizedAllowedRoles.length === 0;
-    const canRegister =
-      isOpenToAll || normalizedAllowedRoles.includes(userRole);
     const spotsLeft =
       session.maxParticipants - (session.registeredUsers?.length || 0);
 
-    // Check if current user is already registered
     let currentUserEmail = null;
     try {
       const raw =
         localStorage.getItem("user") || localStorage.getItem("currentUser");
-      if (raw) {
-        const u = JSON.parse(raw);
-        currentUserEmail = u?.email;
-      }
-    } catch (e) {
-      console.warn("Error reading email from localStorage:", e);
-    }
-
+      if (raw) currentUserEmail = JSON.parse(raw)?.email;
+    } catch {}
     const isRegistered = session.registeredUsers?.some(
       (user) => user.email === currentUserEmail
     );
+    const canRegister =
+      isOpenToAll || normalizedAllowedRoles.includes(userRole);
 
     const restrictionText = isOpenToAll ? (
       <div style={{ color: "#2e7d32", fontSize: "12px", marginTop: "4px" }}>
@@ -270,6 +218,35 @@ export default function GymManager({ SidebarComponent = null }) {
       </div>
     );
 
+    const malfunctioned = (session.machines || []).filter(
+      (m) => m.status === "malfunctioned"
+    );
+    const note =
+      malfunctioned.length > 0 ? (
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 12,
+            color: "#d32f2f",
+            textAlign: "left",
+          }}
+        >
+          Note: {malfunctioned.map((m) => `"${m.name}"`).join(", ")}{" "}
+          {malfunctioned.length > 1 ? "are" : "is"} malfunctioned
+        </div>
+      ) : (
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 12,
+            color: "#2e7d32",
+            textAlign: "left",
+          }}
+        >
+          All machines are available
+        </div>
+      );
+
     return (
       <div
         style={{
@@ -278,13 +255,22 @@ export default function GymManager({ SidebarComponent = null }) {
           padding: "10px",
           borderRadius: "8px",
           fontWeight: 600,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          textAlign: "left",
+          flex: 1,
         }}
       >
-        {session.type.toUpperCase()} <br />
-        {session.duration} min <br />
-        Spots: {spotsLeft > 0 ? spotsLeft : 0} / {session.maxParticipants}{" "}
-        <br />
-        {restrictionText}
+        <div>
+          {session.type.toUpperCase()} <br />
+          {session.duration} min <br />
+          Spots: {spotsLeft > 0 ? spotsLeft : 0} / {session.maxParticipants}
+          <br />
+          {note}
+          {restrictionText}
+        </div>
         {action}
       </div>
     );
@@ -312,10 +298,8 @@ export default function GymManager({ SidebarComponent = null }) {
         <h1 style={{ marginTop: 0, color: "var(--navy)" }}>
           Weekly Gym Timetable
         </h1>
-        {/* Debug info - remove after testing */}
         <p style={{ fontSize: "12px", color: "#666" }}>{debugInfo}</p>
 
-        {/* Month Header */}
         <div
           style={{
             display: "flex",
@@ -336,14 +320,12 @@ export default function GymManager({ SidebarComponent = null }) {
           >
             ❮
           </button>
-
           <h2 style={{ margin: 0 }}>
             {weekStart.toLocaleString("en-US", {
               month: "long",
               year: "numeric",
             })}
           </h2>
-
           <button
             onClick={() => setWeekStart(addDays(weekStart, 7))}
             style={{
@@ -370,11 +352,23 @@ export default function GymManager({ SidebarComponent = null }) {
           >
             <thead>
               <tr style={{ background: "#6C63FF", color: "white" }}>
-                <th style={{ padding: "12px", textAlign: "left" }}>Time</th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    width: "80px",
+                  }}
+                >
+                  Time
+                </th>
                 {days.map((day) => (
                   <th
                     key={day.iso}
-                    style={{ padding: "12px", textAlign: "center" }}
+                    style={{
+                      padding: "12px",
+                      textAlign: "center",
+                      width: "14.28%",
+                    }}
                   >
                     {day.label}
                     <br />
@@ -392,13 +386,15 @@ export default function GymManager({ SidebarComponent = null }) {
                       background: "#f8f9fa",
                       fontWeight: "600",
                       borderRight: "2px solid #e9ecef",
+                      height: "180px", // Fixed height
+                      verticalAlign: "middle",
+                      textAlign: "center",
                     }}
                   >
                     {t}
                   </td>
                   {days.map((day) => {
                     const session = timetable[day.label][t];
-
                     return (
                       <td
                         key={day.iso}
@@ -407,23 +403,38 @@ export default function GymManager({ SidebarComponent = null }) {
                           border: "1px solid #ddd",
                           textAlign: "center",
                           verticalAlign: "middle",
+                          height: "180px", // Fixed height
+                          minHeight: "180px",
                         }}
                       >
-                        {session ? (
-                          renderSessionCell(session)
-                        ) : (
-                          <div
-                            style={{
-                              background: "#b6f4ff",
-                              padding: "10px",
-                              borderRadius: "8px",
-                              color: "#003f5c",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Free
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                          }}
+                        >
+                          {session ? (
+                            renderSessionCell(session)
+                          ) : (
+                            <div
+                              style={{
+                                background: "#e0f7fa",
+                                color: "#003f5c",
+                                padding: "10px",
+                                borderRadius: "8px",
+                                fontWeight: 600,
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flex: 1,
+                              }}
+                            >
+                              Free
+                            </div>
+                          )}
+                        </div>
                       </td>
                     );
                   })}

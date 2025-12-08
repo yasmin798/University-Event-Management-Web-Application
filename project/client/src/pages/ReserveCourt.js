@@ -14,10 +14,51 @@ export default function ReserveCourt() {
 
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [userRole, setUserRole] = useState("");
+
+  const SPORT_ITEMS = {
+    football: [
+      { name: "Ball Pump", defaultQty: 1 },
+      { name: "Training Cones", defaultQty: 6 },
+      { name: "Jerseys", defaultQty: 10 },
+      { name: "Manual Scoreboard", defaultQty: 1 },
+    ],
+    basketball: [
+      { name: "Ball Pump", defaultQty: 1 },
+      { name: "Jerseys", defaultQty: 10 },
+      { name: "Manual Scoreboard", defaultQty: 1 },
+    ],
+    tennis: [
+      { name: "Tennis Racket", defaultQty: 2 },
+      { name: "Tennis Balls (can)", defaultQty: 1 },
+      { name: "Manual Scoreboard", defaultQty: 1 },
+    ],
+  };
+  const [equipmentItems, setEquipmentItems] = useState(
+    (SPORT_ITEMS[courtId] || SPORT_ITEMS["football"]).map((i) => ({
+      name: i.name,
+      quantity: i.defaultQty,
+      selected: false,
+    }))
+  );
+  const toggleItem = (idx) => {
+    setEquipmentItems((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], selected: !next[idx].selected };
+      return next;
+    });
+  };
+  const changeQty = (idx, qty) => {
+    setEquipmentItems((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], quantity: Math.max(1, Number(qty) || 1) };
+      return next;
+    });
+  };
 
   React.useEffect(() => {
     const getUserRole = () => {
@@ -33,6 +74,69 @@ export default function ReserveCourt() {
       return "student";
     };
     setUserRole(getUserRole());
+
+    // Prefill student info from stored user profile
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) {
+        const u = JSON.parse(raw);
+        const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
+        if (name) setStudentName(name);
+        if (u.email) setStudentEmail(u.email);
+        if (u.roleSpecificId) setStudentId(u.roleSpecificId);
+      }
+    } catch (e) {
+      console.warn("Failed to parse stored user", e);
+    }
+
+    // Fallback: decode token payload for fields if not set
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const name = [payload.firstName, payload.lastName]
+          .filter(Boolean)
+          .join(" ");
+        if (!studentName && name) setStudentName(name);
+        if (!studentEmail && payload.email) setStudentEmail(payload.email);
+        if (!studentId && payload.roleSpecificId)
+          setStudentId(payload.roleSpecificId);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Final fallback: derive ID from email prefix if matches pattern like 22-1234@guc.edu.eg
+    setStudentId((prev) => {
+      if (prev && prev.trim().length > 0) return prev;
+      const email =
+        studentEmail ||
+        JSON.parse(localStorage.getItem("user") || "{}").email ||
+        "";
+      const match = email.match(/^(\d{2}-\d{4})/);
+      return match ? match[1] : prev;
+    });
+
+    // Definitive source: fetch from server profile
+    (async () => {
+      try {
+        const res = await fetch("http://localhost:3000/api/users/me", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
+        if (res.ok) {
+          const me = await res.json();
+          const name = [me.firstName, me.lastName].filter(Boolean).join(" ");
+          if (name) setStudentName(name);
+          if (me.email) setStudentEmail(me.email);
+          if (me.roleSpecificId) setStudentId(me.roleSpecificId);
+        }
+      } catch (err) {
+        // ignore network errors
+      }
+    })();
   }, []);
 
   if (!date || !time) {
@@ -73,8 +177,8 @@ export default function ReserveCourt() {
     setError(null);
     setSuccess(null);
 
-    if (!studentName || !studentId) {
-      setError("Please enter your name and GUC ID.");
+    if (!studentName || !studentId || !studentEmail) {
+      setError("Please enter your name, GUC ID, and email.");
       setIsLoading(false);
       return;
     }
@@ -95,6 +199,7 @@ export default function ReserveCourt() {
     };
 
     try {
+      // 1) Create court reservation
       const res = await fetch("http://localhost:3000/api/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,6 +211,33 @@ export default function ReserveCourt() {
       if (!res.ok) {
         setError(data.message || "Reservation failed.");
         return;
+      }
+
+      // 2) If equipment chosen, create equipment reservation (triggers 5-min email reminder)
+      const selectedItems = equipmentItems
+        .filter((i) => i.selected)
+        .map(({ name, quantity }) => ({ name, quantity }));
+      if (selectedItems.length > 0) {
+        const eqRes = await fetch(
+          "http://localhost:3000/api/equipment-reservations",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              courtName: courtId,
+              date,
+              time,
+              studentId,
+              studentEmail,
+              items: selectedItems,
+            }),
+          }
+        );
+        const eqData = await eqRes.json();
+        if (!eqRes.ok) {
+          setError(eqData.message || "Equipment reservation failed.");
+          return;
+        }
       }
 
       setSuccess("Reservation confirmed! Redirecting...");
@@ -220,6 +352,56 @@ export default function ReserveCourt() {
                     <p className="text-xs text-[#567c8d] mt-2">
                       Format: XX-XXXX (e.g., 22-1234)
                     </p>
+                  </div>
+                </div>
+
+                {/* Equipment Reservation Inline */}
+                <div className="bg-[#f8f9fa] rounded-xl p-6 border border-[#e8e8e8]">
+                  <h3 className="text-lg font-semibold text-[#2f4156] mb-4">
+                    Reserve Equipment (optional)
+                  </h3>
+                  <p className="text-sm text-[#567c8d] mb-4">
+                    Select items you need for your session. We'll email you a
+                    pickup reminder 5 minutes before.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {equipmentItems.map((item, idx) => (
+                      <div
+                        key={item.name}
+                        className="flex items-center gap-3 bg-white border border-[#e8e8e8] rounded-lg px-3 py-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => toggleItem(idx)}
+                        />
+                        <span className="flex-1 text-[#2f4156]">
+                          {item.name}
+                        </span>
+                        {item.name === "Manual Scoreboard" ||
+                        item.name === "Ball Pump" ? null : (
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.quantity}
+                            onChange={(e) => changeQty(idx, e.target.value)}
+                            className="w-20 px-2 py-1 border border-[#e8e8e8] rounded-lg"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-semibold text-[#2f4156] mb-2">
+                      Student Email (for reminder)
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="name@guc.edu.eg"
+                      value={studentEmail}
+                      onChange={(e) => setStudentEmail(e.target.value)}
+                      className="w-full px-4 py-3 border border-[#e8e8e8] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4156] focus:border-transparent transition-all"
+                    />
                   </div>
                 </div>
 

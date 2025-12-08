@@ -8,6 +8,7 @@ import ProfessorSidebar from "../components/ProfessorSidebar";
 import GymSessionsForRegister from "./GymSessionsForRegister";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
+
 export default function GymManager() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
@@ -50,7 +51,11 @@ export default function GymManager() {
   });
 
   function formatDate(d) {
-    return d.toISOString().split("T")[0];
+    // Return local YYYY-MM-DD to avoid UTC day shift
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
   function addDays(date, days) {
@@ -83,7 +88,7 @@ export default function GymManager() {
 
   // Insert sessions
   sessions.forEach((s) => {
-    const iso = s.date.split("T")[0];
+    const iso = formatDate(new Date(s.date));
     const time = s.time.slice(0, 5);
     const dayObj = days.find((d) => d.iso === iso);
     if (dayObj) timetable[dayObj.label][time] = s;
@@ -101,28 +106,19 @@ export default function GymManager() {
   // ------------------------
   // EDIT STATE
   // ------------------------
-  const [editing, setEditing] = useState(null);
-  const [editDate, setEditDate] = useState("");
-  const [editTime, setEditTime] = useState("");
-  const [editDuration, setEditDuration] = useState("");
+  // Editing via modal removed; navigation is used instead
+
+  // Default equipment list to prefill when a session lacks machines
+  // Default equipment constant no longer needed here
 
   const startEdit = (session) => {
-    setEditing(session._id);
-    setEditDate(session.date.split("T")[0]);
-    setEditTime(session.time);
-    setEditDuration(session.duration);
+    // Navigate to the gym session creation form with this session's data
+    navigate("/gym-manager", { state: { session } });
   };
 
-  const saveEdit = async () => {
-    await axios.put(`http://localhost:3000/api/gym/${editing}`, {
-      date: editDate,
-      time: editTime,
-      duration: editDuration,
-    });
+  // saveEdit removed
 
-    setEditing(null);
-    fetchSessions();
-  };
+  // updateEditMachineStatus removed
 
   // If professor, show the registration view (same as student) but with ProfessorSidebar
   if (userRole === "professor") {
@@ -134,6 +130,7 @@ export default function GymManager() {
   if (userRole === "staff") {
     return <GymSessionsForRegister SidebarComponent={StaffSidebar} />;
   }
+
   return (
     <div
       className="events-theme"
@@ -199,7 +196,7 @@ export default function GymManager() {
           </button>
         </div>
 
-        {/* TIMETABLE GRID */}
+        {/* TIMETABLE GRID (Time rows, Days columns) */}
         <div style={{ overflowX: "auto", marginTop: "20px" }}>
           <table
             style={{
@@ -212,34 +209,25 @@ export default function GymManager() {
           >
             <thead>
               <tr style={{ background: "#e9f5ff" }}>
-                <th style={{ padding: "6px", border: "1px solid #ddd" }}>
-                  Day
+                <th
+                  style={{
+                    padding: "6px",
+                    border: "1px solid #ddd",
+                    textAlign: "center",
+                    width: "80px",
+                  }}
+                >
+                  Time
                 </th>
-                {timeSlots.map((t) => (
+                {days.map((day) => (
                   <th
-                    key={t}
+                    key={day.iso}
                     style={{
                       padding: "6px",
                       border: "1px solid #ddd",
                       fontWeight: "700",
-                    }}
-                  >
-                    {t}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {days.map((day) => (
-                <tr key={day.iso}>
-                  {/* Day */}
-                  <td
-                    style={{
-                      padding: "6px",
-                      border: "1px solid #ddd",
-                      fontWeight: "700",
-                      background: "#f7faff",
+                      textAlign: "center",
+                      width: "14.28%", // Equal width for each day column
                     }}
                   >
                     {day.label}
@@ -247,86 +235,174 @@ export default function GymManager() {
                     <span style={{ fontSize: "14px", color: "#666" }}>
                       {day.dateNum}
                     </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {timeSlots.map((t) => (
+                <tr key={t}>
+                  <td
+                    style={{
+                      padding: "6px",
+                      border: "1px solid #ddd",
+                      fontWeight: "700",
+                      background: "#f7faff",
+                      height: "180px", // Fixed height for all cells
+                      textAlign: "center",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {t}
                   </td>
-
-                  {/* Sessions */}
-                  {timeSlots.map((t) => {
+                  {days.map((day) => {
                     const session = timetable[day.label][t];
-
                     return (
                       <td
-                        key={t}
+                        key={day.iso}
                         style={{
                           padding: "6px",
                           border: "1px solid #ddd",
                           textAlign: "center",
                           verticalAlign: "middle",
+                          height: "180px", // Fixed height for all cells
+                          minHeight: "180px",
                         }}
                       >
-                        {session ? (
-                          <div
-                            style={{
-                              background: "#e0e0e0",
-                              color: "#333",
-                              padding: "10px",
-                              borderRadius: "8px",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {session.type.toUpperCase()} <br />
-                            {session.duration} min
-                            <br />
-                            Max: {session.maxParticipants}
-                            <br />
-                            {/* EDIT + DELETE */}
+                        <div
+                          style={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          {session ? (
                             <div
                               style={{
+                                background: "#e0e0e0",
+                                color: "#333",
+                                padding: "10px",
+                                borderRadius: "8px",
+                                fontWeight: 600,
+                                height: "100%",
                                 display: "flex",
-                                flexDirection: "row",
-                                justifyContent: "center",
-                                gap: "8px",
-                                marginTop: "10px",
-                                flexWrap: "wrap",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
+                                textAlign: "left",
+                                flex: 1,
                               }}
                             >
-                              <button
-                                className="btn"
+                              <div>
+                                {session.type.toUpperCase()} <br />
+                                {session.duration} min
+                                <br />
+                                Max: {session.maxParticipants}
+                                <br />
+                                {Array.isArray(session.machines) &&
+                                session.machines.length > 0 ? (
+                                  (() => {
+                                    const malfunctioned =
+                                      session.machines.filter(
+                                        (m) => m.status === "malfunctioned"
+                                      );
+                                    if (malfunctioned.length > 0) {
+                                      const names = malfunctioned
+                                        .map((m) => `"${m.name}"`)
+                                        .join(", ");
+                                      return (
+                                        <div
+                                          style={{
+                                            marginTop: 6,
+                                            fontSize: 12,
+                                            color: "#d32f2f",
+                                          }}
+                                        >
+                                          Note: {names}{" "}
+                                          {malfunctioned.length > 1
+                                            ? "are"
+                                            : "is"}{" "}
+                                          malfunctioned
+                                        </div>
+                                      );
+                                    }
+                                    return (
+                                      <div
+                                        style={{
+                                          marginTop: 6,
+                                          fontSize: 12,
+                                          color: "#2e7d32",
+                                        }}
+                                      >
+                                        All machines are available
+                                      </div>
+                                    );
+                                  })()
+                                ) : (
+                                  <div
+                                    style={{
+                                      marginTop: 6,
+                                      fontSize: 12,
+                                      color: "#2e7d32",
+                                    }}
+                                  >
+                                    All machines are available
+                                  </div>
+                                )}
+                              </div>
+                              <div
                                 style={{
-                                  padding: "6px 14px",
-                                  fontSize: "14px",
-                                  borderRadius: "10px",
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  justifyContent: "center",
+                                  gap: "8px",
+                                  marginTop: "10px",
+                                  flexWrap: "wrap",
                                 }}
-                                onClick={() => startEdit(session)}
                               >
-                                Edit
-                              </button>
-
-                              <button
-                                className="btn-danger"
-                                style={{
-                                  padding: "6px 14px",
-                                  fontSize: "14px",
-                                  borderRadius: "10px",
-                                }}
-                                onClick={() => handleDelete(session._id)}
-                              >
-                                Delete
-                              </button>
+                                <button
+                                  className="btn"
+                                  style={{
+                                    padding: "6px 14px",
+                                    fontSize: "14px",
+                                    borderRadius: "10px",
+                                  }}
+                                  onClick={() => startEdit(session)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="btn-danger"
+                                  style={{
+                                    padding: "6px 14px",
+                                    fontSize: "14px",
+                                    borderRadius: "10px",
+                                  }}
+                                  onClick={() => handleDelete(session._id)}
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div
-                            style={{
-                              background: "#b6f4ff",
-                              padding: "10px",
-                              borderRadius: "8px",
-                              color: "#003f5c",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Free
-                          </div>
-                        )}
+                          ) : (
+                            <div
+                              style={{
+                                background: "#e0f7fa",
+                                padding: "10px",
+                                borderRadius: "8px",
+                                color: "#003f5c",
+                                fontWeight: 600,
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flex: 1,
+                              }}
+                            >
+                              Free
+                            </div>
+                          )}
+                        </div>
                       </td>
                     );
                   })}
@@ -336,141 +412,7 @@ export default function GymManager() {
           </table>
         </div>
 
-        {/* ---------------------------- */}
-        {/* EDIT POPUP MODAL */}
-        {/* ---------------------------- */}
-        {editing && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 999,
-            }}
-          >
-            <div
-              style={{
-                background: "white",
-                padding: "24px",
-                borderRadius: "12px",
-                width: "340px",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.25)",
-                animation: "fadeIn 0.2s ease",
-              }}
-            >
-              <h3 style={{ marginTop: 0, marginBottom: "15px" }}>
-                Edit Session
-              </h3>
-
-              <label
-                style={{
-                  fontWeight: "600",
-                  display: "block",
-                  marginBottom: "4px",
-                }}
-              >
-                Date
-              </label>
-              <input
-                type="date"
-                value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #aaa",
-                  marginBottom: "12px",
-                  fontSize: "14px",
-                }}
-              />
-
-              <label
-                style={{
-                  fontWeight: "600",
-                  display: "block",
-                  marginBottom: "4px",
-                }}
-              >
-                Time
-              </label>
-              <input
-                type="time"
-                value={editTime}
-                onChange={(e) => setEditTime(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #aaa",
-                  marginBottom: "12px",
-                  fontSize: "14px",
-                }}
-              />
-
-              <label
-                style={{
-                  fontWeight: "600",
-                  display: "block",
-                  marginBottom: "4px",
-                }}
-              >
-                Duration (minutes)
-              </label>
-              <input
-                type="number"
-                value={editDuration}
-                onChange={(e) => setEditDuration(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #aaa",
-                  marginBottom: "16px",
-                  fontSize: "14px",
-                }}
-              />
-
-              <button
-                style={{
-                  background: "#6C63FF",
-                  padding: "10px",
-                  border: "none",
-                  color: "white",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  width: "100%",
-                  marginBottom: "10px",
-                  fontWeight: "600",
-                }}
-                onClick={saveEdit}
-              >
-                Save
-              </button>
-
-              <button
-                style={{
-                  background: "#ddd",
-                  padding: "10px",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  width: "100%",
-                  fontWeight: "600",
-                }}
-                onClick={() => setEditing(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Edit pop-up removed; navigation is used instead */}
       </main>
     </div>
   );

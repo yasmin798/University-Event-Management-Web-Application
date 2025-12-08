@@ -32,18 +32,46 @@ router.get("/", async (req, res) => {
 // POST new session
 router.post("/", async (req, res) => {
   try {
-    const { date, time, duration, type, maxParticipants, allowedRoles = [] } = req.body;
+    const {
+      date,
+      time,
+      duration,
+      type,
+      maxParticipants,
+      allowedRoles = [],
+      machines = [],
+    } = req.body;
     console.log(`[GYM-POST] Creating session with allowedRoles:`, allowedRoles);
-    const newSession = new GymSession({ 
-      date: new Date(date), 
-      time, 
-      duration: parseInt(duration), 
-      type, 
+    console.log(`[GYM-POST] Incoming machines:`, machines);
+    // Sanitize machines array
+    const cleanMachines = Array.isArray(machines)
+      ? machines
+          .filter(
+            (m) =>
+              m && typeof m.name === "string" && typeof m.status === "string"
+          )
+          .map((m) => ({
+            name: m.name.trim(),
+            status:
+              m.status === "malfunctioned" ? "malfunctioned" : "available",
+          }))
+      : [];
+
+    const newSession = new GymSession({
+      date: new Date(date),
+      time,
+      duration: parseInt(duration),
+      type,
       maxParticipants: parseInt(maxParticipants),
-      allowedRoles 
+      allowedRoles,
+      machines: cleanMachines,
     });
     const saved = await newSession.save();
-    console.log(`[GYM-POST] Saved session ${saved._id} with allowedRoles:`, saved.allowedRoles);
+    console.log(
+      `[GYM-POST] Saved session ${saved._id} with allowedRoles:`,
+      saved.allowedRoles
+    );
+    console.log(`[GYM-POST] Saved machines:`, saved.machines);
     res.status(201).json(saved);
   } catch (err) {
     console.error("[GYM-POST] Error:", err);
@@ -55,21 +83,42 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { allowedRoles, ...updateData } = req.body; // Handle allowedRoles update
+    const { allowedRoles, machines, ...updateData } = req.body; // Handle allowedRoles + machines update
+    console.log(`[GYM-PUT] ${id} incoming machines:`, machines);
+
+    // Optional sanitize machines if provided
+    if (Array.isArray(machines)) {
+      updateData.machines = machines
+        .filter(
+          (m) => m && typeof m.name === "string" && typeof m.status === "string"
+        )
+        .map((m) => ({
+          name: m.name.trim(),
+          status: m.status === "malfunctioned" ? "malfunctioned" : "available",
+        }));
+    }
     const updated = await GymSession.findByIdAndUpdate(
-      id, 
-      { ...updateData, allowedRoles: allowedRoles || undefined }, 
+      id,
+      { ...updateData, allowedRoles: allowedRoles || undefined },
       { new: true, runValidators: true }
     );
     if (!updated) {
       return res.status(404).json({ error: "Session not found" });
     }
-    console.log(`[GYM-PUT] Updated ${id}, allowedRoles now:`, updated.allowedRoles);
+    console.log(
+      `[GYM-PUT] Updated ${id}, allowedRoles now:`,
+      updated.allowedRoles
+    );
+    console.log(`[GYM-PUT] Updated ${id}, machines now:`, updated.machines);
 
     // Notify if registered users exist
     if (updated.registeredUsers?.length > 0) {
       updated.registeredUsers.forEach((user) => {
-        sendEmail(user.email, "Gym Session Updated", `Session updated: ${updated.type} on ${updated.date.toDateString()}`);
+        sendEmail(
+          user.email,
+          "Gym Session Updated",
+          `Session updated: ${updated.type} on ${updated.date.toDateString()}`
+        );
       });
     }
 
@@ -91,7 +140,11 @@ router.delete("/:id", async (req, res) => {
 
     if (session.registeredUsers?.length > 0) {
       session.registeredUsers.forEach((user) => {
-        sendEmail(user.email, "Gym Session Cancelled", `Session cancelled: ${session.type} on ${session.date.toDateString()}`);
+        sendEmail(
+          user.email,
+          "Gym Session Cancelled",
+          `Session cancelled: ${session.type} on ${session.date.toDateString()}`
+        );
       });
     }
 
@@ -108,7 +161,9 @@ router.delete("/:id", async (req, res) => {
 router.post("/register", async (req, res) => {
   try {
     const { sessionId, email } = req.body;
-    console.log(`[GYM-REGISTER] Request for email: ${email}, session: ${sessionId}`);
+    console.log(
+      `[GYM-REGISTER] Request for email: ${email}, session: ${sessionId}`
+    );
 
     if (!sessionId || !email) {
       console.log("[GYM-REGISTER] Missing fields");
@@ -121,26 +176,43 @@ router.post("/register", async (req, res) => {
       console.log(`[GYM-REGISTER] Session ${sessionId} not found`);
       return res.status(404).json({ error: "Session not found" });
     }
-    console.log(`[GYM-REGISTER] Session found: ${session.type}, allowedRoles:`, session.allowedRoles);
+    console.log(
+      `[GYM-REGISTER] Session found: ${session.type}, allowedRoles:`,
+      session.allowedRoles
+    );
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
       console.log(`[GYM-REGISTER] User with email ${email} not found`);
-      return res.status(404).json({ error: "User not found. Ensure email is correct and user exists." });
+      return res.status(404).json({
+        error: "User not found. Ensure email is correct and user exists.",
+      });
     }
-    console.log(`[GYM-REGISTER] User: ${user.firstName || 'N/A'} ${user.lastName || 'N/A'} (role: ${user.role})`);
+    console.log(
+      `[GYM-REGISTER] User: ${user.firstName || "N/A"} ${
+        user.lastName || "N/A"
+      } (role: ${user.role})`
+    );
 
     // Role restriction check
-    const isOpenToAll = !session.allowedRoles || session.allowedRoles.length === 0;
-    console.log(`[GYM-REGISTER] Is open to all? ${isOpenToAll}, User role: ${user.role}`);
+    const isOpenToAll =
+      !session.allowedRoles || session.allowedRoles.length === 0;
+    console.log(
+      `[GYM-REGISTER] Is open to all? ${isOpenToAll}, User role: ${user.role}`
+    );
     if (!isOpenToAll && !session.allowedRoles.includes(user.role)) {
       const allowed = session.allowedRoles
-        .map(r => r.charAt(0).toUpperCase() + r.slice(1) + (r === "ta" ? "s" : "s"))
+        .map(
+          (r) =>
+            r.charAt(0).toUpperCase() + r.slice(1) + (r === "ta" ? "s" : "s")
+        )
         .join(", ");
-      console.log(`[GYM-REGISTER] Denied: Role ${user.role} not in [${allowed}]`);
-      return res.status(403).json({ 
-        error: `This gym session is restricted to ${allowed} only. Your role (${user.role}) is not eligible.` 
+      console.log(
+        `[GYM-REGISTER] Denied: Role ${user.role} not in [${allowed}]`
+      );
+      return res.status(403).json({
+        error: `This gym session is restricted to ${allowed} only. Your role (${user.role}) is not eligible.`,
       });
     }
     console.log("[GYM-REGISTER] Role check passed");
@@ -148,12 +220,16 @@ router.post("/register", async (req, res) => {
     // Capacity check
     const currentCount = session.registeredUsers.length;
     if (currentCount >= session.maxParticipants) {
-      console.log(`[GYM-REGISTER] Full: ${currentCount}/${session.maxParticipants}`);
+      console.log(
+        `[GYM-REGISTER] Full: ${currentCount}/${session.maxParticipants}`
+      );
       return res.status(400).json({ error: "Session is full" });
     }
 
     // Already registered check
-    const alreadyReg = session.registeredUsers.some(reg => reg.userId?.toString() === user._id.toString());
+    const alreadyReg = session.registeredUsers.some(
+      (reg) => reg.userId?.toString() === user._id.toString()
+    );
     if (alreadyReg) {
       console.log("[GYM-REGISTER] Already registered");
       return res.status(400).json({ error: "You are already registered" });
@@ -163,13 +239,21 @@ router.post("/register", async (req, res) => {
     session.registeredUsers.push({
       userId: user._id,
       email: user.email,
-      registeredAt: new Date()
+      registeredAt: new Date(),
     });
     await session.save();
-    console.log(`[GYM-REGISTER] Success! New count: ${session.registeredUsers.length}/${session.maxParticipants}`);
+    console.log(
+      `[GYM-REGISTER] Success! New count: ${session.registeredUsers.length}/${session.maxParticipants}`
+    );
 
     // Send confirmation (optional)
-    sendEmail(user.email, "Registration Confirmed", `Registered for ${session.type} on ${session.date.toDateString()} at ${session.time}.`);
+    sendEmail(
+      user.email,
+      "Registration Confirmed",
+      `Registered for ${session.type} on ${session.date.toDateString()} at ${
+        session.time
+      }.`
+    );
 
     res.json({ message: "Registered successfully!" });
   } catch (err) {

@@ -11,11 +11,21 @@ const courtsData = [
     name: "Football Court",
     availability: [
       {
-        date: "2025-10-20",
+        date: "2025-12-08",
+        times: [
+          "3:00 PM - 5:00 PM",
+          "3:05 PM - 5:05 PM",
+          "3:10 PM - 5:10 PM",
+          "3:15 PM - 5:15 PM",
+          "3:22 PM - 5:22 PM",
+        ],
+      },
+      {
+        date: "2025-12-09",
         times: ["10:00 AM - 12:00 PM", "2:00 PM - 4:00 PM"],
       },
       {
-        date: "2025-10-21",
+        date: "2025-12-10",
         times: ["9:00 AM - 11:00 AM", "1:00 PM - 3:00 PM"],
       },
     ],
@@ -25,19 +35,39 @@ const courtsData = [
     name: "Basketball Court",
     availability: [
       {
-        date: "2025-10-20",
+        date: "2025-12-08",
+        times: [
+          "3:00 PM - 5:00 PM",
+          "3:05 PM - 5:05 PM",
+          "3:10 PM - 5:10 PM",
+          "3:15 PM - 5:15 PM",
+          "3:22 PM - 5:22 PM",
+        ],
+      },
+      {
+        date: "2025-12-09",
         times: ["8:00 AM - 10:00 AM", "3:00 PM - 5:00 PM"],
       },
-      { date: "2025-10-22", times: ["10:00 AM - 12:00 PM"] },
+      { date: "2025-12-11", times: ["10:00 AM - 12:00 PM"] },
     ],
   },
   {
     id: "tennis",
     name: "Tennis Court",
     availability: [
-      { date: "2025-10-21", times: ["7:00 AM - 9:00 AM", "4:00 PM - 6:00 PM"] },
       {
-        date: "2025-10-23",
+        date: "2025-12-08",
+        times: [
+          "3:00 PM - 5:00 PM",
+          "3:05 PM - 5:05 PM",
+          "3:10 PM - 5:10 PM",
+          "3:15 PM - 5:15 PM",
+          "3:22 PM - 5:22 PM",
+        ],
+      },
+      { date: "2025-12-10", times: ["7:00 AM - 9:00 AM", "4:00 PM - 6:00 PM"] },
+      {
+        date: "2025-12-12",
         times: ["12:00 PM - 2:00 PM", "5:00 PM - 7:00 PM"],
       },
     ],
@@ -53,6 +83,14 @@ const courtImages = {
 export default function CourtsAvailabilityWrapper() {
   const navigate = useNavigate();
   const [bookedSlots, setBookedSlots] = useState({});
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const filteredCourts = courtsData
+    .map((court) => ({
+      ...court,
+      availability: court.availability.filter((slot) => slot.date >= todayStr),
+    }))
+    .filter((court) => court.availability.length > 0);
 
   useEffect(() => {
     const fetchReservations = async () => {
@@ -116,7 +154,7 @@ export default function CourtsAvailabilityWrapper() {
             Campus Courts Availability
           </h1>
 
-          {courtsData.map((court) => (
+          {filteredCourts.map((court) => (
             <div
               key={court.id}
               style={{
@@ -202,7 +240,7 @@ export default function CourtsAvailabilityWrapper() {
 
                     <tbody>
                       {court.availability.map(({ date, times }) => (
-                        <tr key={date} style={{}}>
+                        <tr key={date}>
                           <td
                             style={{
                               padding: "14px",
@@ -216,7 +254,6 @@ export default function CourtsAvailabilityWrapper() {
                           >
                             {new Date(date).toLocaleDateString()}
                           </td>
-
                           <td
                             style={{
                               padding: "14px",
@@ -230,7 +267,6 @@ export default function CourtsAvailabilityWrapper() {
                             {times.map((time) => {
                               const isBooked =
                                 bookedSlots[court.id]?.[date]?.includes(time);
-
                               return (
                                 <button
                                   key={time}

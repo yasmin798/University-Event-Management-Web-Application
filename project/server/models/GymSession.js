@@ -7,17 +7,36 @@ const gymSessionSchema = new mongoose.Schema(
     duration: { type: Number, required: true }, // in minutes
     type: {
       type: String,
-      enum: ["yoga", "pilates", "aerobics", "zumba", "cross circuit", "kick-boxing"],
+      enum: [
+        "yoga",
+        "pilates",
+        "aerobics",
+        "zumba",
+        "cross circuit",
+        "kick-boxing",
+      ],
       required: true,
     },
     maxParticipants: { type: Number, required: true },
-    
+
     // ← NEW: Role restriction
     allowedRoles: {
       type: [String],
       enum: ["student", "professor", "ta", "staff"],
       default: [],
     },
+
+    // NEW: Machines status listing for the gym
+    machines: [
+      {
+        name: { type: String, required: true },
+        status: {
+          type: String,
+          enum: ["available", "malfunctioned"],
+          required: true,
+        },
+      },
+    ],
 
     registeredUsers: [
       {

@@ -8,7 +8,7 @@ import {
   BarChart2,
   Users,
   BarChartHorizontal,
-  MessageCircle
+  MessageCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import EventityLogo from "./EventityLogo";
@@ -56,10 +56,22 @@ export default function Sidebar() {
       const u = JSON.parse(raw);
       const role = u && u.role ? String(u.role).toLowerCase() : null;
       if (role && allowedRoles.has(role)) {
-        // insert Loyalty Partners after Vendor Booths
+        // Start with base menu
         const menu = [...baseNavigation];
-        // place loyalty link before reports
+
+        // Place Loyalty Partners before reports
         menu.splice(2, 0, ["Loyalty Partners", "/vendors/loyalty", Users]);
+
+        // For Events Office/Admin, add quick create actions in sidebar
+        if (role === "events_office" || role === "admin") {
+          // Add right after Gym Sessions for visibility
+          menu.splice(1, 0, ["Create Gym", "/gym-manager", Dumbbell]);
+          menu.splice(2, 0, [
+            "Create Poll",
+            "/create-poll",
+            BarChartHorizontal,
+          ]);
+        }
         setNavigationMenu(menu);
       } else {
         setNavigationMenu(baseNavigation);
