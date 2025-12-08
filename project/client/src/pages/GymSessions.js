@@ -64,15 +64,16 @@ export default function GymManager() {
     return newDate;
   }
 
-  // Build 7-day week
+  // Build 7-day week but omit Friday (weekday index 5)
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
+    if (d.getDay() === 5) return null; // Skip Friday
     return {
       label: d.toLocaleString("en-US", { weekday: "long" }),
       iso: formatDate(d),
       dateNum: d.getDate(),
     };
-  });
+  }).filter(Boolean);
 
   // Unique time slots
   const timeSlots = Array.from(

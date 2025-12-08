@@ -67,14 +67,16 @@ export default function GymSessionsForRegister({ SidebarComponent = null }) {
     return nd;
   };
 
+  // Build week days but omit Friday (weekday index 5)
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
+    if (d.getDay() === 5) return null; // skip Friday
     return {
       label: d.toLocaleString("en-US", { weekday: "long" }),
       iso: formatDate(d),
       dateNum: d.getDate(),
     };
-  });
+  }).filter(Boolean);
 
   const timeSlots = Array.from(
     new Set(sessions.map((s) => s.time?.slice(0, 5) || ""))

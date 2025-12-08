@@ -67,6 +67,7 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
   const isAccepted = vendorTarget.newStatus === "accepted";
   const typeCapitalized =
     vendorTarget.type.charAt(0).toUpperCase() + vendorTarget.type.slice(1);
+
   let detailsString = "";
   if (vendorTarget.type === "bazaar") {
     detailsString = `Bazaar Title: ${
@@ -77,6 +78,23 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
       vendorTarget.details.boothSize || "N/A"
     }`;
   }
+
+  const defaultSubject = `Your ${typeCapitalized} Vendor Request Has Been ${
+    isAccepted ? "Accepted" : "Rejected"
+  }`;
+  const defaultBody = `Dear ${vendorTarget.vendorName},\n\nYour ${
+    vendorTarget.type
+  } vendor request has been ${
+    vendorTarget.newStatus
+  } by the admin.\n\nDetails:\n${detailsString}\n\n${
+    isAccepted
+      ? "We look forward to your participation!"
+      : "If you have any questions, please contact support."
+  }\n\n— Admin Team`;
+
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+
   return (
     <div style={popupOverlayStyle}>
       <div style={popupHeaderStyle}>
@@ -92,28 +110,51 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
         <div style={mailRowStyle}>
           <b>To:</b> {vendorTarget.vendorEmail}
         </div>
-        <div style={mailRowStyle}>
-          <b>Subject:</b> Your {typeCapitalized} Vendor Request Has Been{" "}
-          {isAccepted ? "Accepted" : "Rejected"}
+        <div
+          style={{
+            ...mailRowStyle,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <b>Subject:</b>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            style={{
+              flex: 1,
+              border: "1px solid #E5E7EB",
+              borderRadius: 6,
+              padding: "6px 8px",
+            }}
+          />
         </div>
         <div style={mailBodyStyle}>
-          <p>Dear {vendorTarget.vendorName},</p>
-          <p>
-            Your {vendorTarget.type} vendor request has been{" "}
-            {vendorTarget.newStatus} by the admin.
-          </p>
-          <p>Details:</p>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{detailsString}</pre>
-          {isAccepted ? (
-            <p>We look forward to your participation!</p>
-          ) : (
-            <p>If you have any questions, please contact support.</p>
-          )}
-          <p>— Admin Team</p>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            style={{
+              width: "100%",
+              border: "1px solid #E5E7EB",
+              borderRadius: 6,
+              padding: 10,
+              fontSize: 14,
+              fontFamily: "inherit",
+              color: "#111827",
+              resize: "vertical",
+            }}
+          />
         </div>
       </div>
       <div style={popupFooterStyle}>
-        <button onClick={onSend} style={sendBtnStyle} disabled={sending}>
+        <button
+          onClick={() => onSend(subject, body)}
+          style={sendBtnStyle}
+          disabled={sending}
+        >
           {sending ? "Sending..." : "Send"}
         </button>
         <button onClick={onClose} style={cancelBtnStyle}>
@@ -150,7 +191,7 @@ function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
         <div style={mailBodyStyle}>
           <p>Dear {vendorTarget.vendorName},</p>
           <p>
-            Please find attached a PDF containing QR codes for all attendees 
+            Please find attached a PDF containing QR codes for all attendees
             associated with your bazaar vendor application.
           </p>
           <p>
@@ -159,20 +200,18 @@ function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
           </p>
           <p>
             These QR codes are required for attendee check-in and verification
-            during the event. Please ensure each attendee has their respective 
+            during the event. Please ensure each attendee has their respective
             QR code available.
           </p>
-          <p>If you have any questions about the QR codes or attendee management, 
-            please contact the admin team.</p>
+          <p>
+            If you have any questions about the QR codes or attendee management,
+            please contact the admin team.
+          </p>
           <p>— Event Administration Team</p>
         </div>
       </div>
       <div style={popupFooterStyle}>
-        <button 
-          onClick={onSend} 
-          style={sendBtnStyle} 
-          disabled={sending}
-        >
+        <button onClick={onSend} style={sendBtnStyle} disabled={sending}>
           {sending ? "Sending QR Codes..." : "Send QR Codes"}
         </button>
         <button onClick={onClose} style={cancelBtnStyle}>
@@ -304,7 +343,7 @@ export default function VendorRequests() {
     throw new Error("Failed update");
   };
 
-  const handleSendVendorMail = async () => {
+  const handleSendVendorMail = async (subject, body) => {
     if (!vendorTarget) return;
     setSending(true);
     setProcessingId(vendorTarget.requestId);
@@ -324,6 +363,9 @@ export default function VendorRequests() {
             status: vendorTarget.newStatus,
             type: vendorTarget.type,
             details: vendorTarget.details,
+            subject,
+            body,
+            vendorName: vendorTarget.vendorName,
           }),
         }
       );
@@ -359,24 +401,29 @@ export default function VendorRequests() {
 
   const handleSendQRCodes = async () => {
     if (!qrCodeTarget) return;
-  
+
     setSendingQRCodes(true);
-  
+
     try {
-      const response = await fetch(`${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          boothId: qrCodeTarget.raw._id,
-          vendorEmail: qrCodeTarget.vendorEmail,
-          vendorName: qrCodeTarget.vendorName,
-        }),
-      });
-  
+      const response = await fetch(
+        `${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            boothId: qrCodeTarget.raw._id,
+            vendorEmail: qrCodeTarget.vendorEmail,
+            vendorName: qrCodeTarget.vendorName,
+          }),
+        }
+      );
+
       const result = await response.json();
-  
+
       if (response.ok) {
-        alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
+        alert(
+          `QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`
+        );
       } else {
         throw new Error(result.error || "Failed to send QR codes");
       }
