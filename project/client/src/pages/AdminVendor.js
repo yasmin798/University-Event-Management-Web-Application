@@ -36,6 +36,7 @@ export default function AdminVendor() {
         description: `Booth: ${r.boothSize || "N/A"} • Location: ${
           r.platformSlot || "—"
         } • Duration: ${r.durationWeeks || "—"} weeks`,
+        vendorDescription: r.vendorDescription || "", // ✅ NEW: what they do / offer
         status: r.status || "pending",
       }));
 
@@ -103,6 +104,7 @@ export default function AdminVendor() {
                     <th style={thStyle}>Booth ID</th>
                     <th style={thStyle}>Vendor</th>
                     <th style={thStyle}>Description (location & duration)</th>
+                    <th style={thStyle}>Vendor Description</th> {/* ✅ NEW COLUMN */}
                     <th style={thStyle}>Status</th>
                     <th style={thStyle}>Actions</th>
                   </tr>
@@ -117,6 +119,13 @@ export default function AdminVendor() {
                         <td style={tdStyle}>{req.vendor}</td>
 
                         <td style={tdStyle}>{req.description}</td>
+
+                        {/* ✅ SHOW VENDOR DESCRIPTION */}
+                        <td style={tdStyle}>
+                          {req.vendorDescription && req.vendorDescription.trim()
+                            ? req.vendorDescription
+                            : "—"}
+                        </td>
 
                         <td style={tdStyle}>
                           <span
@@ -161,7 +170,8 @@ export default function AdminVendor() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" style={emptyStyle}>
+                      <td colSpan="6" style={emptyStyle}>
+                        {/* 5 → 6 because we added a column */}
                         No vendor requests.
                       </td>
                     </tr>

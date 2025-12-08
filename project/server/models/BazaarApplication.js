@@ -29,6 +29,13 @@ const BazaarApplicationSchema = new mongoose.Schema(
       enum: ["2x2", "4x4"],
       required: true,
     },
+
+     // ✅ NEW: what the company does / will offer at the bazaar
+    vendorDescription: {
+      type: String,
+      trim: true,
+    },
+
     
     status: {
       type: String,

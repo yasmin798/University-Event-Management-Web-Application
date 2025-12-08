@@ -300,8 +300,8 @@ export default function VendorRequestsBooth() {
   const [vendorTarget, setVendorTarget] = useState(null);
   const [sending, setSending] = useState(false);
   const [sendingQRCodes, setSendingQRCodes] = useState(false);
-const [showQRCodePopup, setShowQRCodePopup] = useState(false);
-const [qrCodeTarget, setQrCodeTarget] = useState(null);
+  const [showQRCodePopup, setShowQRCodePopup] = useState(false);
+  const [qrCodeTarget, setQrCodeTarget] = useState(null);
 
   const API_ORIGIN = "http://localhost:3001";
 
@@ -378,6 +378,8 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null);
             boothSize: r.boothSize || r.size || "",
             status: (r.status || r.state || "pending").toLowerCase(),
             raw: r,
+            // ✅ NEW: store vendor description from backend
+            vendorDescription: r.vendorDescription || r.description || "",
           }))
         );
       } catch (err) {
@@ -390,173 +392,173 @@ const [qrCodeTarget, setQrCodeTarget] = useState(null);
   }, [bazaarId]);
 
   // ---------- PATCH STATUS ----------
-const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
-  const res = await fetch(
-    `${API_ORIGIN}/api/booth-applications/${appId}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus, ...extraPayload }),
+  const updateStatusOnServer = async (appId, newStatus, extraPayload = {}) => {
+    const res = await fetch(
+      `${API_ORIGIN}/api/booth-applications/${appId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus, ...extraPayload }),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("PATCH failed:", err);
+      throw new Error("Failed to update booth application");
     }
-  );
 
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("PATCH failed:", err);
-    throw new Error("Failed to update booth application");
-  }
-
-  return true;
-};
+    return true;
+  };
 
 
   const handleSendVendorMail = async ({ subject, body }) => {
-  if (!vendorTarget) return;
-  setSending(true);
-  setProcessingId(vendorTarget.requestId);
+    if (!vendorTarget) return;
+    setSending(true);
+    setProcessingId(vendorTarget.requestId);
 
-  try {
-    const updatePayload = {
-      status: vendorTarget.newStatus,
-    };
-
-    if (vendorTarget.newStatus === "accepted") {
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + 3);
-      updatePayload.paymentDeadline = deadline.toISOString();
-    }
-
-    await updateStatusOnServer(
-      vendorTarget.requestId,
-      vendorTarget.newStatus,
-      updatePayload
-    );
-
-    const mailRes = await fetch(
-      `${API_ORIGIN}/api/admin/send-vendor-notification`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: vendorTarget.vendorEmail,
-          requestId: vendorTarget.requestId,
-          status: vendorTarget.newStatus,
-          type: vendorTarget.type,
-          details: vendorTarget.details,
-          subject,   // <--- new
-          body,      // <--- new
-        }),
-      }
-    );
-
-    const mailData = await mailRes.json();
-
-    if (mailRes.ok) {
-      setRequests((prev) =>
-        prev.map((r) =>
-          r._id === vendorTarget.requestId
-            ? {
-                ...r,
-                status: vendorTarget.newStatus,
-                paymentDeadline:
-                  vendorTarget.newStatus === "accepted"
-                    ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-                    : r.paymentDeadline,
-              }
-            : r
-        )
-      );
-      alert(
-        `Vendor request ${vendorTarget.newStatus} and notification sent!`
-      );
+    try {
+      const updatePayload = {
+        status: vendorTarget.newStatus,
+      };
 
       if (vendorTarget.newStatus === "accepted") {
-        alert("Payment deadline set: 3 days from now");
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 3);
+        updatePayload.paymentDeadline = deadline.toISOString();
       }
-    } else {
-      alert(
-        `Request ${vendorTarget.newStatus}, but email failed: ${
-          mailData.error || "Unknown"
-        }`
+
+      await updateStatusOnServer(
+        vendorTarget.requestId,
+        vendorTarget.newStatus,
+        updatePayload
       );
-    }
-  } catch (err) {
-    console.error("Error:", err);
-    alert("Server error");
-  } finally {
-    setSending(false);
-    setShowVendorMailPopup(false);
-    setVendorTarget(null);
-    setProcessingId(null);
-  }
-};
 
-const handleSendQRCodes = async ({ subject, body }) => {
-  if (!qrCodeTarget) return;
+      const mailRes = await fetch(
+        `${API_ORIGIN}/api/admin/send-vendor-notification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: vendorTarget.vendorEmail,
+            requestId: vendorTarget.requestId,
+            status: vendorTarget.newStatus,
+            type: vendorTarget.type,
+            details: vendorTarget.details,
+            subject,   // <--- new
+            body,      // <--- new
+          }),
+        }
+      );
 
-  setSendingQRCodes(true);
+      const mailData = await mailRes.json();
 
-  try {
-    const requestBody = {
-      boothId: qrCodeTarget.raw._id,
-      vendorEmail: qrCodeTarget.vendorEmail,
-      vendorName: qrCodeTarget.vendorName,
-      applicationId: qrCodeTarget.raw._id,
-      subject, // <--- new
-      body,    // <--- new
-    };
+      if (mailRes.ok) {
+        setRequests((prev) =>
+          prev.map((r) =>
+            r._id === vendorTarget.requestId
+              ? {
+                  ...r,
+                  status: vendorTarget.newStatus,
+                  paymentDeadline:
+                    vendorTarget.newStatus === "accepted"
+                      ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+                      : r.paymentDeadline,
+                }
+              : r
+          )
+        );
+        alert(
+          `Vendor request ${vendorTarget.newStatus} and notification sent!`
+        );
 
-    console.log("Making request to send QR codes with payload:", requestBody);
-
-    const response = await fetch(
-      `${API_ORIGIN}/api/booth-applications/admin/send-qr-codes`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        if (vendorTarget.newStatus === "accepted") {
+          alert("Payment deadline set: 3 days from now");
+        }
+      } else {
+        alert(
+          `Request ${vendorTarget.newStatus}, but email failed: ${
+            mailData.error || "Unknown"
+          }`
+        );
       }
-    );
-
-    const responseText = await response.text();
-    console.log("Raw response text:", responseText);
-
-    if (!responseText.trim()) {
-      throw new Error("Server returned an empty response");
+    } catch (err) {
+      console.error("Error:", err);
+      alert("Server error");
+    } finally {
+      setSending(false);
+      setShowVendorMailPopup(false);
+      setVendorTarget(null);
+      setProcessingId(null);
     }
+  };
 
-    let result;
+  const handleSendQRCodes = async ({ subject, body }) => {
+    if (!qrCodeTarget) return;
+
+    setSendingQRCodes(true);
+
     try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      throw new Error(
-        `Server returned a non-JSON response (status ${response.status}):\n` +
-          responseText.substring(0, 2000) +
-          (responseText.length > 2000 ? "\n... (response truncated)" : "")
-      );
-    }
+      const requestBody = {
+        boothId: qrCodeTarget.raw._id,
+        vendorEmail: qrCodeTarget.vendorEmail,
+        vendorName: qrCodeTarget.vendorName,
+        applicationId: qrCodeTarget.raw._id,
+        subject, // <--- new
+        body,    // <--- new
+      };
 
-    if (response.ok) {
-      console.log("QR codes sent successfully:", result);
-      alert(
-        `QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`
+      console.log("Making request to send QR codes with payload:", requestBody);
+
+      const response = await fetch(
+        `${API_ORIGIN}/api/booth-applications/admin/send-qr-codes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
       );
-    } else {
-      const errorMessage =
-        result.error || result.message || `HTTP ${response.status}`;
-      throw new Error(`Server error: ${errorMessage}`);
+
+      const responseText = await response.text();
+      console.log("Raw response text:", responseText);
+
+      if (!responseText.trim()) {
+        throw new Error("Server returned an empty response");
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error(
+          `Server returned a non-JSON response (status ${response.status}):\n` +
+            responseText.substring(0, 2000) +
+            (responseText.length > 2000 ? "\n... (response truncated)" : "")
+        );
+      }
+
+      if (response.ok) {
+        console.log("QR codes sent successfully:", result);
+        alert(
+          `QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`
+        );
+      } else {
+        const errorMessage =
+          result.error || result.message || `HTTP ${response.status}`;
+        throw new Error(`Server error: ${errorMessage}`);
+      }
+    } catch (err) {
+      console.error("=== ERROR SENDING QR CODES ===");
+      console.error("Full error:", err);
+      alert(
+        "Failed to send QR codes. Check the console for detailed error information."
+      );
+    } finally {
+      setSendingQRCodes(false);
+      setShowQRCodePopup(false);
+      setQrCodeTarget(null);
     }
-  } catch (err) {
-    console.error("=== ERROR SENDING QR CODES ===");
-    console.error("Full error:", err);
-    alert(
-      "Failed to send QR codes. Check the console for detailed error information."
-    );
-  } finally {
-    setSendingQRCodes(false);
-    setShowQRCodePopup(false);
-    setQrCodeTarget(null);
-  }
-};
+  };
 
   const openConfirm = (id, status) => {
     setConfirmData({
@@ -669,110 +671,130 @@ const handleSendQRCodes = async ({ subject, body }) => {
           {/* VENDOR CARDS GRID */}
           {!loading && !error && filteredRequests.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredRequests.map((req) => (
-                <div
-                  key={req._id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                >
-                  {/* Header with Status */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 truncate">
-                        {req.name || "Unnamed Vendor"}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1 truncate">
-                        {req.email}
+              {filteredRequests.map((req) => {
+                // ✅ NEW: vendor description pulled from normalized object
+                const vendorDescription =
+                  req.vendorDescription && req.vendorDescription.trim()
+                    ? req.vendorDescription
+                    : "";
+
+                return (
+                  <div
+                    key={req._id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  >
+                    {/* Header with Status */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                          {req.name || "Unnamed Vendor"}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1 truncate">
+                          {req.email}
+                        </p>
+                      </div>
+                      {getStatusBadge(req.status)}
+                    </div>
+
+                    {/* ✅ Vendor Description block */}
+                    {vendorDescription && (
+                      <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-500 mb-1">
+                          Vendor Description
+                        </p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line">
+                          {vendorDescription}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Application Details */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-3 text-sm">
+                        <MapPin size={16} className="text-gray-400" />
+                        <span className="text-gray-700">
+                          <strong>Location:</strong>{" "}
+                          {req.location || "Not specified"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm">
+                        <Clock size={16} className="text-gray-400" />
+                        <span className="text-gray-700">
+                          <strong>Duration:</strong>{" "}
+                          {req.duration || "Not specified"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm">
+                        <Ruler size={16} className="text-gray-400" />
+                        <span className="text-gray-700">
+                          <strong>Size:</strong>{" "}
+                          {req.boothSize || "Not specified"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Application ID */}
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-xs text-gray-500">Application ID</p>
+                      <p className="text-sm font-mono text-gray-700 truncate">
+                        {req._id || "—"}
                       </p>
                     </div>
-                    {getStatusBadge(req.status)}
-                  </div>
 
-                  {/* Application Details */}
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center gap-3 text-sm">
-                      <MapPin size={16} className="text-gray-400" />
-                      <span className="text-gray-700">
-                        <strong>Location:</strong>{" "}
-                        {req.location || "Not specified"}
-                      </span>
-                    </div>
+                    {/* Action Buttons */}
+                    {req.status === "pending" && (
+                      <div className="flex gap-2 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => openConfirm(req._id, "accepted")}
+                          disabled={processingId === req._id}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                          {processingId === req._id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          ) : (
+                            <CheckCircle size={16} />
+                          )}
+                          {processingId === req._id ? "Processing..." : "Accept"}
+                        </button>
+                        <button
+                          onClick={() => openConfirm(req._id, "rejected")}
+                          disabled={processingId === req._id}
+                          className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                        >
+                          {processingId === req._id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          ) : (
+                            <XCircle size={16} />
+                          )}
+                          {processingId === req._id ? "Processing..." : "Reject"}
+                        </button>
+                      </div>
+                    )}
 
-                    <div className="flex items-center gap-3 text-sm">
-                      <Clock size={16} className="text-gray-400" />
-                      <span className="text-gray-700">
-                        <strong>Duration:</strong>{" "}
-                        {req.duration || "Not specified"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-sm">
-                      <Ruler size={16} className="text-gray-400" />
-                      <span className="text-gray-700">
-                        <strong>Size:</strong>{" "}
-                        {req.boothSize || "Not specified"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Application ID */}
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500">Application ID</p>
-                    <p className="text-sm font-mono text-gray-700 truncate">
-                      {req._id || "—"}
-                    </p>
-                  </div>
-
-                  {/* Action Buttons */}
-                  {req.status === "pending" && (
-                    <div className="flex gap-2 pt-4 border-t border-gray-200">
+                    {req.status === "accepted" && req.raw.attendees && req.raw.attendees.length > 0 && (
                       <button
-                        onClick={() => openConfirm(req._id, "accepted")}
-                        disabled={processingId === req._id}
-                        className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        onClick={() => {
+                          setQrCodeTarget({
+                            raw: req.raw,
+                            vendorEmail: req.email,
+                            vendorName: req.name,
+                          });
+                          setShowQRCodePopup(true);
+                        }}
+                        disabled={sendingQRCodes}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                       >
-                        {processingId === req._id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        ) : (
-                          <CheckCircle size={16} />
-                        )}
-                        {processingId === req._id ? "Processing..." : "Accept"}
+                        <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
+                          <span style={{ fontSize: 10 }}>QR</span>
+                        </div>
+                        {sendingQRCodes ? "Sending QR Codes..." : "Send QR Codes"}
                       </button>
-                      <button
-                        onClick={() => openConfirm(req._id, "rejected")}
-                        disabled={processingId === req._id}
-                        className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                      >
-                        {processingId === req._id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        ) : (
-                          <XCircle size={16} />
-                        )}
-                        {processingId === req._id ? "Processing..." : "Reject"}
-                      </button>
-                    </div>
-                  )}
-
-                  {req.status === "accepted" && req.raw.attendees && req.raw.attendees.length > 0 && (
-    <button
-      onClick={() => {
-        setQrCodeTarget({
-          raw: req.raw,
-          vendorEmail: req.email,
-          vendorName: req.name,
-        });
-        setShowQRCodePopup(true);
-      }}
-      disabled={sendingQRCodes}
-      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-    >
-      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
-        <span style={{ fontSize: 10 }}>QR</span>
-      </div>
-      {sendingQRCodes ? "Sending QR Codes..." : "Send QR Codes"}
-    </button>
-  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -802,13 +824,13 @@ const handleSendQRCodes = async ({ subject, body }) => {
             }}
           />
           {showQRCodePopup && qrCodeTarget && (
-  <QRCodePopup
-    onClose={() => setShowQRCodePopup(false)}
-    onSend={handleSendQRCodes}
-    sending={sendingQRCodes}
-    vendorTarget={qrCodeTarget}
-  />
-)}
+            <QRCodePopup
+              onClose={() => setShowQRCodePopup(false)}
+              onSend={handleSendQRCodes}
+              sending={sendingQRCodes}
+              vendorTarget={qrCodeTarget}
+            />
+          )}
 
           {showVendorMailPopup && vendorTarget && (
             <VendorMailPopup
