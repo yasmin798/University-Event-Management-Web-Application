@@ -13,7 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import EventityLogo from "./EventityLogo";
 
-export default function Sidebar() {
+export default function Sidebar({ onOpenDocuments }) {
   const navigate = useNavigate();
 
   // Buttons that navigate to filtered events page
@@ -37,6 +37,7 @@ export default function Sidebar() {
   ];
 
   const [navigationMenu, setNavigationMenu] = useState(baseNavigation);
+  const [userRole, setUserRole] = useState(null);
 
   // Roles that should see the Loyalty Partners button
   const allowedRoles = new Set([
@@ -55,6 +56,7 @@ export default function Sidebar() {
       if (!raw) return setNavigationMenu(baseNavigation);
       const u = JSON.parse(raw);
       const role = u && u.role ? String(u.role).toLowerCase() : null;
+      setUserRole(role);
       if (role && allowedRoles.has(role)) {
         // Start with base menu
         const menu = [...baseNavigation];
@@ -120,6 +122,17 @@ export default function Sidebar() {
             <span>{label}</span>
           </button>
         ))}
+
+        {/* DOCUMENTS BUTTON - Only for Events Office/Admin */}
+        {(userRole === "events_office" || userRole === "admin") && (
+          <button
+            onClick={() => navigate("/documents")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/5"
+          >
+            <FileText size={18} />
+            <span>Documents</span>
+          </button>
+        )}
       </nav>
 
       {/* LOGOUT */}

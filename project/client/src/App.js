@@ -99,6 +99,7 @@ import WalletPage from "./pages/WalletPage";
 import WorkshopAttendance from "./pages/WorkshopAttendance";
 
 import VendorDocumentsPage from "./pages/VendorDocumentsPage";
+import DocumentsPage from "./pages/DocumentsPage";
 
 import PollResults from "./pages/PollResults.js";
 
@@ -284,6 +285,7 @@ function App() {
         <Route path="/poll-voting" element={<PollVoting />} />{" "}
         <Route path="/event-reviews/:id" element={<EventReviewsPage />} />
         <Route path="/vendor-documents" element={<VendorDocumentsPage />} />
+        <Route path="/documents" element={<DocumentsPage />} />
         <Route path="/poll-results" element={<PollResults />} />
         <Route path="/suggestions" element={<StudentSuggestions />} />
         <Route

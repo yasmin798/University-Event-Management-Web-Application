@@ -12,6 +12,7 @@ import {
   User,
   MapPin,
   Calendar,
+  Mic,
 } from "lucide-react";
 import "../events.theme.css";
 import Sidebar from "../components/Sidebar";
@@ -484,13 +485,40 @@ export default function VendorRequests() {
                 Manage vendor applications for this bazaar
               </p>
             </div>
-            <button
-              onClick={fetchRequests}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
-            >
-              <RefreshCw size={16} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  // Voice command can be implemented later
+                  console.log("Voice command clicked");
+                }}
+                style={{
+                  background: "#567c8d",
+                  color: "white",
+                  padding: "10px 18px",
+                  borderRadius: "10px",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => (e.target.style.background = "#45687a")}
+                onMouseLeave={(e) => (e.target.style.background = "#567c8d")}
+              >
+                <Mic size={16} />
+                Voice Command
+              </button>
+              <button
+                onClick={fetchRequests}
+                className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
+              >
+                <RefreshCw size={16} />
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
 

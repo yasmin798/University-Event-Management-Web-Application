@@ -1032,12 +1032,95 @@ export default function EventsHome() {
     booth: "/booths/create",
   };
 
+  const handleOpenDocuments = async () => {
+    setDocsList([]);
+    try {
+      const token = localStorage.getItem("token");
+
+      // Fetch attendee docs
+      const [bRes, boRes, vRes] = await Promise.all([
+        fetch("/api/bazaar-applications", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("/api/booth-applications", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("/api/vendors", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const bJson = bRes.ok ? await bRes.json() : [];
+      const boJson = boRes.ok ? await boRes.json() : [];
+      const vJson = vRes.ok ? await vRes.json() : { vendors: [] };
+
+      // Extract attendee docs
+      const gatherAttendeeDocs = (arr) => {
+        if (!Array.isArray(arr)) return [];
+        return arr.flatMap((r) =>
+          (r.attendees || [])
+            .filter((a) => a?.idDocument)
+            .map((a) => ({
+              name: a.name || "No Name",
+              email: a.email || "",
+              url: a.idDocument.startsWith("/")
+                ? `${window.location.origin}${a.idDocument}`
+                : a.idDocument,
+              type: "Attendee",
+            }))
+        );
+      };
+
+      // Extract vendor docs
+      const gatherVendorDocs = (vendors) => {
+        if (!Array.isArray(vendors)) return [];
+
+        return vendors.flatMap((v) => {
+          const docs = [];
+
+          if (v.taxCardUrl) {
+            docs.push({
+              name: v.companyName || v.email,
+              label: "Tax Card",
+              url: `${window.location.origin}${v.taxCardUrl}`,
+              type: "Vendor",
+            });
+          }
+
+          if (v.logoUrl) {
+            docs.push({
+              name: v.companyName || v.email,
+              label: "Company Logo",
+              url: `${window.location.origin}${v.logoUrl}`,
+              type: "Vendor",
+            });
+          }
+
+          return docs;
+        });
+      };
+
+      const attendeeDocs = [
+        ...gatherAttendeeDocs(bJson),
+        ...gatherAttendeeDocs(boJson),
+      ];
+
+      const vendorDocs = gatherVendorDocs(vJson.vendors);
+
+      setDocsList([...vendorDocs, ...attendeeDocs]);
+      setDocsModalOpen(true);
+    } catch (err) {
+      console.error("Error fetching docs:", err);
+      setToast({ open: true, text: "Failed to load documents" });
+    }
+  };
+
   return (
     <div
       className="events-theme"
       style={{ display: "flex", minHeight: "100vh" }}
     >
-      <Sidebar filter={filter} setFilter={setFilter} />
+      <Sidebar filter={filter} setFilter={setFilter} onOpenDocuments={handleOpenDocuments} />
       <main style={{ flex: 1, marginLeft: "260px", padding: "0 24px 24px" }}>
         {/* ==================== CLEANED HEADER ==================== */}
         <header
@@ -1045,61 +1128,40 @@ export default function EventsHome() {
             marginLeft: "-24px",
             marginRight: "-24px",
             width: "calc(100% + 48px)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
             background: "var(--card)",
             borderRadius: "0 0 16px 16px",
             boxShadow: "var(--shadow)",
-            padding: "16px 24px",
+            padding: "20px 24px",
             marginBottom: "20px",
             position: "sticky",
             top: 0,
             zIndex: 10,
           }}
         >
-          <button
-            onClick={startVoiceRecognition}
-            style={{
-              background: "#567c8d",
-              color: "white",
-              padding: "10px 14px",
-              borderRadius: "8px",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              cursor: "pointer",
-            }}
-          >
-            <Mic size={18} />
-            Voice Command
-          </button>
-
-          {/* LEFT: Search & Filters (Grouped Tightly) */}
+          {/* Top Row: Search and Action Buttons */}
           <div
             style={{
               display: "flex",
-              gap: "10px",
+              justifyContent: "space-between",
               alignItems: "center",
-              flexWrap: "wrap",
-              flex: 1,
+              marginBottom: "16px",
+              gap: "16px",
             }}
           >
+            {/* LEFT: Search Bar - Stretched */}
             <div
               style={{
                 position: "relative",
-                minWidth: "200px",
-                maxWidth: "300px",
-                flex: 1,
+                flex: "1 1 auto",
+                minWidth: "400px",
               }}
             >
               <Search
-                size={16}
+                size={18}
                 style={{
                   position: "absolute",
                   top: "50%",
-                  left: "12px",
+                  left: "14px",
                   transform: "translateY(-50%)",
                   color: "var(--teal)",
                 }}
@@ -1111,60 +1173,147 @@ export default function EventsHome() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "10px 12px 10px 38px",
-                  borderRadius: "8px",
-                  border: "1px solid #ddd",
+                  padding: "12px 16px 12px 44px",
+                  borderRadius: "10px",
+                  border: "1px solid #e0e0e0",
                   fontSize: "14px",
                   background: "#f9fafb",
+                  transition: "all 0.2s",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#567c8d";
+                  e.target.style.background = "white";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e0e0e0";
+                  e.target.style.background = "#f9fafb";
                 }}
               />
             </div>
 
-            {/* Compact Filter Group */}
-            <div style={{ display: "flex", gap: "8px" }}>
-              <div style={{ width: "140px" }}>
-                <SearchableDropdown
-                  options={uniqueLocations}
-                  value={searchLocation}
-                  onChange={setSearchLocation}
-                  placeholder="Location"
-                  icon={MapPin}
-                />
-              </div>
-              <div style={{ width: "140px" }}>
-                <SearchableDropdown
-                  options={uniqueProfessors}
-                  value={professorFilter}
-                  onChange={setProfessorFilter}
-                  placeholder="Professor"
-                  icon={Users}
-                />
-              </div>
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+            {/* RIGHT: Action Buttons - Voice Command, Notifications, Create Event */}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "center",
+                flex: "0 0 auto",
+              }}
+            >
+              <NotificationsDropdown />
+
+              <button
+                onClick={startVoiceRecognition}
                 style={{
-                  width: "130px",
-                  padding: "8px",
-                  borderRadius: "8px",
-                  border: "1px solid #ddd",
-                  fontSize: "13px",
+                  background: "#567c8d",
+                  color: "white",
+                  padding: "10px 18px",
+                  borderRadius: "10px",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  transition: "background 0.2s",
                 }}
+                onMouseEnter={(e) => (e.target.style.background = "#45687a")}
+                onMouseLeave={(e) => (e.target.style.background = "#567c8d")}
+              >
+                <Mic size={18} />
+                Voice Command
+              </button>
+
+              {/* CREATE EVENT BUTTON */}
+              <div style={{ position: "relative" }} ref={createMenuRef}>
+                <button
+                  onClick={() => setChooseOpen(true)}
+                  className="btn-primary"
+                  style={{
+                    padding: "10px 18px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                  }}
+                >
+                  <Plus size={18} />
+                  Create Event
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Row: Filters */}
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ width: "160px" }}>
+              <SearchableDropdown
+                options={uniqueLocations}
+                value={searchLocation}
+                onChange={setSearchLocation}
+                placeholder="Location"
+                icon={MapPin}
               />
             </div>
-
+            <div style={{ width: "160px" }}>
+              <SearchableDropdown
+                options={uniqueProfessors}
+                value={professorFilter}
+                onChange={setProfessorFilter}
+                placeholder="Professor"
+                icon={Users}
+              />
+            </div>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{
+                width: "150px",
+                padding: "10px 12px",
+                borderRadius: "10px",
+                border: "1px solid #e0e0e0",
+                fontSize: "14px",
+                background: "#f9fafb",
+                cursor: "pointer",
+              }}
+            />
             <button
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
-              className="btn-primary"
               style={{
-                padding: "10px 20px",
+                padding: "10px 18px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
                 borderRadius: "10px",
+                border: "1px solid #e0e0e0",
+                background: "#f9fafb",
+                fontSize: "14px",
+                fontWeight: "500",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "#567c8d";
+                e.target.style.color = "white";
+                e.target.style.borderColor = "#567c8d";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "#f9fafb";
+                e.target.style.color = "inherit";
+                e.target.style.borderColor = "#e0e0e0";
               }}
             >
               {sortOrder === "asc" ? (
@@ -1172,136 +1321,8 @@ export default function EventsHome() {
               ) : (
                 <ArrowDown size={16} />
               )}
-              {sortOrder === "asc" ? "Oldest" : "Newest"}
+              {sortOrder === "asc" ? "Oldest First" : "Newest First"}
             </button>
-          </div>
-
-          {/* RIGHT: Actions (Docs, Notifications, Create) */}
-          <div
-            style={{
-              display: "flex",
-              gap: "16px",
-              alignItems: "center",
-              marginLeft: "20px",
-            }}
-          >
-            <NotificationsDropdown />
-
-            {(userRole === "admin" || userRole === "events_office") && (
-              <button
-                onClick={async () => {
-                  setDocsList([]);
-                  try {
-                    const token = localStorage.getItem("token");
-
-                    // Fetch attendee docs
-                    const [bRes, boRes, vRes] = await Promise.all([
-                      fetch("/api/bazaar-applications", {
-                        headers: { Authorization: `Bearer ${token}` },
-                      }),
-                      fetch("/api/booth-applications", {
-                        headers: { Authorization: `Bearer ${token}` },
-                      }),
-                      fetch("/api/vendors", {
-                        headers: { Authorization: `Bearer ${token}` },
-                      }),
-                    ]);
-
-                    const bJson = bRes.ok ? await bRes.json() : [];
-                    const boJson = boRes.ok ? await boRes.json() : [];
-                    const vJson = vRes.ok ? await vRes.json() : { vendors: [] };
-
-                    // Extract attendee docs
-                    const gatherAttendeeDocs = (arr) => {
-                      if (!Array.isArray(arr)) return [];
-                      return arr.flatMap((r) =>
-                        (r.attendees || [])
-                          .filter((a) => a?.idDocument)
-                          .map((a) => ({
-                            name: a.name || "No Name",
-                            email: a.email || "",
-                            url: a.idDocument.startsWith("/")
-                              ? `${window.location.origin}${a.idDocument}`
-                              : a.idDocument,
-                            type: "Attendee",
-                          }))
-                      );
-                    };
-
-                    // Extract vendor docs
-                    const gatherVendorDocs = (vendors) => {
-                      if (!Array.isArray(vendors)) return [];
-
-                      return vendors.flatMap((v) => {
-                        const docs = [];
-
-                        if (v.taxCardUrl) {
-                          docs.push({
-                            name: v.companyName || v.email,
-                            label: "Tax Card",
-                            url: `${window.location.origin}${v.taxCardUrl}`,
-                            type: "Vendor",
-                          });
-                        }
-
-                        if (v.logoUrl) {
-                          docs.push({
-                            name: v.companyName || v.email,
-                            label: "Company Logo",
-                            url: `${window.location.origin}${v.logoUrl}`,
-                            type: "Vendor",
-                          });
-                        }
-
-                        return docs;
-                      });
-                    };
-
-                    const attendeeDocs = [
-                      ...gatherAttendeeDocs(bJson),
-                      ...gatherAttendeeDocs(boJson),
-                    ];
-
-                    const vendorDocs = gatherVendorDocs(vJson.vendors);
-
-                    setDocsList([...vendorDocs, ...attendeeDocs]);
-                    setDocsModalOpen(true);
-                  } catch (err) {
-                    console.error("Error fetching docs:", err);
-                    setToast({ open: true, text: "Failed to load documents" });
-                  }
-                }}
-                className="btn-primary"
-                style={{
-                  padding: "10px 20px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  borderRadius: "10px",
-                }}
-              >
-                <FileText size={18} />
-                <span>Documents</span>
-              </button>
-            )}
-
-            {/* CREATE EVENT BUTTON */}
-            <div style={{ position: "relative" }} ref={createMenuRef}>
-              <button
-                onClick={() => setChooseOpen(true)}
-                className="btn-primary"
-                style={{
-                  padding: "10px 20px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  borderRadius: "10px",
-                }}
-              >
-                <Plus size={18} />
-                <span>Create Event</span>
-              </button>
-            </div>
           </div>
         </header>
 

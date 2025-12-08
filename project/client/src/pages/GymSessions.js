@@ -2,18 +2,21 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../events.theme.css";
 import axios from "axios";
+import { Search, Mic, Plus } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import GymSessionsForRegister from "./GymSessionsForRegister";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 
 export default function GymManager() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [sessions, setSessions] = useState([]);
   const [userRole, setUserRole] = useState("student");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     try {
@@ -75,9 +78,21 @@ export default function GymManager() {
     };
   }).filter(Boolean);
 
-  // Unique time slots
+  // Filter sessions based on search term
+  const filteredSessions = sessions.filter((s) => {
+    if (!searchTerm.trim()) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (s.type && s.type.toLowerCase().includes(searchLower)) ||
+      (s.instructor && s.instructor.toLowerCase().includes(searchLower)) ||
+      (s.equipment && s.equipment.toLowerCase().includes(searchLower)) ||
+      (s.location && s.location.toLowerCase().includes(searchLower))
+    );
+  });
+
+  // Unique time slots from filtered sessions
   const timeSlots = Array.from(
-    new Set(sessions.map((s) => s.time.slice(0, 5)))
+    new Set(filteredSessions.map((s) => s.time.slice(0, 5)))
   ).sort();
 
   // Create timetable grid
@@ -87,8 +102,8 @@ export default function GymManager() {
     timeSlots.forEach((t) => (timetable[d.label][t] = null));
   });
 
-  // Insert sessions
-  sessions.forEach((s) => {
+  // Insert filtered sessions
+  filteredSessions.forEach((s) => {
     const iso = formatDate(new Date(s.date));
     const time = s.time.slice(0, 5);
     const dayObj = days.find((d) => d.iso === iso);
@@ -150,7 +165,144 @@ export default function GymManager() {
       )}
 
       {/* MAIN CONTENT */}
-      <main style={{ flex: 1, marginLeft: "260px", padding: "10px 24px" }}>
+      <main style={{ flex: 1, marginLeft: "260px", padding: "0 24px 24px" }}>
+        {/* ==================== TOP HEADER PANEL ==================== */}
+        <header
+          style={{
+            marginLeft: "-24px",
+            marginRight: "-24px",
+            width: "calc(100% + 48px)",
+            background: "var(--card)",
+            borderRadius: "0 0 16px 16px",
+            boxShadow: "var(--shadow)",
+            padding: "20px 24px",
+            marginBottom: "20px",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+          }}
+        >
+          {/* Top Row: Search and Action Buttons */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "16px",
+              gap: "16px",
+            }}
+          >
+            {/* LEFT: Search Bar - Stretched */}
+            <div
+              style={{
+                position: "relative",
+                flex: "1 1 auto",
+                minWidth: "400px",
+              }}
+            >
+              <Search
+                size={18}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "14px",
+                  transform: "translateY(-50%)",
+                  color: "var(--teal)",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px 12px 44px",
+                  borderRadius: "10px",
+                  border: "1px solid #e0e0e0",
+                  fontSize: "14px",
+                  background: "#f9fafb",
+                  transition: "all 0.2s",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#567c8d";
+                  e.target.style.background = "white";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e0e0e0";
+                  e.target.style.background = "#f9fafb";
+                }}
+              />
+            </div>
+
+            {/* RIGHT: Action Buttons */}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "center",
+                flex: "0 0 auto",
+              }}
+            >
+              <NotificationsDropdown />
+
+              <button
+                onClick={() => {
+                  // Voice command can be implemented later
+                  console.log("Voice command clicked");
+                }}
+                style={{
+                  background: "#567c8d",
+                  color: "white",
+                  padding: "10px 18px",
+                  borderRadius: "10px",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => (e.target.style.background = "#45687a")}
+                onMouseLeave={(e) => (e.target.style.background = "#567c8d")}
+              >
+                <Mic size={18} />
+                Voice Command
+              </button>
+
+              {userRole === "admin" || userRole === "events_office" ? (
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => navigate("/gym-manager")}
+                    style={{
+                      padding: "10px 18px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      background: "#567c8d",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                    onMouseEnter={(e) => (e.target.style.background = "#45687a")}
+                    onMouseLeave={(e) => (e.target.style.background = "#567c8d")}
+                  >
+                    <Plus size={18} />
+                    Create Session
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </header>
+
+        {/* Title */}
         <h1 style={{ marginTop: 0, color: "var(--navy)" }}>
           Weekly Gym Timetable
         </h1>

@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import "../events.theme.css";
+import { Search, Mic } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 
 const sessionTypes = [
   "yoga",
@@ -146,34 +148,105 @@ export default function CreateGym() {
         style={{
           flex: 1,
           marginLeft: "260px",
-          padding: "20px 40px 40px",
+          padding: "0 24px 24px",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
         }}
       >
-        <h1
+        {/* ==================== TOP HEADER PANEL ==================== */}
+        <header
           style={{
-            color: "var(--navy)",
-            fontWeight: 800,
-            marginBottom: "12px",
-            textAlign: "center",
+            marginLeft: "-24px",
+            marginRight: "-24px",
+            width: "calc(100% + 48px)",
+            background: "var(--card)",
+            borderRadius: "0 0 16px 16px",
+            boxShadow: "var(--shadow)",
+            padding: "20px 24px",
+            marginBottom: "20px",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
           }}
         >
-          Create a New Gym Session
-        </h1>
+          {/* Top Row: Search and Action Buttons */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            {/* RIGHT: Action Buttons */}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "center",
+                flex: "0 0 auto",
+              }}
+            >
+              <NotificationsDropdown />
+
+              <button
+                onClick={() => {
+                  // Voice command can be implemented later
+                  console.log("Voice command clicked");
+                }}
+                style={{
+                  background: "#567c8d",
+                  color: "white",
+                  padding: "10px 18px",
+                  borderRadius: "10px",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => (e.target.style.background = "#45687a")}
+                onMouseLeave={(e) => (e.target.style.background = "#567c8d")}
+              >
+                <Mic size={18} />
+                Voice Command
+              </button>
+            </div>
+          </div>
+        </header>
 
         <div
-          className="card"
           style={{
-            width: "100%",
-            maxWidth: "560px",
-            padding: "32px",
-            borderRadius: "18px",
-            boxShadow: "var(--shadow)",
-            background: "white",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
+          <h1
+            style={{
+              color: "var(--navy)",
+              fontWeight: 800,
+              marginBottom: "12px",
+              textAlign: "center",
+            }}
+          >
+            Create a New Gym Session
+          </h1>
+
+          <div
+            className="card"
+            style={{
+              width: "100%",
+              maxWidth: "560px",
+              padding: "32px",
+              borderRadius: "18px",
+              boxShadow: "var(--shadow)",
+              background: "white",
+            }}
+          >
           <h2
             style={{
               margin: 0,
@@ -390,6 +463,7 @@ export default function CreateGym() {
               Create Session
             </button>
           </form>
+          </div>
         </div>
       </main>
     </div>
