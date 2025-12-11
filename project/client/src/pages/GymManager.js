@@ -33,6 +33,8 @@ export default function CreateGym() {
     "Cable Machine",
     "Dumbbells",
     "Kettlebells",
+    "Mats",
+    "Music System",
   ];
 
   const [form, setForm] = useState({
