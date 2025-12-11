@@ -608,6 +608,13 @@ export default function VendorRequestsBooth() {
                 Manage and review booth applications
               </p>
             </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </button>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
