@@ -685,7 +685,7 @@ setAllEvents(normalized);
 )}
 
           {/* Events Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr">
             {allEvents.map((e) => {
               let cardImage = workshopImg;
               if (e.type === "TRIP") cardImage = tripImg;
@@ -703,27 +703,37 @@ setAllEvents(normalized);
                     day: "numeric",
                   })
                 : "";
-                if (e.type === "BOOTH") {
+if (e.type === "BOOTH") {
   return (
     <div
       key={e._id}
-      className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+      className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group h-full flex flex-col"
     >
-      <div className="h-40 w-full bg-gray-200 relative">
+      {/* SAME image layout as other cards (fixed ratio) */}
+      <div className="relative w-full aspect-[16/9] bg-gray-200 overflow-hidden">
         <img
           src={e.image || boothPlaceholder}
           alt={e.title}
-          className="h-full w-full object-cover"
-          onError={(target) => {
-            target.target.src = boothPlaceholder;
+          className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+          onError={(ev) => {
+            ev.currentTarget.src = boothPlaceholder;
           }}
         />
+
+        {/* Type Badge */}
+        <div className="absolute top-3 left-3">
+          <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+            BOOTH
+          </span>
+        </div>
+
+        {/* Favorite Button */}
         <button
           onClick={(ev) => {
             ev.stopPropagation();
             toggleFavorite(e._id);
           }}
-          className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
+          className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
         >
           <Heart
             size={18}
@@ -734,48 +744,69 @@ setAllEvents(normalized);
             }
           />
         </button>
+
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 
-      <div className="p-4">
-        <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+      {/* Body fills remaining height */}
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
           {e.title || "Booth"}
         </h3>
 
-        <p className="text-sm text-[#567c8d] truncate">Type: BOOTH</p>
+        <div className="space-y-2 mb-4 flex-1">
+          {e.location && (
+            <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+              <MapPin size={16} className="flex-shrink-0" />
+              <span className="truncate">{e.location}</span>
+            </div>
+          )}
 
-        <p className="text-sm text-[#567c8d]">
-          Date:{" "}
-          {new Date(e.startDateTime || e.date).toLocaleDateString()}
-        </p>
+          <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+            <Clock size={16} className="flex-shrink-0" />
+            <span>{new Date(e.startDateTime || e.date).toLocaleDateString()}</span>
+          </div>
 
-        {e.location && (
-          <p className="text-sm text-[#567c8d] truncate">Location: {e.location}</p>
-        )}
-
-        <div className="flex gap-2 mt-4">
-          <button
-            className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
-            onClick={() => navigate(`/events/${e._id}`)}
-          >
-            Details
-          </button>
+          {e.allowedRoles && e.allowedRoles.length > 0 && (
+            <div
+              style={{
+                padding: "6px 10px",
+                background: "#e3f2fd",
+                borderRadius: "4px",
+                fontSize: "12px",
+                color: "#1976d2",
+                fontWeight: "500",
+              }}
+            >
+              🔒 Restricted to: {e.allowedRoles.join(", ")}
+            </div>
+          )}
         </div>
+
+        {/* Button always at bottom */}
+        <button
+          className="mt-auto w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
+          onClick={() => navigate(`/events/${e._id}`)}
+        >
+          View Details
+        </button>
       </div>
     </div>
   );
 }
 
 
+
               return (
                 <div
                   key={e._id}
-                  className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group"
+className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group h-full flex flex-col"
                 >
-                  <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+<div className="relative w-full aspect-[16/9] bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                     <img
                       src={e.image || fallbackImage}
                       alt={e.title}
-                      className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
                     />
 
                     {/* Event Type Badge */}
@@ -804,12 +835,12 @@ setAllEvents(normalized);
                     <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
 
-                  <div className="p-5">
+                  <div className="p-5 flex flex-col flex-1">
                     <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
                       {e.title}
                     </h3>
 
-                    <div className="space-y-2 mb-4">
+                    <div className="space-y-2 mb-4 flex-1">
                       {e.location && (
                         <div className="flex items-center gap-2 text-sm text-[#567c8d]">
                           <MapPin size={16} className="flex-shrink-0" />
