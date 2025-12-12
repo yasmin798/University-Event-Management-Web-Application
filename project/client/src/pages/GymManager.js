@@ -22,6 +22,8 @@ export default function CreateGym() {
 
   // Fixed equipment list shown with status dropdowns
   const defaultEquipment = [
+    "Mats",
+    "Music System",
     "Treadmill",
     "Elliptical",
     "Stationary Bike",
@@ -33,8 +35,6 @@ export default function CreateGym() {
     "Cable Machine",
     "Dumbbells",
     "Kettlebells",
-    "Mats",
-    "Music System",
   ];
 
   const [form, setForm] = useState({
@@ -249,222 +249,222 @@ export default function CreateGym() {
               background: "white",
             }}
           >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "20px",
-              fontWeight: "700",
-              marginBottom: "20px",
-            }}
-          >
-            Add a New Gym Session
-          </h2>
-
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "flex", flexDirection: "column", gap: "18px" }}
-          >
-            {/* Existing fields */}
-            <div className="kv">
-              <label className="k">Date:</label>
-              <input
-                type="date"
-                name="date"
-                value={form.date}
-                onChange={handleChange}
-                required
-                min={today}
-                style={inputStyle}
-              />
-            </div>
-
-            <div className="kv">
-              <label className="k">Time:</label>
-              <input
-                type="time"
-                name="time"
-                value={form.time}
-                onChange={handleChange}
-                required
-                style={inputStyle}
-              />
-            </div>
-
-            <div className="kv">
-              <label className="k">Duration (minutes):</label>
-              <input
-                type="number"
-                name="duration"
-                value={form.duration}
-                onChange={handleChange}
-                required
-                min="1"
-                style={inputStyle}
-              />
-            </div>
-
-            <div className="kv">
-              <label className="k">Type:</label>
-              <select
-                name="type"
-                value={form.type}
-                onChange={handleChange}
-                required
-                style={inputStyle}
-              >
-                <option value="">Select Type</option>
-                {sessionTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="kv">
-              <label className="k">Max Participants:</label>
-              <input
-                type="number"
-                name="maxParticipants"
-                value={form.maxParticipants}
-                onChange={handleChange}
-                required
-                min="1"
-                style={inputStyle}
-              />
-            </div>
-
-            {/* ← NEW: Role Restrictions */}
-            <div
+            <h2
               style={{
-                padding: "16px",
-                background: "#f8f9fa",
-                borderRadius: "12px",
-                marginTop: "10px",
+                margin: 0,
+                fontSize: "20px",
+                fontWeight: "700",
+                marginBottom: "20px",
               }}
             >
-              <label
-                className="k"
-                style={{
-                  fontWeight: "bold",
-                  marginBottom: "10px",
-                  display: "block",
-                }}
-              >
-                Who can register?
-              </label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-                {["student", "professor", "ta", "staff"].map((role) => (
-                  <label
-                    key={role}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      fontSize: "15px",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      value={role}
-                      checked={form.allowedRoles.includes(role)}
-                      onChange={handleChange}
-                      style={{ marginRight: "8px" }}
-                    />
-                    <span style={{ textTransform: "capitalize" }}>
-                      {role === "ta" ? "TAs" : role + "s"}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <small
-                style={{ color: "#666", marginTop: "8px", display: "block" }}
-              >
-                Leave all unchecked → Open to everyone
-              </small>
-            </div>
+              Add a New Gym Session
+            </h2>
 
-            {/* Machines status: fixed equipment with dropdowns (collapsible) */}
-            <div style={{ background: "#f1f8e9", borderRadius: "12px" }}>
-              <button
-                type="button"
-                onClick={() => setMachinesOpen(!machinesOpen)}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  textAlign: "left",
-                  padding: "14px 16px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <span>Gym Machines Status</span>
-                <span>{machinesOpen ? "▾" : "▸"}</span>
-              </button>
-
-              {machinesOpen && (
-                <div style={{ padding: "0 16px 16px" }}>
-                  <ul
-                    style={{
-                      listStyle: "none",
-                      padding: 0,
-                      margin: 0,
-                      display: "grid",
-                      gap: "8px",
-                    }}
-                  >
-                    {form.machines.map((m, idx) => (
-                      <li
-                        key={idx}
-                        style={{
-                          background: "#fff",
-                          border: "1px solid #ddd",
-                          borderRadius: 8,
-                          padding: "8px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "8px",
-                        }}
-                      >
-                        <span style={{ fontWeight: 600 }}>{m.name}</span>
-                        <select
-                          value={m.status}
-                          onChange={(e) =>
-                            toggleMachineStatus(idx, e.target.value)
-                          }
-                          style={{ ...inputStyle, width: "auto" }}
-                        >
-                          <option value="available">Available</option>
-                          <option value="malfunctioned">Malfunctioned</option>
-                        </select>
-                      </li>
-                    ))}
-                  </ul>
-                  <small
-                    style={{
-                      color: "#666",
-                      marginTop: "8px",
-                      display: "block",
-                    }}
-                  >
-                    Appears in session details; no optional notes.
-                  </small>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="btn"
-              style={{ marginTop: "10px", padding: "12px" }}
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: "flex", flexDirection: "column", gap: "18px" }}
             >
-              Create Session
-            </button>
-          </form>
+              {/* Existing fields */}
+              <div className="kv">
+                <label className="k">Date:</label>
+                <input
+                  type="date"
+                  name="date"
+                  value={form.date}
+                  onChange={handleChange}
+                  required
+                  min={today}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="kv">
+                <label className="k">Time:</label>
+                <input
+                  type="time"
+                  name="time"
+                  value={form.time}
+                  onChange={handleChange}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="kv">
+                <label className="k">Duration (minutes):</label>
+                <input
+                  type="number"
+                  name="duration"
+                  value={form.duration}
+                  onChange={handleChange}
+                  required
+                  min="1"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="kv">
+                <label className="k">Type:</label>
+                <select
+                  name="type"
+                  value={form.type}
+                  onChange={handleChange}
+                  required
+                  style={inputStyle}
+                >
+                  <option value="">Select Type</option>
+                  {sessionTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="kv">
+                <label className="k">Max Participants:</label>
+                <input
+                  type="number"
+                  name="maxParticipants"
+                  value={form.maxParticipants}
+                  onChange={handleChange}
+                  required
+                  min="1"
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* ← NEW: Role Restrictions */}
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#f8f9fa",
+                  borderRadius: "12px",
+                  marginTop: "10px",
+                }}
+              >
+                <label
+                  className="k"
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "10px",
+                    display: "block",
+                  }}
+                >
+                  Who can register?
+                </label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+                  {["student", "professor", "ta", "staff"].map((role) => (
+                    <label
+                      key={role}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: "15px",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        value={role}
+                        checked={form.allowedRoles.includes(role)}
+                        onChange={handleChange}
+                        style={{ marginRight: "8px" }}
+                      />
+                      <span style={{ textTransform: "capitalize" }}>
+                        {role === "ta" ? "TAs" : role + "s"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <small
+                  style={{ color: "#666", marginTop: "8px", display: "block" }}
+                >
+                  Leave all unchecked → Open to everyone
+                </small>
+              </div>
+
+              {/* Machines status: fixed equipment with dropdowns (collapsible) */}
+              <div style={{ background: "#f1f8e9", borderRadius: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setMachinesOpen(!machinesOpen)}
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    textAlign: "left",
+                    padding: "14px 16px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>Gym Machines Status</span>
+                  <span>{machinesOpen ? "▾" : "▸"}</span>
+                </button>
+
+                {machinesOpen && (
+                  <div style={{ padding: "0 16px 16px" }}>
+                    <ul
+                      style={{
+                        listStyle: "none",
+                        padding: 0,
+                        margin: 0,
+                        display: "grid",
+                        gap: "8px",
+                      }}
+                    >
+                      {form.machines.map((m, idx) => (
+                        <li
+                          key={idx}
+                          style={{
+                            background: "#fff",
+                            border: "1px solid #ddd",
+                            borderRadius: 8,
+                            padding: "8px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "8px",
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{m.name}</span>
+                          <select
+                            value={m.status}
+                            onChange={(e) =>
+                              toggleMachineStatus(idx, e.target.value)
+                            }
+                            style={{ ...inputStyle, width: "auto" }}
+                          >
+                            <option value="available">Available</option>
+                            <option value="malfunctioned">Malfunctioned</option>
+                          </select>
+                        </li>
+                      ))}
+                    </ul>
+                    <small
+                      style={{
+                        color: "#666",
+                        marginTop: "8px",
+                        display: "block",
+                      }}
+                    >
+                      Appears in session details; no optional notes.
+                    </small>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="btn"
+                style={{ marginTop: "10px", padding: "12px" }}
+              >
+                Create Session
+              </button>
+            </form>
           </div>
         </div>
       </main>
