@@ -169,6 +169,30 @@ function VendorMailPopup({ onClose, onSend, sending, vendorTarget }) {
 function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
   const attendeeCount = vendorTarget.raw.attendees?.length || 0;
 
+  const defaultSubject = "QR Codes for Your Bazaar Vendor Application";
+
+  const defaultBody = `Dear ${vendorTarget.vendorName},
+
+Please find attached a PDF containing QR codes for all attendees associated with your bazaar vendor application.
+
+This document contains ${attendeeCount} individual QR codes, one for each attendee registered under your application.
+
+These QR codes are required for attendee check-in and verification during the event. Please ensure each attendee has their respective QR code available.
+
+If you have any questions about the QR codes or attendee management, please contact the admin team.
+
+— Event Administration Team`;
+
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+
+  // reset when target changes
+  useEffect(() => {
+    setSubject(defaultSubject);
+    setBody(defaultBody);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorTarget]);
+
   return (
     <div style={popupOverlayStyle}>
       <div style={popupHeaderStyle}>
@@ -182,37 +206,55 @@ function QRCodePopup({ onClose, onSend, sending, vendorTarget }) {
           ✕
         </button>
       </div>
+
       <div style={popupContentStyle}>
         <div style={mailRowStyle}>
           <b>To:</b> {vendorTarget.vendorEmail}
         </div>
+
         <div style={mailRowStyle}>
-          <b>Subject:</b> QR Codes for Your Bazaar Vendor Application
+          <b>Subject:</b>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            style={{
+              width: "100%",
+              marginTop: 4,
+              padding: "6px 8px",
+              borderRadius: 4,
+              border: "1px solid #D1D5DB",
+              fontSize: 14,
+            }}
+          />
         </div>
+
         <div style={mailBodyStyle}>
-          <p>Dear {vendorTarget.vendorName},</p>
-          <p>
-            Please find attached a PDF containing QR codes for all attendees
-            associated with your bazaar vendor application.
-          </p>
-          <p>
-            This document contains {attendeeCount} individual QR codes, one for
-            each attendee registered under your application.
-          </p>
-          <p>
-            These QR codes are required for attendee check-in and verification
-            during the event. Please ensure each attendee has their respective
-            QR code available.
-          </p>
-          <p>
-            If you have any questions about the QR codes or attendee management,
-            please contact the admin team.
-          </p>
-          <p>— Event Administration Team</p>
+          <b>Message:</b>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            style={{
+              width: "100%",
+              marginTop: 4,
+              padding: "8px",
+              borderRadius: 4,
+              border: "1px solid #D1D5DB",
+              fontSize: 14,
+              resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
         </div>
       </div>
+
       <div style={popupFooterStyle}>
-        <button onClick={onSend} style={sendBtnStyle} disabled={sending}>
+        <button
+          onClick={() => onSend({ subject, body })}
+          style={sendBtnStyle}
+          disabled={sending}
+        >
           {sending ? "Sending QR Codes..." : "Send QR Codes"}
         </button>
         <button onClick={onClose} style={cancelBtnStyle}>
@@ -400,43 +442,44 @@ export default function VendorRequests() {
     }
   };
 
-  const handleSendQRCodes = async () => {
-    if (!qrCodeTarget) return;
+  const handleSendQRCodes = async ({ subject, body }) => {
+  if (!qrCodeTarget) return;
 
-    setSendingQRCodes(true);
+  setSendingQRCodes(true);
 
-    try {
-      const response = await fetch(
-        `${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            boothId: qrCodeTarget.raw._id,
-            vendorEmail: qrCodeTarget.vendorEmail,
-            vendorName: qrCodeTarget.vendorName,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(
-          `QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`
-        );
-      } else {
-        throw new Error(result.error || "Failed to send QR codes");
+  try {
+    const response = await fetch(
+      `${API_ORIGIN}/api/bazaar-applications/admin/send-qr-codes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          boothId: qrCodeTarget.raw._id, // keep your existing payload
+          vendorEmail: qrCodeTarget.vendorEmail,
+          vendorName: qrCodeTarget.vendorName,
+          subject, // ✅ new
+          body,    // ✅ new
+        }),
       }
-    } catch (err) {
-      console.error("Error sending QR codes:", err);
-      alert(`Failed to send QR codes: ${err.message}`);
-    } finally {
-      setSendingQRCodes(false);
-      setShowQRCodePopup(false);
-      setQrCodeTarget(null);
+    );
+
+    const result = await response.json();
+
+    if (response.ok) {
+      alert(`QR codes have been successfully sent to ${qrCodeTarget.vendorEmail}`);
+    } else {
+      throw new Error(result.error || "Failed to send QR codes");
     }
-  };
+  } catch (err) {
+    console.error("Error sending QR codes:", err);
+    alert(`Failed to send QR codes: ${err.message}`);
+  } finally {
+    setSendingQRCodes(false);
+    setShowQRCodePopup(false);
+    setQrCodeTarget(null);
+  }
+};
+
 
   const openConfirm = (id, status) => {
     setConfirmData({
