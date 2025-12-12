@@ -11,7 +11,7 @@ const courtsData = [
     name: "Football Court",
     availability: [
       {
-        date: "2025-12-08",
+        date: "2025-12-12", // was 2025-12-08
         times: [
           "3:00 PM - 5:00 PM",
           "3:05 PM - 5:05 PM",
@@ -21,11 +21,11 @@ const courtsData = [
         ],
       },
       {
-        date: "2025-12-09",
+        date: "2025-12-13", // was 2025-12-09
         times: ["10:00 AM - 12:00 PM", "2:00 PM - 4:00 PM"],
       },
       {
-        date: "2025-12-10",
+        date: "2025-12-14", // was 2025-12-10
         times: ["9:00 AM - 11:00 AM", "1:00 PM - 3:00 PM"],
       },
     ],
@@ -35,7 +35,7 @@ const courtsData = [
     name: "Basketball Court",
     availability: [
       {
-        date: "2025-12-08",
+        date: "2025-12-12", // was 2025-12-08
         times: [
           "3:00 PM - 5:00 PM",
           "3:05 PM - 5:05 PM",
@@ -45,10 +45,13 @@ const courtsData = [
         ],
       },
       {
-        date: "2025-12-09",
+        date: "2025-12-13", // was 2025-12-09
         times: ["8:00 AM - 10:00 AM", "3:00 PM - 5:00 PM"],
       },
-      { date: "2025-12-11", times: ["10:00 AM - 12:00 PM"] },
+      {
+        date: "2025-12-14", // was 2025-12-11
+        times: ["10:00 AM - 12:00 PM"],
+      },
     ],
   },
   {
@@ -56,7 +59,7 @@ const courtsData = [
     name: "Tennis Court",
     availability: [
       {
-        date: "2025-12-08",
+        date: "2025-12-12", // was 2025-12-08
         times: [
           "3:00 PM - 5:00 PM",
           "3:05 PM - 5:05 PM",
@@ -65,14 +68,18 @@ const courtsData = [
           "3:22 PM - 5:22 PM",
         ],
       },
-      { date: "2025-12-10", times: ["7:00 AM - 9:00 AM", "4:00 PM - 6:00 PM"] },
       {
-        date: "2025-12-12",
+        date: "2025-12-13", // was 2025-12-10
+        times: ["7:00 AM - 9:00 AM", "4:00 PM - 6:00 PM"],
+      },
+      {
+        date: "2025-12-14", // was 2025-12-12
         times: ["12:00 PM - 2:00 PM", "5:00 PM - 7:00 PM"],
       },
     ],
   },
 ];
+
 
 const courtImages = {
   football: footballImg,
@@ -85,12 +92,39 @@ export default function CourtsAvailabilityWrapper() {
   const [bookedSlots, setBookedSlots] = useState({});
   const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  const filteredCourts = courtsData
-    .map((court) => ({
-      ...court,
-      availability: court.availability.filter((slot) => slot.date >= todayStr),
-    }))
-    .filter((court) => court.availability.length > 0);
+    // ✅ ADD IT RIGHT HERE (before your useEffect that fetches reservations)
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  function parseStartDateTime(dateStr, timeRangeStr) {
+    try {
+      const startStr = String(timeRangeStr).split("-")[0].trim();
+      const match = startStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!match) return null;
+
+      let hour = parseInt(match[1], 10);
+      const minute = parseInt(match[2], 10);
+      const ampm = match[3].toUpperCase();
+
+      if (ampm === "PM" && hour !== 12) hour += 12;
+      if (ampm === "AM" && hour === 12) hour = 0;
+
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(y, m - 1, d, hour, minute, 0, 0);
+    } catch {
+      return null;
+    }
+  }
+  // ✅ ADD THIS
+const isSlotInPast = (dateStr, timeRangeStr) => {
+  const start = parseStartDateTime(dateStr, timeRangeStr);
+  return start ? start < now : false;
+};
+
 
   useEffect(() => {
     const fetchReservations = async () => {
@@ -154,7 +188,7 @@ export default function CourtsAvailabilityWrapper() {
             Campus Courts Availability
           </h1>
 
-          {filteredCourts.map((court) => (
+          {courtsData.map((court) => (
             <div
               key={court.id}
               style={{
@@ -265,36 +299,35 @@ export default function CourtsAvailabilityWrapper() {
                             }}
                           >
                             {times.map((time) => {
-                              const isBooked =
-                                bookedSlots[court.id]?.[date]?.includes(time);
-                              return (
-                                <button
-                                  key={time}
-                                  disabled={isBooked}
-                                  onClick={() =>
-                                    handleReserve(court.id, date, time)
-                                  }
-                                  style={{
-                                    margin: "5px",
-                                    padding: "8px 14px",
-                                    borderRadius: "6px",
-                                    border: "none",
-                                    fontWeight: 600,
-                                    backgroundColor: isBooked
-                                      ? "#9CA3AF"
-                                      : "#2563EB",
-                                    color: "white",
-                                    cursor: isBooked
-                                      ? "not-allowed"
-                                      : "pointer",
-                                    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-                                    transition: "0.2s",
-                                  }}
-                                >
-                                  {time} {isBooked ? "(Booked)" : ""}
-                                </button>
-                              );
-                            })}
+  const isBooked = bookedSlots[court.id]?.[date]?.includes(time);
+ const isPast = isSlotInPast(date, time);
+const disabled = isBooked || isPast;
+
+
+  return (
+    <button
+      key={time}
+      disabled={disabled}
+      onClick={() => handleReserve(court.id, date, time)}
+      style={{
+        margin: "5px",
+        padding: "8px 14px",
+        borderRadius: "6px",
+        border: "none",
+        fontWeight: 600,
+        backgroundColor: disabled ? "#9CA3AF" : "#2563EB",
+        color: "white",
+        cursor: disabled ? "not-allowed" : "pointer",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+        transition: "0.2s",
+        opacity: disabled ? 0.8 : 1,
+      }}
+    >
+      {time} {isBooked ? "(Booked)" : isPast ? "(Passed)" : ""}
+    </button>
+  );
+})}
+
                           </td>
                         </tr>
                       ))}
