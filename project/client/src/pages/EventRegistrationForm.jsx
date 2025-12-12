@@ -1,16 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios"; // uncomment after testing ui
-//import { registerForEvent } from "../testData/mockAPI"; // remove after ui testing
+import axios from "axios";
 import "./EventRegistrationForm.css";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
 
-import { Bell, User } from "lucide-react";
+import { Bell, User, Mic, MicOff } from "lucide-react"; // ⬅️ added Mic icons
+
 const EventRegistrationForm = () => {
   const { eventId } = useParams();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -18,14 +20,24 @@ const EventRegistrationForm = () => {
     roleSpecificId: "",
     role: "student",
   });
-  const navigate = useNavigate(); // newly added
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // newly added
+  const [isLoading, setIsLoading] = useState(false);
   const [userRole, setUserRole] = useState("");
-  React.useEffect(() => {
+
+  const [formErrors, setFormErrors] = useState({});
+
+  // 🔊 Voice state
+  const [isListening, setIsListening] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
+  const [lastTranscript, setLastTranscript] = useState("");
+  const recognitionRef = useRef(null);
+
+  // --------- BASIC USER DATA FROM TOKEN ----------
+  useEffect(() => {
     const getUserRole = () => {
       try {
         const token = localStorage.getItem("token");
@@ -40,16 +52,41 @@ const EventRegistrationForm = () => {
     };
     setUserRole(getUserRole());
   }, []);
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
 
-    // Clear error when user starts typing
-    if (formErrors[name]) {
-      setFormErrors({ ...formErrors, [name]: "" });
-    }
-  };
+  // --------- AUTO-FILL FROM /api/users/me ----------
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
+        const res = await axios.get("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const user = res.data;
+        if (!user) return;
+
+        setFormData((prev) => ({
+          ...prev,
+          firstName: user.firstName || prev.firstName,
+          lastName: user.lastName || prev.lastName,
+          email: user.email || prev.email,
+          roleSpecificId:
+            user.roleSpecificId || user.studentId || prev.roleSpecificId,
+          role: (user.role || prev.role || "student").toLowerCase(),
+        }));
+      } catch (err) {
+        console.error("Failed to load user profile", err);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // --------- UTILS ----------
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -58,120 +95,7 @@ const EventRegistrationForm = () => {
       day: "numeric",
     });
   };
-  //const [currentStep, setCurrentStep] = useState(1);
-  const [formErrors, setFormErrors] = useState({});
 
-  const validateForm = () => {
-    const errors = {};
-    if (!formData.firstName.trim()) errors.firstName = "First name is required";
-    if (!formData.lastName.trim()) errors.lastName = "Last name is required";
-    if (!formData.email.trim() || !formData.email.includes("@"))
-      errors.email = "Valid email is required";
-    if (!formData.roleSpecificId.trim())
-      errors.roleSpecificId = "ID is required";
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    // Retrieve the token from localStorage (or wherever you store it)
-    const token = localStorage.getItem("token");
-    const apiUrl = `/api/events/${eventId}/register`;
-
-    // --- Start of Debugging Logs ---
-    console.log("📋 FORM SUBMISSION:");
-    console.log("  Event ID:", eventId);
-    console.log("  Form Data:", {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      roleSpecificId: formData.roleSpecificId,
-      role: formData.role,
-    });
-    console.log("  Auth Token:", token ? "Token found" : "No token found!");
-    console.log("  API URL:", apiUrl);
-    // --- End of Debugging Logs ---
-
-    if (!token) {
-      setError("You must be logged in to register.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // The backend expects a POST request to this specific endpoint
-      const response = await axios.post(
-        apiUrl,
-        {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          roleSpecificId: formData.roleSpecificId,
-          role: formData.role,
-        },
-        {
-          headers: {
-            // The 'protect' middleware requires this header format
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setSuccess("Registration successful! Redirecting...");
-      setTimeout(() => {
-        navigate(-1); // Redirect to previous page
-      }, 2000);
-    } catch (err) {
-      // Display the specific error message from the backend
-      const errorMessage =
-        err.response?.data?.error || "Registraton failed. Please try again.";
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    navigate(-1); // Go back to previous page
-  };
-
-  // Fetch real event details
-  /*  useEffect(() => {
-    const fetchEventDetails = async () => {
-      try {
-        setIsLoading(true);
-        const token = localStorage.getItem("token");
-        let endpoint = "";
-        // Determine endpoint based on event type (assumes type is in URL or defaults to workshop)
-        if (eventId) {
-          // Try workshop first, then trip if fails (basic type detection)
-          try {
-            const workshopRes = await axios.get(`http://localhost:3000/api/workshops/${eventId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            setEventDetails(workshopRes.data);
-          } catch (workshopErr) {
-            const tripRes = await axios.get(`http://localhost:3000/api/trips/${eventId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            setEventDetails(tripRes.data);
-          }
-        }
-      } catch (err) {
-        setError("Failed to load event details.");
-        setEventDetails({ _id: eventId, name: "Unknown Event", type: "workshop" }); // Fallback
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchEventDetails();
-  }, [eventId]); */
   const getRoleLabel = () => {
     switch (formData.role) {
       case "student":
@@ -186,6 +110,202 @@ const EventRegistrationForm = () => {
         return "ID";
     }
   };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: "" });
+    }
+  };
+
+  // --------- SUBMIT LOGIC (shared by click + voice) ----------
+  const submitRegistration = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const token = localStorage.getItem("token");
+    const apiUrl = `/api/events/${eventId}/register`;
+
+    console.log("📋 FORM SUBMISSION (voice or click):");
+    console.log("  Event ID:", eventId);
+    console.log("  Form Data:", {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      roleSpecificId: formData.roleSpecificId,
+      role: formData.role,
+    });
+    console.log("  Auth Token:", token ? "Token found" : "No token found!");
+    console.log("  API URL:", apiUrl);
+
+    if (!token) {
+      setError("You must be logged in to register.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        apiUrl,
+        {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          roleSpecificId: formData.roleSpecificId,
+          role: formData.role,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setSuccess("Registration successful! Redirecting...");
+      setTimeout(() => {
+        navigate(-1);
+      }, 2000);
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.error || "Registraton failed. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [eventId, formData, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await submitRegistration();
+  };
+
+  const handleCancel = () => {
+    navigate(-1);
+  };
+
+  // --------- SPEAK HELPER ----------
+  const speak = useCallback((text) => {
+    if (!window.speechSynthesis) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  // --------- VOICE COMMAND LOGIC ----------
+  const handleVoiceCommand = useCallback(
+    (rawText) => {
+      const cmd = rawText.toLowerCase().trim().replace(/[.!?]+$/g, "");
+
+      // Cancel / go back
+      if (
+        cmd.includes("cancel") ||
+        cmd === "back" ||
+        cmd.includes("go back") ||
+        cmd.includes("previous page")
+      ) {
+        navigate(-1);
+        return "Cancelling registration and going back.";
+      }
+
+      // Submit registration
+      if (
+        cmd.includes("submit") ||
+        cmd.includes("confirm") ||
+        cmd.includes("complete registration") ||
+        cmd.includes("register me") ||
+        cmd.includes("submit registration")
+      ) {
+        submitRegistration(); // fire async, don't wait
+        return "Submitting your registration.";
+      }
+
+      return "Sorry, I didn't understand. You can say submit registration or cancel.";
+    },
+    [navigate, submitRegistration]
+  );
+
+  // --------- SETUP SPEECH RECOGNITION ----------
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.warn("SpeechRecognition not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false; // one command at a time is enough here
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceStatus(
+        "Listening... You can say: submit registration, confirm registration, or cancel."
+      );
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      // don't auto-restart, user can press V or click mic again
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Voice error:", event.error);
+      setIsListening(false);
+      setVoiceStatus("Voice error. Try again.");
+    };
+
+    recognition.onresult = (event) => {
+      const raw = event.results[0][0].transcript;
+      const transcript = raw.toLowerCase().replace(/[.!?]+$/g, "").trim();
+      console.log("Heard (registration):", transcript);
+      setLastTranscript(transcript);
+
+      const response = handleVoiceCommand(transcript);
+      if (response) {
+        speak(response);
+        setVoiceStatus(response);
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.stop();
+    };
+  }, [handleVoiceCommand, speak]);
+
+  // --------- KEYBOARD SHORTCUT: "V" TO TOGGLE MIC ----------
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key.toLowerCase() === "v") {
+        const recognition = recognitionRef.current;
+        if (!recognition) return;
+
+        if (isListening) {
+          recognition.stop();
+          setVoiceStatus("Stopped listening.");
+        } else {
+          try {
+            recognition.start();
+          } catch (err) {
+            console.error("Recognition start error:", err);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isListening]);
 
   if (isLoading && !eventDetails)
     return <p style={{ textAlign: "center" }}>Loading event details...</p>;
@@ -206,8 +326,44 @@ const EventRegistrationForm = () => {
       {/* Main content */}
       <div className="flex-1 overflow-auto ml-[260px]">
         {/* Header */}
-        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-end">
+        <header className="bg-white border-b border-[#c8d9e6] px-4 md:px-8 py-4 flex items-center justify-between">
+          {/* Voice status (left or center) */}
+          <div className="text-sm text-[#567c8d]">
+            {voiceStatus || "Press V or click the mic to use voice commands."}
+          </div>
+
           <div className="flex items-center gap-2 md:gap-4">
+            {/* Mic button */}
+            <button
+              onClick={() => {
+                const recognition = recognitionRef.current;
+                if (!recognition) {
+                  alert("Voice recognition is not supported in this browser.");
+                  return;
+                }
+
+                if (isListening) {
+                  recognition.stop();
+                  setVoiceStatus("Stopped listening.");
+                  return;
+                }
+
+                try {
+                  recognition.start();
+                } catch (e) {
+                  console.error("Recognition start error:", e);
+                }
+              }}
+              className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors"
+              aria-label="Toggle voice assistant"
+            >
+              {isListening ? (
+                <MicOff size={20} className="text-red-500" />
+              ) : (
+                <Mic size={20} className="text-[#567c8d]" />
+              )}
+            </button>
+
             <button className="p-2 hover:bg-[#f5efeb] rounded-lg transition-colors">
               <Bell size={20} className="text-[#567c8d]" />
             </button>
@@ -216,6 +372,13 @@ const EventRegistrationForm = () => {
             </div>
           </div>
         </header>
+
+        {/* Last transcript strip */}
+        {lastTranscript && (
+          <div className="px-4 py-1 bg-[#e3f2fd] text-[#0d47a1] text-xs">
+            👂 Last heard: "{lastTranscript}"
+          </div>
+        )}
 
         {/* Registration Form Content */}
         <div className="event-reg-page">
@@ -228,7 +391,10 @@ const EventRegistrationForm = () => {
             <div className="event-reg-card">
               <div className="event-reg-form-header">
                 <h2>Registration Form</h2>
-                <p>Please complete your information to secure your spot</p>
+                <p>
+                  You can fill the form manually, or say “submit registration”
+                  once everything is correct.
+                </p>
               </div>
 
               <form className="event-reg-form" onSubmit={handleSubmit}>
@@ -249,7 +415,9 @@ const EventRegistrationForm = () => {
                       required
                     />
                     {formErrors.firstName && (
-                      <span className="error-text">{formErrors.firstName}</span>
+                      <span className="error-text">
+                        {formErrors.firstName}
+                      </span>
                     )}
                   </div>
 
@@ -269,7 +437,9 @@ const EventRegistrationForm = () => {
                       required
                     />
                     {formErrors.lastName && (
-                      <span className="error-text">{formErrors.lastName}</span>
+                      <span className="error-text">
+                        {formErrors.lastName}
+                      </span>
                     )}
                   </div>
                 </div>

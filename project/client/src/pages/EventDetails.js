@@ -1,10 +1,12 @@
 // client/src/pages/EventDetails.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import StudentSidebar from "../components/StudentSidebar";
 import ProfessorSidebar from "../components/ProfessorSidebar";
 import TaSidebar from "../components/TaSidebar";
 import StaffSidebar from "../components/StaffSidebar";
+
 
 import {
   Menu,
@@ -25,7 +27,10 @@ import {
   TrendingUp,
   CheckCircle,
   X,
+  Mic,
+  MicOff,
 } from "lucide-react";
+
 import { useServerEvents } from "../hooks/useServerEvents";
 import { workshopAPI } from "../api/workshopApi";
 import { boothAPI } from "../api/boothApi";
@@ -77,6 +82,283 @@ const EventDetails = () => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   const { events: otherEvents } = useServerEvents({ refreshMs: 0 });
+
+
+   // --- Voice assistant state for EventDetails ---
+  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
+  const [lastTranscript, setLastTranscript] = useState("");
+  const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
+  const [awaitingDetailsConfirm, setAwaitingDetailsConfirm] = useState(false);
+  const detailsRecognitionRef = useRef(null);
+
+
+const speak = useCallback((text, onEnd) => {
+  if (!window.speechSynthesis) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  if (onEnd) {
+    utterance.onend = onEnd;
+  }
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}, []);
+
+  const handleDetailsVoiceCommand = useCallback(
+    (rawText) => {
+      const cmd = rawText.toLowerCase().trim().replace(/[.!?]+$/g, "");
+
+      // Safety: if event isn't ready yet
+      if (!event) {
+        return "The event details are still loading.";
+      }
+
+      // Figure out type / title / location / date
+      const typeLocal = (event.type || "EVENT").toString().toUpperCase();
+      const titleLocal =
+        typeLocal === "BOOTH"
+          ? event.attendees?.[0]?.name ||
+            event.title ||
+            event.name ||
+            "Untitled Booth"
+          : event.title || event.name || event.workshopName || "Untitled Event";
+
+      const whenRaw =
+        event.startDateTime || event.startDate || event.date || event.endDateTime;
+      let whenText = "an unspecified date";
+      if (whenRaw) {
+        try {
+          whenText = new Date(whenRaw).toLocaleString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+        } catch {
+          // ignore
+        }
+      }
+
+      const loc = event.location || "location not specified";
+
+      // Compute allowed roles *locally* (don't depend on userIsAllowed const)
+      const allowedLower = (event.allowedRoles || []).map((r) =>
+        String(r).toLowerCase().trim()
+      );
+      const userRoleLower = String(userRole || "").toLowerCase().trim();
+      const userIsAllowedLocal =
+        allowedLower.length === 0 ||
+        allowedLower.includes(userRoleLower) ||
+        userRoleLower === "events_office" ||
+        isEventsOffice;
+
+      const buildSummary = () => {
+        let summary = `This event is ${titleLocal}. It is a ${typeLocal.toLowerCase()} at ${loc}, on ${whenText}.`;
+
+        if (event.capacity) {
+          summary += ` It has a capacity of ${event.capacity} participants.`;
+        }
+
+        if (userIsAllowedLocal || isEventsOffice) {
+          if (hasPassed) {
+            summary += " The event has already ended, so you cannot register.";
+          } else if (canRegister) {
+            summary += " You are allowed to register for this event.";
+          } else {
+            summary +=
+              " You are allowed to attend, but registration is not open at the moment.";
+          }
+        } else if (event.allowedRoles?.length) {
+          const roles = event.allowedRoles.join(", ");
+          summary += ` It is restricted to: ${roles}, so you are not allowed to register.`;
+        }
+
+        return summary;
+      };
+
+      // ---- "Do you want me to read the details?" flow ----
+      if (awaitingDetailsConfirm) {
+        if (
+          cmd === "yes" ||
+          cmd.includes("read") ||
+          cmd.includes("details") ||
+          cmd.includes("sure") ||
+          cmd.includes("okay")
+        ) {
+          setAwaitingDetailsConfirm(false);
+          return buildSummary();
+        }
+
+        if (cmd === "no" || cmd.includes("don't") || cmd.includes("do not")) {
+          setAwaitingDetailsConfirm(false);
+          return "Okay, I won't read the details. You can say register me or go back at any time.";
+        }
+        // If something else, just handle it below as a normal command
+      }
+
+      // ---- Navigation: go back ----
+      if (cmd === "go back" || cmd === "back" || cmd.includes("previous")) {
+        navigate(-1);
+        return "Going back to the previous page.";
+      }
+
+      // ---- Register command ----
+      if (cmd.includes("register")) {
+        if (!userIsAllowedLocal && !isEventsOffice) {
+          const roles = (event.allowedRoles || [])
+            .map((r) => String(r))
+            .join(", ");
+          return roles
+            ? `You are not allowed to register for this event. It is restricted to: ${roles}.`
+            : "You are not allowed to register for this event.";
+        }
+
+        if (hasPassed) {
+          return "Registration is closed because the event has already ended.";
+        }
+
+        if (!canRegister) {
+          return "You cannot register for this event right now.";
+        }
+
+        navigate(`/events/${id}/register`);
+        return "Opening the registration form for this event.";
+      }
+
+      // ---- Read / view details ----
+      if (
+        cmd.includes("view details") ||
+        cmd.includes("read details") ||
+        cmd.includes("tell me about this event") ||
+        cmd.includes("what is this event") ||
+        cmd.includes("describe this event") ||
+        cmd === "yes"
+      ) {
+        return buildSummary();
+      }
+
+      // ---- Fallback ----
+      return "Sorry, I did not understand. You can say, read details, register me, or go back.";
+    },
+    [
+      event,
+      userRole,
+      isEventsOffice,
+      hasPassed,
+      canRegister,
+      awaitingDetailsConfirm,
+      navigate,
+      id,
+    ]
+  );
+
+
+
+
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.warn("SpeechRecognition not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false; // one command at a time (prevents it from hearing itself too much)
+
+    recognition.onstart = () => {
+      setIsListeningVoice(true);
+      setVoiceStatus("Listening...");
+    };
+
+    recognition.onend = () => {
+      setIsListeningVoice(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Voice error:", event.error);
+      setIsListeningVoice(false);
+      setVoiceStatus("Voice error. Try again.");
+    };
+
+    recognition.onresult = (event) => {
+      const raw = event.results[0][0].transcript;
+      const transcript = raw.toLowerCase().replace(/[.!?]+$/g, "").trim();
+      console.log("Details heard:", transcript);
+      setLastTranscript(transcript);
+
+      const response = handleDetailsVoiceCommand(transcript);
+      if (response) {
+        speak(response);
+        setVoiceStatus(response);
+      }
+    };
+
+    detailsRecognitionRef.current = recognition;
+
+    return () => {
+      recognition.stop();
+    };
+  }, [handleDetailsVoiceCommand, speak]);
+
+  const toggleDetailsVoice = useCallback(() => {
+    const recognition = detailsRecognitionRef.current;
+    if (!recognition) {
+      alert("Voice recognition is not supported in this browser.");
+      return;
+    }
+
+    // Turn off
+    if (isListeningVoice) {
+      recognition.stop();
+      setVoiceStatus("Stopped listening.");
+      return;
+    }
+
+    const startListening = () => {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error("Recognition start error:", e);
+      }
+    };
+
+    // First time on this page: play intro once
+    if (!hasPlayedIntro) {
+      setHasPlayedIntro(true);
+      setAwaitingDetailsConfirm(true);
+      speak(
+        "You are on the event details page. You can say read details, register me, or go back. Do you want me to read the details?",
+        () => {
+          startListening();
+        }
+      );
+    } else {
+      // Next times: short prompt
+      speak("How can I help you?", () => {
+        startListening();
+      });
+    }
+  }, [isListeningVoice, hasPlayedIntro, speak]);
+    useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key.toLowerCase() === "v") {
+        toggleDetailsVoice();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleDetailsVoice]);
+
 
   // Get user ID and role from token
   useEffect(() => {
@@ -610,6 +892,25 @@ const EventDetails = () => {
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <Bookmark size={20} className="text-[#567c8d]" />
               </button>
+               {/* Voice button */}
+              <button
+                onClick={toggleDetailsVoice}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Toggle event details voice assistant"
+              >
+                {isListeningVoice ? (
+                  <MicOff size={20} className="text-red-500" />
+                ) : (
+                  <Mic size={20} className="text-[#567c8d]" />
+                )}
+              </button>
+
+  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+    <Share2 size={20} className="text-[#567c8d]" />
+  </button>
+  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+    <Bookmark size={20} className="text-[#567c8d]" />
+  </button>
               <div className="w-10 h-10 bg-gradient-to-br from-[#567c8d] to-[#45687a] rounded-full flex items-center justify-center text-white font-semibold">
                 <User size={20} />
               </div>
@@ -629,6 +930,12 @@ const EventDetails = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
               {/* Header Content */}
+              {voiceStatus && (
+  <div className="px-4 py-2 bg-[#fff8e1] text-[#5d4037] text-sm mt-2 rounded-lg">
+    🎙️ Eventity: {voiceStatus}
+  </div>
+)}
+
               <div className="absolute bottom-0 left-0 right-0 p-8">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

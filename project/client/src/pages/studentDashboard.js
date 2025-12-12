@@ -1,6 +1,6 @@
 // client/src/pages/StudentDashboard.js
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect ,useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import workshopPlaceholder from "../images/workshop.png";
 import boothPlaceholder from "../images/booth.jpg";
@@ -22,12 +22,14 @@ import {
   Users,
   ArrowUp,
   ArrowDown,
+  Mic,
+  MicOff,        // ⬅ new icons
 } from "lucide-react";
 
 import StudentSidebar from "../components/StudentSidebar";
 import EventTypeDropdown from "../components/EventTypeDropdown";
 import SearchableDropdown from "../components/SearchableDropdown";
-import ProfessorMonthCalendar from "../components/ProfessorMonthCalendar";
+import { handleVoiceCommand } from "../utils/VoiceCommands";
 
 const API_BASE = "http://localhost:3000"; // Your working backend
 
@@ -49,19 +51,195 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+// NEW: keep track if assistant should keep listening
+const [assistantActive, setAssistantActive] = useState(false);
+const assistantActiveRef = useRef(false);
+const lastConfirmationRef = useRef("");
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const [userId, setUserId] = useState(null);
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
   const debouncedSearch = useDebounce(searchTerm, 400);
 const debouncedLocation = useDebounce(searchLocation, 400);
 const debouncedProfessor = useDebounce(professorFilter, 400);
 const debouncedEventType = useDebounce(eventTypeFilter, 400);
 const debouncedDate = useDebounce(dateFilter, 400);
+  const [isListening, setIsListening] = useState(false);
+  // const [awaitingCommand, setAwaitingCommand] = useState(false); // after wake word
+  const [voiceStatus, setVoiceStatus] = useState("");            // small helper text
+  const recognitionRef = useRef(null);
+  const [lastTranscript, setLastTranscript] = useState("");
+  const keepListeningRef = useRef(false); 
+  
+useEffect(() => {
+  assistantActiveRef.current = assistantActive;
+}, [assistantActive]);
 
+ const speak = useCallback((text, onEnd) => {
+  if (!window.speechSynthesis) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  if (onEnd) {
+    utterance.onend = onEnd;
+  }
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}, []);
+
+
+   const startVoiceAssistant = useCallback(() => {
+  const recognition = recognitionRef.current;
+  if (!recognition) {
+    alert("Voice recognition is not supported in this browser.");
+    return;
+  }
+
+  // If already active -> turn off
+  if (assistantActiveRef.current) {
+    setAssistantActive(false);
+    setVoiceStatus("Stopped listening.");
+    window.speechSynthesis.cancel();
+    recognition.stop();
+    return;
+  }
+
+  // Turn ON
+  setAssistantActive(true);
+  setVoiceStatus("Starting voice assistant...");
+  window.speechSynthesis.cancel();
+
+  // Greet, then start listening
+  speak("Hello, how can I help you?", () => {
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Recognition start error:", e);
+      setVoiceStatus("Could not start listening.");
+      setAssistantActive(false);
+    }
+  });
+});
+
+
+  useEffect(() => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    console.warn("SpeechRecognition not supported in this browser.");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.continuous = false; // one phrase at a time, we'll manually restart
+
+  recognition.onstart = () => {
+    setIsListening(true);
+    setVoiceStatus("Listening for your command...");
+  };
+
+  recognition.onend = () => {
+    setIsListening(false);
+
+    // If assistant is OFF, do nothing
+    if (!assistantActiveRef.current) return;
+
+    // If we have something to say from the last command
+    if (lastConfirmationRef.current) {
+      const msg = lastConfirmationRef.current;
+      lastConfirmationRef.current = "";
+      setVoiceStatus(msg);
+      speak(msg, () => {
+        // after speaking, if still active, listen again
+        if (assistantActiveRef.current) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.error("Recognition restart error:", e);
+          }
+        }
+      });
+    } else {
+      // No message this round, just restart listening silently
+      if (assistantActiveRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error("Recognition restart error:", e);
+        }
+      }
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.error("Voice error:", event.error);
+    setIsListening(false);
+    setVoiceStatus("Voice error. Try again.");
+  };
+
+  recognition.onresult = (event) => {
+    const raw = event.results[0][0].transcript;
+    const transcript = raw.toLowerCase().replace(/[.!?]+$/g, "").trim(); // 🔥 strip dot
+    console.log("Heard:", transcript);
+    setLastTranscript(transcript);
+
+    const confirmation = handleVoiceCommand(transcript, navigate, {
+      setSearchTerm,
+      setEventTypeFilter,
+      setSearchLocation,
+      setProfessorFilter,
+      setDateFilter,
+       events: allEvents,   
+    });
+
+    // queue confirmation for onend
+    lastConfirmationRef.current = confirmation || "";
+  };
+
+  recognitionRef.current = recognition;
+
+  return () => {
+    assistantActiveRef.current = false;
+    setAssistantActive(false);
+    recognition.onend = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onstart = null;
+    recognition.stop();
+  };
+}, [
+  navigate,
+  setSearchTerm,
+  setEventTypeFilter,
+  setSearchLocation,
+  setProfessorFilter,
+  setDateFilter,
+   allEvents, 
+  speak,
+]);
+
+
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    // e.g. press "v" to start/stop Eventity
+    if (e.key.toLowerCase() === "v") {
+      startVoiceAssistant();
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => {
+    window.removeEventListener("keydown", handleKeyDown);
+  };
+}, [startVoiceAssistant]);
 
   /* ---------------------- Fetch Events ---------------------- */
 function useDebounce(value, delay = 300) {
@@ -277,12 +455,12 @@ setAllEvents(normalized);
       <div className="flex-1 flex flex-col overflow-auto bg-[#f5efeb]">
         {/* Header */}
         <header className="bg-white border-b border-[#c8d9e6] px-2 md:px-4 py-4 flex items-center justify-between">
-          <button
+          {/* <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 hover:bg-[#f5efeb] rounded-lg md:hidden"
           >
             <Menu size={24} className="text-[#2f4156]" />
-          </button>
+          </button> */}
 
           {/* Search + Filters */}
           <div className="flex flex-col md:flex-row gap-2 flex-1 mx-4">
@@ -351,8 +529,20 @@ setAllEvents(normalized);
             </button>
           </div>
 
-          {/* User + Notifications */}
+                    {/* User + Notifications + Voice */}
           <div className="flex items-center gap-4">
+            {/* Voice Assistant Button */}
+            <button
+              onClick={startVoiceAssistant}
+              className="relative p-2 hover:bg-[#f5efeb] rounded-lg flex items-center gap-2"
+            >
+              {isListening ? (
+                <MicOff size={20} className="text-red-500" />
+              ) : (
+                <Mic size={20} className="text-[#567c8d]" />
+              )}
+            </button>
+
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-2 hover:bg-[#f5efeb] rounded-lg"
@@ -368,6 +558,7 @@ setAllEvents(normalized);
               <User size={20} className="text-[#2f4156]" />
             </div>
           </div>
+
         </header>
 
         {showNotifications && (
@@ -482,206 +673,183 @@ setAllEvents(normalized);
               </div>
             </div>
           </div>
+        {voiceStatus && (
+          <div className="px-4 py-2 bg-[#fff8e1] text-[#5d4037] text-sm">
+            🎙️ Eventity: {voiceStatus}
+          </div>
+        )}
+        {lastTranscript && (
+  <div className="px-4 py-2 bg-[#e3f2fd] text-[#0d47a1] text-xs mt-1">
+    👂 Last heard: "{lastTranscript}"
+  </div>
+)}
 
-          {/* Events Grid & Calendar */}
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Events Section */}
-            <div className="flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {allEvents
-                  .filter((e) => {
-                    if (!selectedCalendarDate) return true;
-                    const eventDate = new Date(
-                      e.startDateTime || e.startDate || e.date
-                    );
-                    return (
-                      eventDate.toDateString() ===
-                      selectedCalendarDate.toDateString()
-                    );
+          {/* Events Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            {allEvents.map((e) => {
+              let cardImage = workshopImg;
+              if (e.type === "TRIP") cardImage = tripImg;
+              if (e.type === "BAZAAR") cardImage = bazaarImg;
+              if (e.type === "CONFERENCE") cardImage = conferenceImg;
+              if (e.type === "WORKSHOP") cardImage = workshopImg;
+              if (e.type === "BOOTH") cardImage = e.image || boothPlaceholder;
+
+              const fallbackImage = cardImage;
+
+              // Format date
+              const eventDate = e.startDateTime
+                ? new Date(e.startDateTime).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
                   })
-                  .map((e) => {
-                    let cardImage = workshopImg;
-                    if (e.type === "TRIP") cardImage = tripImg;
-                    if (e.type === "BAZAAR") cardImage = bazaarImg;
-                    if (e.type === "CONFERENCE") cardImage = conferenceImg;
-                    if (e.type === "WORKSHOP") cardImage = workshopImg;
-                    if (e.type === "BOOTH") cardImage = e.image || boothPlaceholder;
+                : "";
+                if (e.type === "BOOTH") {
+  return (
+    <div
+      key={e._id}
+      className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+    >
+      <div className="h-40 w-full bg-gray-200 relative">
+        <img
+          src={e.image || boothPlaceholder}
+          alt={e.title}
+          className="h-full w-full object-cover"
+          onError={(target) => {
+            target.target.src = boothPlaceholder;
+          }}
+        />
+        <button
+          onClick={(ev) => {
+            ev.stopPropagation();
+            toggleFavorite(e._id);
+          }}
+          className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
+        >
+          <Heart
+            size={18}
+            className={
+              favorites.includes(e._id)
+                ? "fill-red-500 text-red-500"
+                : "text-gray-600"
+            }
+          />
+        </button>
+      </div>
 
-                    const fallbackImage = cardImage;
+      <div className="p-4">
+        <h3 className="font-semibold text-lg text-[#2f4156] truncate">
+          {e.title || "Booth"}
+        </h3>
 
-                    // Format date
-                    const eventDate = e.startDateTime
-                      ? new Date(e.startDateTime).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "";
-                    if (e.type === "BOOTH") {
-                      return (
+        <p className="text-sm text-[#567c8d] truncate">Type: BOOTH</p>
+
+        <p className="text-sm text-[#567c8d]">
+          Date:{" "}
+          {new Date(e.startDateTime || e.date).toLocaleDateString()}
+        </p>
+
+        {e.location && (
+          <p className="text-sm text-[#567c8d] truncate">Location: {e.location}</p>
+        )}
+
+        <div className="flex gap-2 mt-4">
+          <button
+            className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
+            onClick={() => navigate(`/events/${e._id}`)}
+          >
+            Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+              return (
+                <div
+                  key={e._id}
+                  className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group"
+                >
+                  <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+                    <img
+                      src={e.image || fallbackImage}
+                      alt={e.title}
+                      className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                    />
+
+                    {/* Event Type Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+                        {e.type}
+                      </span>
+                    </div>
+
+                    {/* Favorite Button */}
+                    <button
+                      onClick={() => toggleFavorite(e._id)}
+                      className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
+                    >
+                      <Heart
+                        size={18}
+                        className={
+                          favorites.includes(e._id)
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }
+                      />
+                    </button>
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
+                      {e.title}
+                    </h3>
+
+                    <div className="space-y-2 mb-4">
+                      {e.location && (
+                        <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                          <MapPin size={16} className="flex-shrink-0" />
+                          <span className="truncate">{e.location}</span>
+                        </div>
+                      )}
+
+                      {eventDate && (
+                        <div className="flex items-center gap-2 text-sm text-[#567c8d]">
+                          <Clock size={16} className="flex-shrink-0" />
+                          <span>{eventDate}</span>
+                        </div>
+                      )}
+
+                      {e.allowedRoles && e.allowedRoles.length > 0 && (
                         <div
-                          key={e._id}
-                          className="bg-[#fdfdfd] border border-[#c8d9e6] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full"
+                          style={{
+                            padding: "6px 10px",
+                            background: "#e3f2fd",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            color: "#1976d2",
+                            fontWeight: "500",
+                          }}
                         >
-                          <div className="h-40 w-full bg-gray-200 relative">
-                            <img
-                              src={e.image || boothPlaceholder}
-                              alt={e.title}
-                              className="h-full w-full object-cover"
-                              onError={(target) => {
-                                target.target.src = boothPlaceholder;
-                              }}
-                            />
-                            <button
-                              onClick={(ev) => {
-                                ev.stopPropagation();
-                                toggleFavorite(e._id);
-                              }}
-                              className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
-                            >
-                              <Heart
-                                size={18}
-                                className={
-                                  favorites.includes(e._id)
-                                    ? "fill-red-500 text-red-500"
-                                    : "text-gray-600"
-                                }
-                              />
-                            </button>
-                          </div>
-
-                          <div className="p-4 flex flex-col h-full">
-                            <h3 className="font-semibold text-lg text-[#2f4156] truncate">
-                              {e.title || "Booth"}
-                            </h3>
-
-                            <p className="text-sm text-[#567c8d] truncate">
-                              Type: BOOTH
-                            </p>
-
-                            <p className="text-sm text-[#567c8d]">
-                              Date:{" "}
-                              {new Date(e.startDateTime || e.date).toLocaleDateString()}
-                            </p>
-
-                            {e.location && (
-                              <p className="text-sm text-[#567c8d] truncate">
-                                Location: {e.location}
-                              </p>
-                            )}
-
-                            <div className="flex gap-2 mt-auto pt-4">
-                              <button
-                                className="flex-1 bg-[#567c8d] hover:bg-[#45687a] text-white py-2 px-3 rounded-lg transition-colors"
-                                onClick={() => navigate(`/events/${e._id}`)}
-                              >
-                                View Details
-                              </button>
-                            </div>
-                          </div>
+                          🔒 Restricted to: {e.allowedRoles.join(", ")}
                         </div>
-                      );
-                    }
+                      )}
+                    </div>
 
-                    return (
-                      <div
-                        key={e._id}
-                        className="bg-white border border-[#c8d9e6] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col h-full"
-                      >
-                        <div className="h-48 w-full bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
-                          <img
-                            src={e.image || fallbackImage}
-                            alt={e.title}
-                            className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                          />
-
-                          {/* Event Type Badge */}
-                          <div className="absolute top-3 left-3">
-                            <span className="bg-white/90 backdrop-blur-sm text-[#2f4156] px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
-                              {e.type}
-                            </span>
-                          </div>
-
-                          {/* Favorite Button */}
-                          <button
-                            onClick={() => toggleFavorite(e._id)}
-                            className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all"
-                          >
-                            <Heart
-                              size={18}
-                              className={
-                                favorites.includes(e._id)
-                                  ? "fill-red-500 text-red-500"
-                                  : "text-gray-600"
-                              }
-                            />
-                          </button>
-
-                          {/* Gradient Overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
-                        </div>
-
-                        <div className="p-5 flex flex-col h-full">
-                          <h3 className="font-bold text-xl text-[#2f4156] mb-2 line-clamp-2 min-h-[3.5rem]">
-                            {e.title}
-                          </h3>
-
-                          <div className="space-y-2 mb-4 flex-1">
-                            {e.location && (
-                              <div className="flex items-center gap-2 text-sm text-[#567c8d]">
-                                <MapPin size={16} className="flex-shrink-0" />
-                                <span className="truncate">{e.location}</span>
-                              </div>
-                            )}
-
-                            {eventDate && (
-                              <div className="flex items-center gap-2 text-sm text-[#567c8d]">
-                                <Clock size={16} className="flex-shrink-0" />
-                                <span>{eventDate}</span>
-                              </div>
-                            )}
-
-                            {e.allowedRoles && e.allowedRoles.length > 0 && (
-                              <div
-                                style={{
-                                  padding: "6px 10px",
-                                  background: "#e3f2fd",
-                                  borderRadius: "4px",
-                                  fontSize: "12px",
-                                  color: "#1976d2",
-                                  fontWeight: "500",
-                                }}
-                              >
-                                🔒 Restricted to: {e.allowedRoles.join(", ")}
-                              </div>
-                            )}
-                          </div>
-
-                          <button
-                            className="mt-auto w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
-                            onClick={() => navigate(`/events/${e._id}`)}
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-
-            {/* Calendar Sidebar */}
-            <div className="w-full lg:w-96 flex-shrink-0">
-              <ProfessorMonthCalendar
-                events={allEvents}
-                selectedDate={selectedCalendarDate}
-                onSelectDate={(d) => {
-                  const isSame =
-                    selectedCalendarDate &&
-                    d.toDateString() === selectedCalendarDate.toDateString();
-                  setSelectedCalendarDate(isSame ? null : d);
-                }}
-              />
-            </div>
+                    <button
+                      className="mt-4 w-full bg-gradient-to-r from-[#567c8d] to-[#45687a] text-white py-2.5 rounded-lg font-medium hover:from-[#45687a] hover:to-[#567c8d] transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
+                      onClick={() => navigate(`/events/${e._id}`)}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </main>
       </div>
