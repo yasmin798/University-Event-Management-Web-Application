@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import NotificationsDropdown from "../components/NotificationsDropdown";
+
 import {
   Search,
   Filter,
@@ -517,6 +519,38 @@ export default function VendorRequests() {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 ml-[260px] h-screen overflow-y-auto">
+        {/* Top Header (same as Events Home) */}
+<div
+  style={{
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    background: "white",
+    borderBottom: "1px solid #c8d9e6",
+    padding: "14px 40px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "12px",
+  }}
+>
+  <NotificationsDropdown align="right" />
+
+  <div
+    style={{
+      width: 40,
+      height: 40,
+      background: "#c8d9e6",
+      borderRadius: "999px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <User size={20} color="#2f4156" />
+  </div>
+</div>
+
         {/* HEADER */}
         <div className="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
           <div className="flex items-center justify-between">
@@ -528,39 +562,9 @@ export default function VendorRequests() {
                 Manage vendor applications for this bazaar
               </p>
             </div>
-                        <button
-              onClick={fetchRequests}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
-            >
-              <RefreshCw size={16} />
-              Refresh
-            </button>
+                       
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  // Voice command can be implemented later
-                  console.log("Voice command clicked");
-                }}
-                style={{
-                  background: "#567c8d",
-                  color: "white",
-                  padding: "10px 18px",
-                  borderRadius: "10px",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  transition: "background 0.2s",
-                }}
-                onMouseEnter={(e) => (e.target.style.background = "#45687a")}
-                onMouseLeave={(e) => (e.target.style.background = "#567c8d")}
-              >
-                <Mic size={16} />
-                Voice Command
-              </button>
+             
               <button
                 onClick={fetchRequests}
                 className="flex items-center gap-2 px-4 py-2 bg-[#2f4156] text-white rounded-lg hover:bg-[#1f2d3d] transition-colors"
