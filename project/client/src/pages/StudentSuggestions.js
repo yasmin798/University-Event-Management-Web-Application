@@ -1,6 +1,9 @@
 // client/src/pages/StudentSuggestions.js
 import React, { useState, useEffect } from "react";
 import StudentSidebar from "../components/StudentSidebar";
+import NotificationsDropdown from "../components/NotificationsDropdown";
+import { User } from "lucide-react";
+
 import {
   Lightbulb,
   Calendar,
@@ -152,12 +155,21 @@ const StudentSuggestions = () => {
             </p>
           </div>
 
-          <div className="hidden md:flex flex-col items-end">
-            <span className="text-xs text-[#567c8d]">Logged in as</span>
-            <span className="font-semibold text-[#2f4156]">
-              {userName || "Student"}
-            </span>
-          </div>
+          <div className="flex items-center gap-3">
+  <div className="hidden md:flex flex-col items-end">
+    <span className="text-xs text-[#567c8d]">Logged in as</span>
+    <span className="font-semibold text-[#2f4156]">
+      {userName || "Student"}
+    </span>
+  </div>
+
+  <NotificationsDropdown align="right" />
+
+  <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
+    <User size={20} className="text-[#2f4156]" />
+  </div>
+</div>
+
         </header>
 
         {/* Page content */}

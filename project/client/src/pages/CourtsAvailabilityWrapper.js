@@ -4,6 +4,9 @@ import StudentSidebar from "../components/StudentSidebar";
 import footballImg from "../images/football.webp";
 import basketballImg from "../images/basketball.webp";
 import tennisImg from "../images/tennis.webp";
+import NotificationsDropdown from "../components/NotificationsDropdown";
+import { User } from "lucide-react";
+
 
 const courtsData = [
   {
@@ -188,6 +191,38 @@ export default function CourtsAvailabilityWrapper() {
     >
       <StudentSidebar />
       <div style={{ flex: 1, marginLeft: "250px" }}>
+        {/* Top Header (same placement as other pages) */}
+<div
+  style={{
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    background: "white",
+    borderBottom: "1px solid #c8d9e6",
+    padding: "14px 40px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "12px",
+  }}
+>
+  <NotificationsDropdown align="right" />
+
+  <div
+    style={{
+      width: 40,
+      height: 40,
+      background: "#c8d9e6",
+      borderRadius: "999px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <User size={20} color="#2f4156" />
+  </div>
+</div>
+
         <div
           style={{
             padding: "40px",
@@ -210,6 +245,7 @@ export default function CourtsAvailabilityWrapper() {
           >
             Campus Courts Availability
           </h1>
+          
 
           {courtsWithUpcoming.map((court) => (
             <div

@@ -1,6 +1,8 @@
 // client/src/pages/AdminVendorBooths.jsx
 import React, { useEffect, useState } from "react";
 import FixedSidebarAdmin from "../components/FixedSidebarAdmin";
+import { User } from "lucide-react"; // ✅ ADD
+import NotificationsDropdown from "../components/NotificationsDropdown"; // ✅ ADD
 
 export default function AdminVendorBooths() {
   const API_ORIGIN = "http://localhost:3001";
@@ -79,10 +81,23 @@ export default function AdminVendorBooths() {
 
       <div className="flex-1 overflow-auto" style={{ marginLeft: "260px" }}>
         <header className="bg-white border-b border-[#c8d9e6] px-6 py-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-[#2f4156]">
-              Vendor Requests — Booths
-            </h1>
+          {/* ✅ LEFT + RIGHT */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-bold text-[#2f4156]">
+                Vendor Requests — Booths
+              </h1>
+            </div>
+
+            {/* ✅ Notification bell & user */}
+            <div className="flex items-center gap-2 md:gap-4 ml-4">
+              <div>
+                <NotificationsDropdown />
+              </div>
+              <div className="w-10 h-10 bg-[#c8d9e6] rounded-full flex items-center justify-center">
+                <User size={20} className="text-[#2f4156]" />
+              </div>
+            </div>
           </div>
         </header>
 

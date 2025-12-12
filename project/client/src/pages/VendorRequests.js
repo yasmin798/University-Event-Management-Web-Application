@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import NotificationsDropdown from "../components/NotificationsDropdown";
+
 import {
   Search,
   Filter,
@@ -519,6 +521,8 @@ export default function VendorRequests() {
                 <RefreshCw size={16} />
                 Refresh
               </button>
+              {/* Notifications Dropdown */}
+      <NotificationsDropdown />
             </div>
           </div>
         </div>

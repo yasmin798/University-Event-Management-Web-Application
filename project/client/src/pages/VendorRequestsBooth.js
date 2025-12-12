@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../events.theme.css";
+import NotificationsDropdown from "../components/NotificationsDropdown";
 import {
   LogOut,
   Search,
@@ -642,6 +643,8 @@ export default function VendorRequestsBooth() {
                 <RefreshCw size={16} />
                 Refresh
               </button>
+              {/* Notifications Dropdown */}
+      <NotificationsDropdown />
             </div>
           </div>
         </div>

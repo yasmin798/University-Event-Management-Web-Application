@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
 
-export default function NotificationsDropdown({ align = 'center' }) {
+export default function NotificationsDropdown({ align = 'right' }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
